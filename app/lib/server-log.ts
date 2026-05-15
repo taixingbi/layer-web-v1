@@ -1,15 +1,22 @@
 /**
- * One-line JSON logs aligned with layer-gateway-api-v1 ``EasternJsonFormatter`` field order
- * (``ts``, ``level``, ``message``, ``event``, ``service``, ``request_id``, …). Server-only.
+ * One-line JSON logs — same leading field order and semantics as layer-gateway-api-v1
+ * ``app/core/logging.py`` (``ts``, ``level``, ``logger``, ``phase``, ``event``, ``message``, …).
+ * Server-only; do not import from client components.
  */
 
 import { config } from "@/lib/config";
 
-const LOG_FIELD_PRIORITY = [
+/** Logger name in every JSON line (gateway uses ``gateway``). */
+export const WEB_LOGGER = "layer-web";
+
+/** Shared prefix with gateway ``LOG_FIELD_PRIORITY``; BFF-specific keys follow. */
+export const LOG_FIELD_PRIORITY = [
   "ts",
   "level",
-  "message",
+  "logger",
+  "phase",
   "event",
+  "message",
   "service",
   "request_id",
   "trace_id",
@@ -28,7 +35,32 @@ const LOG_FIELD_PRIORITY = [
   "gateway_request_id",
   "gateway_trace_id",
   "error",
+  "note",
 ] as const;
+
+const EVENT_PHASE: Record<string, string> = {
+  request_received: "ingress",
+  request_validated: "ingress",
+  request_complete: "access",
+  gateway_response: "upstream",
+  stream_end: "upstream",
+};
+
+const EVENT_MESSAGE: Record<string, string> = {
+  request_received: "Request received",
+  request_validated: "Request validated",
+  request_complete: "Request complete",
+  gateway_response: "Gateway response",
+  stream_end: "Stream complete",
+};
+
+export function phaseForEvent(event: string): string {
+  return EVENT_PHASE[event] ?? "system";
+}
+
+export function messageForEvent(event: string): string {
+  return EVENT_MESSAGE[event] ?? event;
+}
 
 function easternWallIso(d: Date): string {
   return d
@@ -61,7 +93,7 @@ function easternTimeZoneOffsetIso(d: Date): string {
   return `${m[1]}${hh}:${mm}`;
 }
 
-/** US Eastern wall clock + offset (seconds), matching gateway ``eastern_now_iso``. */
+/** US Eastern wall clock + offset (gateway ``eastern_from_timestamp``, second precision). */
 export function easternNowIsoSeconds(date = new Date()): string {
   return `${easternWallIso(date)}${easternTimeZoneOffsetIso(date)}`;
 }
@@ -88,19 +120,34 @@ function orderLogFields(row: Record<string, unknown>): Record<string, unknown> {
 export type WebLogLevel = "INFO" | "WARN" | "ERROR";
 
 /**
- * Emit a single JSON log line to stdout (same shape / key order as gateway ``log_event`` output).
+ * Emit one structured JSON log line (gateway-compatible shape).
+ *
+ * @param event Machine event name (``request_received``, ``gateway_response``, …)
+ * @param level ``INFO`` | ``WARN`` | ``ERROR``
+ * @param fields Correlation and context; optional ``phase``, ``message``, ``logger``, ``service`` overrides
  */
 export function logWebEvent(
   event: string,
   level: WebLogLevel,
   fields: Record<string, unknown> = {}
 ): void {
-  const { service: svcOverride, ...rest } = fields;
+  const {
+    service: svcOverride,
+    phase: phaseOverride,
+    message: messageOverride,
+    logger: loggerOverride,
+    ...rest
+  } = fields;
   const row: Record<string, unknown> = {
     ts: easternNowIsoSeconds(),
     level,
-    message: event,
+    logger: typeof loggerOverride === "string" && loggerOverride ? loggerOverride : WEB_LOGGER,
+    phase: typeof phaseOverride === "string" && phaseOverride ? phaseOverride : phaseForEvent(event),
     event,
+    message:
+      typeof messageOverride === "string" && messageOverride
+        ? messageOverride
+        : messageForEvent(event),
     service: typeof svcOverride === "string" && svcOverride ? svcOverride : config.webServiceName,
     ...rest,
   };

@@ -59,7 +59,8 @@ function resolveGatewayBearer(req: NextRequest): string {
 
 async function pumpGatewayUpstreamToClientEvents(
   upstreamBody: ReadableStream<Uint8Array>,
-  send: (event: string, data: unknown) => void
+  send: (event: string, data: unknown) => void,
+  logFields?: Record<string, unknown>
 ): Promise<void> {
   const reader = upstreamBody.getReader();
   const decoder = new TextDecoder();
@@ -93,6 +94,16 @@ async function pumpGatewayUpstreamToClientEvents(
         /* treat as success */
       }
       const done = donePayloadFromGatewayData(parsed.dataRaw);
+      if (logFields) {
+        logWebEvent("stream_end", "INFO", {
+          ...logFields,
+          stream: true,
+          ...(meta.request_id ? { gateway_request_id: meta.request_id } : {}),
+          ...(meta.trace_id ? { gateway_trace_id: meta.trace_id } : {}),
+          ...(meta.session_id ? { session_id: meta.session_id } : {}),
+          note: `citations=${done.citations.length} follow_ups=${done.follow_up_questions.length}`,
+        });
+      }
       send("stream_end", {
         response: accumulated,
         run_id: meta.trace_id ?? "",
@@ -281,7 +292,7 @@ export async function POST(req: NextRequest) {
       let level: "INFO" | "ERROR" = "INFO";
       try {
         send("status", "thinking");
-        await pumpGatewayUpstreamToClientEvents(upstream.body!, send);
+        await pumpGatewayUpstreamToClientEvents(upstream.body!, send, baseLog);
       } catch (err) {
         terminalStatus = 502;
         level = "ERROR";
