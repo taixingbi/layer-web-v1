@@ -28,6 +28,14 @@ function nextId() {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function StreamingCursor() {
+  return (
+    <span className="chat-stream-cursor" aria-hidden>
+      ▋
+    </span>
+  );
+}
+
 function citationTitle(c: Citation, index: number): string {
   if (typeof c.title === "string" && c.title.trim()) return c.title;
   if (typeof c.source === "string" && c.source.trim()) return c.source;
@@ -565,25 +573,27 @@ export default function ChatPage() {
               >
                 <div className="whitespace-pre-wrap break-words">
                   {msg.role === "assistant" && msg.rewrite && (
-                    <div className="border-l-4 border-gray-200 dark:border-gray-700 pl-3 mb-2 text-sm text-gray-500 dark:text-gray-400 italic">
-                      Interpreted as: &ldquo;{msg.rewrite}&rdquo;
-                    </div>
+                    <p className="chat-rewrite-meta">
+                      <span className="chat-rewrite-meta-label">Searching for: </span>
+                      <span className="chat-rewrite-meta-query">&ldquo;{msg.rewrite}&rdquo;</span>
+                      {streamingAssistantId === msg.id && !msg.content.trim() ? <StreamingCursor /> : null}
+                    </p>
                   )}
                   {msg.role === "assistant" && !msg.content.trim() && streamingAssistantId === msg.id ? (
-                    <div className="flex items-center gap-2 py-1 text-gray-500 dark:text-gray-400">
-                      <span className="flex gap-1">
-                        <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:0ms]" />
-                        <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:150ms]" />
-                        <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:300ms]" />
-                      </span>
-                      <span>{statusLabel}</span>
-                    </div>
+                    !msg.rewrite ? (
+                      <div className="flex items-center gap-2 py-1 text-gray-500 dark:text-gray-400">
+                        <span className="flex gap-1">
+                          <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:0ms]" />
+                          <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:150ms]" />
+                          <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:300ms]" />
+                        </span>
+                        <span>{statusLabel}</span>
+                      </div>
+                    ) : null
                   ) : (
                     <p>
                       {msg.content}
-                      {msg.role === "assistant" && streamingAssistantId === msg.id ? (
-                        <span className="inline-block w-2 h-4 ml-0.5 bg-current animate-pulse align-middle" aria-hidden />
-                      ) : null}
+                      {msg.role === "assistant" && streamingAssistantId === msg.id ? <StreamingCursor /> : null}
                     </p>
                   )}
                 </div>
@@ -591,12 +601,12 @@ export default function ChatPage() {
                   msg.citations &&
                   msg.citations.length > 0 &&
                   streamingAssistantId !== msg.id && (
-                    <details className="mt-4 text-sm group">
+                    <details className="mt-2.5 text-sm group">
                       <summary className="cursor-pointer text-gray-500 dark:text-gray-400 select-none list-none flex items-center gap-1">
                         <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
                         Sources ({msg.citations.length})
                       </summary>
-                      <ul className="mt-2 space-y-3 pl-1 border-l border-gray-200 dark:border-gray-700">
+                      <ul className="mt-1.5 space-y-2 pl-1 border-l border-gray-200 dark:border-gray-700">
                         {msg.citations.map((c, i) => {
                           const title = citationTitle(c, i);
                           const href = citationHref(c);
@@ -625,8 +635,8 @@ export default function ChatPage() {
                   msg.follow_up_questions &&
                   msg.follow_up_questions.length > 0 &&
                   streamingAssistantId !== msg.id && (
-                    <div className="mt-4">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Follow-up questions</p>
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Follow-up questions</p>
                       <div className="flex flex-wrap gap-2">
                         {msg.follow_up_questions.map((q) => (
                           <button
@@ -634,7 +644,7 @@ export default function ChatPage() {
                             type="button"
                             disabled={loading}
                             onClick={() => handleFollowUpClick(q)}
-                            className="chat-follow-up-chip text-left text-sm rounded-xl px-3 py-2 disabled:opacity-50 transition-colors"
+                            className="chat-follow-up-chip text-left text-sm rounded-xl px-3 py-1.5 disabled:opacity-50 transition-colors"
                           >
                             {q}
                           </button>
