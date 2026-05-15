@@ -1,0 +1,15 @@
+# Local run: copy .env.example → .env. If the gateway runs on the host (not in this compose file),
+# set GATEWAY_BASE_URL=http://host.docker.internal:8000 so the web container can reach it.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: layer-web-v1
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
