@@ -2,6 +2,8 @@
 
 ## Design
 
+Full technical design: **[docs/design.md](docs/design.md)**.
+
 ### Architecture
 
 - **Next.js 15** (App Router) – chat UI + BFF API routes
@@ -31,22 +33,34 @@ flowchart LR
 | `app/api/chat/route.ts` | Proxies to gateway `/api/chat`; SSE translation for the client |
 | `app/api/feedback/route.ts` | Proxies to gateway `/api/feedback` (`trace_id` ← UI `run_id`) |
 | `app/lib/config.ts` | `GATEWAY_BASE_URL`, `GATEWAY_BEARER_TOKEN`, `WEB_SERVICE_NAME` (server-only) |
+| `app/lib/gateway-auth.ts` | Resolves bearer for upstream: **client `Authorization` first**, then `GATEWAY_BEARER_TOKEN` |
 | `app/lib/server-log.ts` | Gateway-style one-line JSON logs from BFF routes (`service` defaults to `huntai-web`) |
 | `app/lib/gateway-chat.ts` | Gateway SSE parsing helpers |
 
 ### Environment
 
-See [`.env.example`](.env.example).
+See `.env` at repo root (or `.env.local` per Next.js).
 
 | Variable | Purpose |
 |----------|---------|
 | `GATEWAY_BASE_URL` | Gateway origin, no trailing slash (default `http://localhost:8000`) |
-| `GATEWAY_BEARER_TOKEN` | Bearer for gateway auth (server-only). Default in code: `demo-token` (stub). Production: set a real JWT. Optional: forward `Authorization: Bearer` on `/api/chat` and `/api/feedback` if unset in env |
+| `GATEWAY_BEARER_TOKEN` | Fallback bearer when the browser sends **no** `Authorization` header (local dev default `demo-token` with gateway `AUTH_MODE=stub`). If the browser sends `Authorization: Bearer …`, that token is forwarded to the gateway **instead** of this env value. |
 | `WEB_SERVICE_NAME` | Optional. JSON log field `service` for Next.js API routes (default `huntai-web`) |
+
+### Auth: stub vs JWT (gateway + BFF)
+
+| Gateway `AUTH_MODE` | Typical web setup | Result |
+|---------------------|-------------------|--------|
+| `stub` | `GATEWAY_BEARER_TOKEN=demo-token`; browser usually has no bearer | Works: any non-empty upstream bearer accepted; identity from gateway `AUTH_STUB_*`. |
+| `stub` | Browser sets `sessionStorage.layer_bearer_token` | Token forwarded, but gateway still uses stub identity. |
+| `jwt` | Set `sessionStorage.setItem("layer_bearer_token", "<access_token>")` after your OIDC login (or paste in devtools for testing), **or** set `GATEWAY_BEARER_TOKEN` to a valid JWT for server-only tests | Gateway verifies JWT and builds orchestrator `auth` from claims. |
+| `jwt` | `GATEWAY_BEARER_TOKEN=demo-token` only, no client bearer | **401** from gateway (expected). |
+
+There is no OIDC login UI in this repo yet; production usually adds NextAuth (or similar) and sets `layer_bearer_token` from the session/access token.
 
 ### Gateway contract (curl)
 
-The **example** gateway implementation is **layer-gateway-api-v1** (sibling repo / same workspace). Match its **`docs/smoke-test.md`**: paths, `Authorization: Bearer …` (stub mode accepts any non-empty bearer; local default **`demo-token`**), optional `X-Session-Id` / `X-Request-Id` / `X-Trace-Id` / `X-Conversation-Id`, JSON bodies for `/api/chat` and `/api/feedback`. Replace host/port in smoke examples with your `GATEWAY_BASE_URL` when not on localhost.
+The **example** gateway implementation is **layer-gateway-api-v1** (sibling repo / same workspace). Match its **`docs/smoke-test.md`**: paths, optional `X-Session-Id` / `X-Request-Id` / `X-Trace-Id` / `X-Conversation-Id`, JSON bodies. **`Authorization: Bearer`** is required on the gateway: with **`AUTH_MODE=stub`** any non-empty bearer works (e.g. `demo-token`); with **`AUTH_MODE=jwt`** use a valid access token (see gateway README / `.env.example`).
 
 ## Workflow (in-app)
 

@@ -10,6 +10,7 @@ import {
   tokenDeltaFromGatewayData,
 } from "@/lib/gateway-chat";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
+import { resolveGatewayBearer } from "@/lib/gateway-auth";
 import { logWebEvent } from "@/lib/server-log";
 import {
   chatClientRequestForLog,
@@ -56,14 +57,6 @@ function sendEvent(
   data: unknown
 ) {
   controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
-}
-
-function resolveGatewayBearer(req: NextRequest): string {
-  const envTok = config.gatewayBearerToken.trim();
-  if (envTok) return envTok;
-  const h = req.headers.get("authorization");
-  if (h?.toLowerCase().startsWith("bearer ")) return h.slice(7).trim();
-  return "";
 }
 
 type StreamPumpResult = {
@@ -242,7 +235,8 @@ export async function POST(req: NextRequest) {
         status: "error",
         error: {
           code: "unauthorized",
-          message: "Set GATEWAY_BEARER_TOKEN or send Authorization: Bearer to /api/chat",
+          message:
+            "Missing bearer for gateway. Set GATEWAY_BEARER_TOKEN on the server or send Authorization: Bearer <token> on /api/chat (use a valid JWT when the gateway uses AUTH_MODE=jwt).",
         },
       },
       { status: 401 }

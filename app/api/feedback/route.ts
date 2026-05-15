@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
+import { resolveGatewayBearer } from "@/lib/gateway-auth";
 import { logWebEvent } from "@/lib/server-log";
 import {
   feedbackClientRequestForLog,
@@ -47,14 +48,6 @@ function inboundCorrelation(req: NextRequest): {
   if (requestId) log.request_id = requestId;
   if (traceId) log.trace_id = traceId;
   return { sessionId, requestId, traceId, log };
-}
-
-function resolveGatewayBearer(req: NextRequest): string {
-  const envTok = config.gatewayBearerToken.trim();
-  if (envTok) return envTok;
-  const h = req.headers.get("authorization");
-  if (h?.toLowerCase().startsWith("bearer ")) return h.slice(7).trim();
-  return "";
 }
 
 export async function POST(req: NextRequest) {
@@ -119,7 +112,13 @@ export async function POST(req: NextRequest) {
       latency_ms: msSince(t0),
       error: "missing_gateway_token",
     });
-    return NextResponse.json({ error: "Missing gateway token" }, { status: 401 });
+    return NextResponse.json(
+      {
+        error:
+          "Missing bearer for gateway. Set GATEWAY_BEARER_TOKEN on the server or send Authorization: Bearer <token> (use a valid JWT when the gateway uses AUTH_MODE=jwt).",
+      },
+      { status: 401 }
+    );
   }
 
   const gatewayBody: Record<string, unknown> = {

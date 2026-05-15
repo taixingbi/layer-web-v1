@@ -83,6 +83,17 @@ function correlationUuid(): string {
   return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/** Optional access token for gateway JWT mode; dev: `sessionStorage.setItem("layer_bearer_token", "<jwt>")`. */
+function optionalLayerBearerHeaders(): Record<string, string> {
+  try {
+    const t = sessionStorage.getItem("layer_bearer_token")?.trim();
+    if (t) return { Authorization: `Bearer ${t}` };
+  } catch {
+    /* storage blocked */
+  }
+  return {};
+}
+
 export default function ChatPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -116,7 +127,7 @@ export default function ChatPage() {
     try {
       await fetch("/api/feedback", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...optionalLayerBearerHeaders() },
         body: JSON.stringify({
           run_id: message.run_id,
           request_id: message.request_id,
@@ -148,7 +159,7 @@ export default function ChatPage() {
       try {
         await fetch("/api/feedback", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...optionalLayerBearerHeaders() },
           body: JSON.stringify({
             run_id: feedbackModal.runId,
             request_id: messages.find((m) => m.id === feedbackModal.messageId)?.request_id,
@@ -372,6 +383,7 @@ export default function ChatPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...optionalLayerBearerHeaders(),
             ...(sessionId ? { "X-Session-Id": sessionId } : {}),
             "X-Request-Id": clientRequestId,
             "X-Trace-Id": clientTraceId,
@@ -419,7 +431,7 @@ export default function ChatPage() {
         }
         if (res.status === 401) {
           msg =
-            "Not authorized. Set GATEWAY_BEARER_TOKEN on the server or send Authorization: Bearer to /api/chat.";
+            "Not authorized. Set GATEWAY_BEARER_TOKEN on the server, or send Authorization with a valid JWT (e.g. sessionStorage.setItem(\"layer_bearer_token\", token)).";
         }
         if (res.status === 503) {
           msg = "Service busy (503). Please try again shortly.";
