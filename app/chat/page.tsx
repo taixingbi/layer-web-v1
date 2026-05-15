@@ -32,6 +32,31 @@ function nextId() {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** UUID for correlation; fallback when globalThis.crypto.randomUUID is missing (non-secure HTTP). */
+function correlationUuid(): string {
+  const c = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
+  if (c && typeof c.randomUUID === "function") {
+    try {
+      return c.randomUUID();
+    } catch {
+      /* continue */
+    }
+  }
+  if (c && typeof c.getRandomValues === "function") {
+    try {
+      const b = new Uint8Array(16);
+      c.getRandomValues(b);
+      b[6] = (b[6]! & 0x0f) | 0x40;
+      b[8] = (b[8]! & 0x3f) | 0x80;
+      const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
+      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+    } catch {
+      /* fall through */
+    }
+  }
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}${Math.random().toString(36).slice(2, 7)}`;
+}
+
 export default function ChatPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -299,14 +324,14 @@ export default function ChatPage() {
         try {
           sessionId = sessionStorage.getItem("layer_chat_session_id");
           if (!sessionId || sessionId.length < 3) {
-            sessionId = crypto.randomUUID();
+            sessionId = correlationUuid();
             sessionStorage.setItem("layer_chat_session_id", sessionId);
           }
         } catch {
-          sessionId = crypto.randomUUID();
+          sessionId = correlationUuid();
         }
-        const clientRequestId = crypto.randomUUID();
-        const clientTraceId = crypto.randomUUID();
+        const clientRequestId = correlationUuid();
+        const clientTraceId = correlationUuid();
         return fetch("/api/chat", {
           method: "POST",
           headers: {
