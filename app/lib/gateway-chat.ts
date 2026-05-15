@@ -58,3 +58,19 @@ export function metaFromGatewayData(dataRaw: string): GatewayMeta {
     return {};
   }
 }
+
+export function donePayloadFromGatewayData(dataRaw: string): {
+  citations: unknown[];
+  follow_up_questions: string[];
+} {
+  try {
+    const obj = JSON.parse(dataRaw) as Record<string, unknown>;
+    const citations = Array.isArray(obj.citations) ? obj.citations : [];
+    const follow_up_questions = Array.isArray(obj.follow_up_questions)
+      ? obj.follow_up_questions.filter((q): q is string => typeof q === "string")
+      : [];
+    return { citations, follow_up_questions };
+  } catch {
+    return { citations: [], follow_up_questions: [] };
+  }
+}

@@ -11,6 +11,7 @@ type Message = {
   run_id?: string;
   request_id?: string;
   citations?: Citation[];
+  follow_up_questions?: string[];
 };
 type Status = "thinking" | "searching_sql" | "cached" | "error" | null;
 
@@ -221,12 +222,16 @@ export default function ChatPage() {
               run_id?: string;
               request_id?: string;
               citations?: Citation[];
+              follow_up_questions?: string[];
             })
           : { response: data };
       const answer = typeof obj.response === "string" ? obj.response : JSON.stringify(obj.response ?? data);
       const rewrite = typeof obj.rewrite === "string" ? obj.rewrite : null;
       const prefix = rewrite ? `${REWRITE_PREFIX} ${rewrite}${CONTENT_SEP}` : "";
       const fullContent = prefix + answer;
+      const followUps = Array.isArray(obj.follow_up_questions)
+        ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
+        : undefined;
       const id = nextId();
       setStreamingPrefixLength(prefix.length);
       setStreamingMessageId(id);
@@ -240,6 +245,7 @@ export default function ChatPage() {
           run_id: obj.run_id,
           request_id: obj.request_id,
           citations: Array.isArray(obj.citations) ? obj.citations : undefined,
+          follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
         },
       ]);
       setStatus(null);
@@ -255,10 +261,14 @@ export default function ChatPage() {
               request_id?: string;
               trace_id?: string;
               citations?: Citation[];
+              follow_up_questions?: string[];
             })
           : {};
       const full = typeof obj.response === "string" ? obj.response : "";
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
+      const followUps = Array.isArray(obj.follow_up_questions)
+        ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
+        : undefined;
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === "assistant") {
@@ -270,6 +280,8 @@ export default function ChatPage() {
                   run_id: obj.run_id || obj.trace_id || m.run_id,
                   request_id: obj.request_id || m.request_id,
                   citations: cites && cites.length > 0 ? cites : m.citations,
+                  follow_up_questions:
+                    followUps && followUps.length > 0 ? followUps : m.follow_up_questions,
                 }
               : m
           );
@@ -284,6 +296,7 @@ export default function ChatPage() {
             run_id: obj.run_id || obj.trace_id,
             request_id: obj.request_id,
             citations: cites,
+            follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
           },
         ];
       });
@@ -303,12 +316,10 @@ export default function ChatPage() {
     }
   }, [streamingMessageId]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
-    const userMessage = input.trim();
-    setInput("");
-    setMessages((prev) => [...prev, { id: nextId(), role: "user", content: userMessage }]);
+  const sendUserMessage = useCallback(async (userMessage: string) => {
+    const text = userMessage.trim();
+    if (!text || loading) return;
+    setMessages((prev) => [...prev, { id: nextId(), role: "user", content: text }]);
     setLoading(true);
     setStatus(null);
     setStreamingMessageId(null);
@@ -340,7 +351,7 @@ export default function ChatPage() {
             "X-Request-Id": clientRequestId,
             "X-Trace-Id": clientTraceId,
           },
-          body: JSON.stringify({ message: userMessage }),
+          body: JSON.stringify({ message: text }),
         });
       };
 
@@ -393,9 +404,13 @@ export default function ChatPage() {
         const json = (await res.json()) as {
           response?: string;
           citations?: Citation[];
+          follow_up_questions?: string[];
           request_id?: string;
           trace_id?: string;
         };
+        const followUps = Array.isArray(json.follow_up_questions)
+          ? json.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
+          : undefined;
         if (json.response != null) {
           setMessages((prev) => [
             ...prev,
@@ -406,6 +421,7 @@ export default function ChatPage() {
               run_id: json.trace_id,
               request_id: json.request_id,
               citations: json.citations,
+              follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
             },
           ]);
         }
@@ -459,7 +475,25 @@ export default function ChatPage() {
       setLoading(false);
       setStatus(null);
     }
-  }, [input, loading, handleSSEEvent]);
+  }, [loading, handleSSEEvent]);
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const text = input.trim();
+      if (!text) return;
+      setInput("");
+      await sendUserMessage(text);
+    },
+    [input, sendUserMessage]
+  );
+
+  const handleFollowUpClick = useCallback(
+    (question: string) => {
+      void sendUserMessage(question);
+    },
+    [sendUserMessage]
+  );
 
   const statusLabel =
     status === "thinking" ? "Thinking…" :
@@ -563,6 +597,29 @@ export default function ChatPage() {
                         })}
                       </ul>
                     </details>
+                  )}
+                {msg.role === "assistant" &&
+                  msg.follow_up_questions &&
+                  msg.follow_up_questions.length > 0 &&
+                  streamingMessageId !== msg.id && (
+                    <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                        Follow-up questions
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {msg.follow_up_questions.map((q) => (
+                          <button
+                            key={q}
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleFollowUpClick(q)}
+                            className="text-left text-sm rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/80 disabled:opacity-50 transition-colors"
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 {msg.role === "assistant" && streamingMessageId !== msg.id && (
                   <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">

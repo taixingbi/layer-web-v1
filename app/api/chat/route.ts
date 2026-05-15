@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import {
+  donePayloadFromGatewayData,
   errorMessageFromGatewayData,
   metaFromGatewayData,
   parseSseBlock,
@@ -91,13 +92,15 @@ async function pumpGatewayUpstreamToClientEvents(
       } catch {
         /* treat as success */
       }
+      const done = donePayloadFromGatewayData(parsed.dataRaw);
       send("stream_end", {
         response: accumulated,
         run_id: meta.trace_id ?? "",
         request_id: meta.request_id ?? "",
         trace_id: meta.trace_id ?? "",
         session_id: meta.session_id ?? "",
-        citations: [] as unknown[],
+        citations: done.citations,
+        follow_up_questions: done.follow_up_questions,
       });
     }
   };
@@ -249,6 +252,7 @@ export async function POST(req: NextRequest) {
       request_id: json.request_id,
       trace_id: json.trace_id,
       citations: json.citations,
+      follow_up_questions: json.follow_up_questions,
     });
   }
 
