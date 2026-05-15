@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
+import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { logWebEvent } from "@/lib/server-log";
 
 export const runtime = "nodejs";
@@ -137,6 +138,10 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(gatewayBody),
       signal: AbortSignal.timeout(10_000),
+    });
+    logWebEvent("gateway_response", res.ok ? "INFO" : "WARN", {
+      ...baseLog,
+      ...gatewayResponseLogFields(res),
     });
     const responseText = await res.text();
 

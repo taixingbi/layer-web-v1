@@ -7,6 +7,7 @@ import {
   parseSseBlock,
   tokenDeltaFromGatewayData,
 } from "@/lib/gateway-chat";
+import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { logWebEvent } from "@/lib/server-log";
 
 export const runtime = "nodejs";
@@ -130,6 +131,10 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json()) as { message?: string; conversation_id?: string };
   const { message, conversation_id: conversationId } = body;
+  if (typeof conversationId === "string" && conversationId.trim()) {
+    baseLog.conversation_id = conversationId.trim();
+  }
+
   if (!message || typeof message !== "string") {
     logWebEvent("request_complete", "WARN", {
       ...baseLog,
@@ -202,6 +207,11 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ error: { code: "gateway_unreachable", message: msg } }, { status: 502 });
   }
+
+  logWebEvent("gateway_response", upstream.ok ? "INFO" : "WARN", {
+    ...baseLog,
+    ...gatewayResponseLogFields(upstream),
+  });
 
   if (!upstream.ok) {
     const text = await upstream.text();

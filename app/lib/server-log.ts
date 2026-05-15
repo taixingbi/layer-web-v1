@@ -14,6 +14,7 @@ const LOG_FIELD_PRIORITY = [
   "request_id",
   "trace_id",
   "session_id",
+  "conversation_id",
   "path",
   "method",
   "status",
@@ -21,6 +22,11 @@ const LOG_FIELD_PRIORITY = [
   "ttfb_ms",
   "stream",
   "backend",
+  "gateway_status",
+  "gateway_content_type",
+  "gateway_content_length",
+  "gateway_request_id",
+  "gateway_trace_id",
   "error",
 ] as const;
 
