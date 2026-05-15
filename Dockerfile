@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
 # ---- Base ----
 FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# OpenSSL compatibility for some native deps; keep pnpm major aligned with package.json / CI (not @latest, which can pull pnpm 10+ and break frozen-lockfile in Buildx).
+RUN apk add --no-cache libc6-compat
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 WORKDIR /app
 
 # ---- Dependencies ----
