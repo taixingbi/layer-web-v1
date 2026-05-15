@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 
 type Citation = Record<string, unknown>;
 
@@ -15,9 +15,6 @@ type Message = {
 };
 type Status = "thinking" | "searching_sql" | "cached" | "error" | null;
 
-const TYPING_SPEED_MS = 20;
-const CHARS_PER_TICK = 2;
-
 const FEEDBACK_REASONS = [
   { id: "not_factually_correct", label: "Not factually correct" },
   { id: "didnt_follow_instructions", label: "Didn't follow instructions" },
@@ -31,6 +28,27 @@ const REWRITE_PREFIX = "I think your question is:";
 
 function nextId() {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function citationTitle(c: Citation, index: number): string {
+  if (typeof c.title === "string" && c.title.trim()) return c.title;
+  if (typeof c.source === "string" && c.source.trim()) return c.source;
+  if (typeof c.cite_id === "number") return `Source [${c.cite_id}]`;
+  return `Source ${index + 1}`;
+}
+
+function citationHref(c: Citation): string | null {
+  if (typeof c.url === "string" && c.url.trim()) return c.url;
+  if (typeof c.source_url === "string" && c.source_url.trim()) return c.source_url;
+  return null;
+}
+
+function citationExcerpt(c: Citation): string | null {
+  if (typeof c.text === "string" && c.text.trim()) {
+    const t = c.text.trim();
+    return t.length > 280 ? `${t.slice(0, 280)}…` : t;
+  }
+  return null;
 }
 
 /** UUID for correlation; fallback when globalThis.crypto.randomUUID is missing (non-secure HTTP). */
@@ -67,10 +85,8 @@ export default function ChatPage() {
   const [thumbsDown, setThumbsDown] = useState<Set<string>>(new Set());
   const [feedbackModal, setFeedbackModal] = useState<{ messageId: string; runId?: string; question?: string } | null>(null);
   const [feedbackComment, setFeedbackComment] = useState("");
-  const [streamingVisibleLength, setStreamingVisibleLength] = useState(0);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
-  const [streamingPrefixLength, setStreamingPrefixLength] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
+  const streamingAssistantIdRef = useRef<string | null>(null);
 
   const lastAssistantId = useMemo(
     () => (messages.length > 0 ? [...messages].reverse().find((m) => m.role === "assistant")?.id ?? null : null),
@@ -148,49 +164,18 @@ export default function ChatPage() {
     }
   }, []);
 
-  const handleRegenerate = useCallback((msg: Message) => {
-    if (msg.id !== lastAssistantId) return;
-    const idx = messages.findIndex((m) => m.id === msg.id);
-    const prevUser = messages[idx - 1];
-    if (idx > 0 && prevUser?.role === "user") {
-      setMessages((prev) => prev.slice(0, idx - 1));
-      setInput(prevUser.content);
-    }
-  }, [messages, lastAssistantId]);
+  const beginStreamingAssistant = useCallback(() => {
+    const id = nextId();
+    streamingAssistantIdRef.current = id;
+    setStreamingAssistantId(id);
+    setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
+    return id;
+  }, []);
 
-  useEffect(() => {
-    if (streamingMessageId == null) return;
-    const msg = messages.find((m) => m.id === streamingMessageId);
-    if (!msg) return;
-    const fullLength = msg.content.length;
-    const answerLength = Math.max(0, fullLength - streamingPrefixLength);
-
-    if (fullLength === 0) {
-      setStreamingMessageId(null);
-      return;
-    }
-    if (answerLength === 0) {
-      setStreamingMessageId(null);
-      return;
-    }
-
-    setStreamingVisibleLength(0);
-    const id = setInterval(() => {
-      setStreamingVisibleLength((n) => {
-        const next = Math.min(n + CHARS_PER_TICK, answerLength);
-        if (next >= answerLength) {
-          setStreamingMessageId(null);
-        }
-        return next;
-      });
-    }, TYPING_SPEED_MS);
-    intervalRef.current = id;
-
-    return () => {
-      clearInterval(id);
-      intervalRef.current = null;
-    };
-  }, [streamingMessageId, streamingPrefixLength, messages]);
+  const clearStreamingAssistant = useCallback(() => {
+    streamingAssistantIdRef.current = null;
+    setStreamingAssistantId(null);
+  }, []);
 
   const handleSSEEvent = useCallback((event: string, data: unknown) => {
     if (event === "status") {
@@ -201,16 +186,11 @@ export default function ChatPage() {
       const obj = typeof data === "object" && data !== null ? (data as { delta?: string }) : {};
       const delta = typeof obj.delta === "string" ? obj.delta : "";
       if (!delta) return;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && last.id === streamingMessageId) {
-          return prev.slice(0, -1).concat({ ...last, content: last.content + delta });
-        }
-        const id = nextId();
-        setStreamingMessageId(id);
-        setStreamingVisibleLength(0);
-        return [...prev, { id, role: "assistant", content: delta }];
-      });
+      const targetId = streamingAssistantIdRef.current;
+      if (!targetId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === targetId ? { ...m, content: m.content + delta } : m))
+      );
       return;
     }
     if (event === "result") {
@@ -232,22 +212,22 @@ export default function ChatPage() {
       const followUps = Array.isArray(obj.follow_up_questions)
         ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
         : undefined;
-      const id = nextId();
-      setStreamingPrefixLength(prefix.length);
-      setStreamingMessageId(id);
-      setStreamingVisibleLength(0);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id,
-          role: "assistant",
-          content: fullContent,
-          run_id: obj.run_id,
-          request_id: obj.request_id,
-          citations: Array.isArray(obj.citations) ? obj.citations : undefined,
-          follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
-        },
-      ]);
+      const targetId = streamingAssistantIdRef.current ?? beginStreamingAssistant();
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === targetId
+            ? {
+                ...m,
+                content: fullContent,
+                run_id: obj.run_id,
+                request_id: obj.request_id,
+                citations: Array.isArray(obj.citations) ? obj.citations : undefined,
+                follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
+              }
+            : m
+        )
+      );
+      clearStreamingAssistant();
       setStatus(null);
       setLoading(false);
       return;
@@ -269,11 +249,11 @@ export default function ChatPage() {
       const followUps = Array.isArray(obj.follow_up_questions)
         ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
         : undefined;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant") {
-          return prev.map((m, i) =>
-            i === prev.length - 1
+      const targetId = streamingAssistantIdRef.current;
+      if (targetId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === targetId
               ? {
                   ...m,
                   content: full || m.content,
@@ -284,13 +264,13 @@ export default function ChatPage() {
                     followUps && followUps.length > 0 ? followUps : m.follow_up_questions,
                 }
               : m
-          );
-        }
-        const id = nextId();
-        return [
+          )
+        );
+      } else if (full) {
+        setMessages((prev) => [
           ...prev,
           {
-            id,
+            id: nextId(),
             role: "assistant",
             content: full,
             run_id: obj.run_id || obj.trace_id,
@@ -298,23 +278,33 @@ export default function ChatPage() {
             citations: cites,
             follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
           },
-        ];
-      });
-      setStreamingMessageId(null);
-      setStreamingPrefixLength(0);
+        ]);
+      }
+      clearStreamingAssistant();
       setStatus(null);
       setLoading(false);
       return;
     }
     if (event === "error") {
-      setMessages((prev) => [
-        ...prev,
-        { id: nextId(), role: "assistant", content: `Error: ${data}` },
-      ]);
+      const errText = typeof data === "string" ? data : JSON.stringify(data);
+      const targetId = streamingAssistantIdRef.current;
+      if (targetId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === targetId ? { ...m, content: `Error: ${errText}` } : m
+          )
+        );
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "assistant", content: `Error: ${errText}` },
+        ]);
+      }
+      clearStreamingAssistant();
       setStatus(null);
       setLoading(false);
     }
-  }, [streamingMessageId]);
+  }, [beginStreamingAssistant, clearStreamingAssistant]);
 
   const sendUserMessage = useCallback(async (userMessage: string) => {
     const text = userMessage.trim();
@@ -322,14 +312,11 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, { id: nextId(), role: "user", content: text }]);
     setLoading(true);
     setStatus(null);
-    setStreamingMessageId(null);
-    setStreamingPrefixLength(0);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    clearStreamingAssistant();
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const history = messages
+      .filter((m) => m.content.trim().length > 0)
+      .map((m) => ({ role: m.role, content: m.content }));
 
     try {
       const doFetch = () => {
@@ -437,6 +424,8 @@ export default function ChatPage() {
 
       if (!res.body) throw new Error("Request failed");
 
+      beginStreamingAssistant();
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -472,15 +461,37 @@ export default function ChatPage() {
         }
       }
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { id: nextId(), role: "assistant", content: `Error: ${err instanceof Error ? err.message : String(err)}` },
-      ]);
+      const errText = err instanceof Error ? err.message : String(err);
+      const targetId = streamingAssistantIdRef.current;
+      if (targetId) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === targetId ? { ...m, content: `Error: ${errText}` } : m))
+        );
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { id: nextId(), role: "assistant", content: `Error: ${errText}` },
+        ]);
+      }
     } finally {
+      clearStreamingAssistant();
       setLoading(false);
       setStatus(null);
     }
-  }, [loading, handleSSEEvent, messages]);
+  }, [loading, handleSSEEvent, messages, beginStreamingAssistant, clearStreamingAssistant]);
+
+  const handleRegenerate = useCallback(
+    (msg: Message) => {
+      if (msg.id !== lastAssistantId) return;
+      const idx = messages.findIndex((m) => m.id === msg.id);
+      const prevUser = messages[idx - 1];
+      if (idx > 0 && prevUser?.role === "user") {
+        setMessages((prev) => prev.slice(0, idx));
+        void sendUserMessage(prevUser.content);
+      }
+    },
+    [messages, lastAssistantId, sendUserMessage]
+  );
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -507,11 +518,8 @@ export default function ChatPage() {
     status === "error" ? "Error" :
     typeof status === "string" ? status : "…";
 
-  const getDisplayContent = useCallback((msg: Message) => {
-    if (msg.role !== "assistant") return msg.content;
-    if (streamingMessageId !== msg.id) return msg.content;
-    return msg.content.slice(0, streamingPrefixLength + streamingVisibleLength);
-  }, [streamingMessageId, streamingPrefixLength, streamingVisibleLength]);
+  const showStandaloneLoading =
+    loading && (messages.length === 0 || messages[messages.length - 1]?.role !== "assistant");
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">
@@ -537,18 +545,27 @@ export default function ChatPage() {
               className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
+                className={
                   msg.role === "user"
-                    ? "chat-user-bubble rounded-br-md"
-                    : "chat-assistant-bubble rounded-bl-md"
-                }`}
+                    ? "chat-user-bubble max-w-[min(85%,32rem)] rounded-3xl rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed"
+                    : "chat-assistant-block w-full text-[15px] leading-relaxed"
+                }
               >
-                <div className="whitespace-pre-wrap break-words space-y-2">
-                  {(() => {
-                    const text = getDisplayContent(msg);
+                <div className="whitespace-pre-wrap break-words">
+                  {msg.role === "assistant" && !msg.content.trim() && streamingAssistantId === msg.id ? (
+                    <div className="flex items-center gap-2 py-1 text-gray-500 dark:text-gray-400">
+                      <span className="flex gap-1">
+                        <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:0ms]" />
+                        <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:150ms]" />
+                        <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:300ms]" />
+                      </span>
+                      <span>{statusLabel}</span>
+                    </div>
+                  ) : (() => {
+                    const text = msg.content;
                     const sepIdx = text.indexOf(CONTENT_SEP);
                     const hasRewrite = text.startsWith(REWRITE_PREFIX);
-                    const isStreaming = streamingMessageId === msg.id && streamingPrefixLength + streamingVisibleLength < msg.content.length;
+                    const isStreaming = streamingAssistantId === msg.id;
                     const cursor = isStreaming ? <span className="inline-block w-2 h-4 ml-0.5 bg-current animate-pulse align-middle" aria-hidden /> : null;
                     const rewriteClass = "text-sm text-gray-500 dark:text-gray-400 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3";
 
@@ -569,33 +586,30 @@ export default function ChatPage() {
                 {msg.role === "assistant" &&
                   msg.citations &&
                   msg.citations.length > 0 &&
-                  streamingMessageId !== msg.id && (
-                    <details className="mt-2 text-sm border-t border-gray-200 dark:border-gray-700 pt-2">
-                      <summary className="cursor-pointer text-gray-500 dark:text-gray-400 select-none">
+                  streamingAssistantId !== msg.id && (
+                    <details className="mt-4 text-sm group">
+                      <summary className="cursor-pointer text-gray-500 dark:text-gray-400 select-none list-none flex items-center gap-1">
+                        <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
                         Sources ({msg.citations.length})
                       </summary>
-                      <ul className="mt-2 space-y-1 list-disc pl-5 text-gray-600 dark:text-gray-300">
+                      <ul className="mt-2 space-y-3 pl-1 border-l border-gray-200 dark:border-gray-700">
                         {msg.citations.map((c, i) => {
-                          const title =
-                            typeof c.title === "string"
-                              ? c.title
-                              : typeof c.source === "string"
-                                ? c.source
-                                : `Source ${i + 1}`;
-                          const href =
-                            typeof c.url === "string"
-                              ? c.url
-                              : typeof c.source_url === "string"
-                                ? c.source_url
-                                : null;
+                          const title = citationTitle(c, i);
+                          const href = citationHref(c);
+                          const excerpt = citationExcerpt(c);
                           return (
-                            <li key={i}>
-                              {href ? (
-                                <a href={href} className="underline" target="_blank" rel="noreferrer">
-                                  {title}
-                                </a>
-                              ) : (
-                                title
+                            <li key={i} className="pl-3 text-gray-600 dark:text-gray-300">
+                              <div className="font-medium text-gray-800 dark:text-gray-200">
+                                {href ? (
+                                  <a href={href} className="underline hover:text-[#10a37f]" target="_blank" rel="noreferrer">
+                                    {title}
+                                  </a>
+                                ) : (
+                                  title
+                                )}
+                              </div>
+                              {excerpt && (
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{excerpt}</p>
                               )}
                             </li>
                           );
@@ -606,19 +620,17 @@ export default function ChatPage() {
                 {msg.role === "assistant" &&
                   msg.follow_up_questions &&
                   msg.follow_up_questions.length > 0 &&
-                  streamingMessageId !== msg.id && (
-                    <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                        Follow-up questions
-                      </p>
-                      <div className="flex flex-col gap-2">
+                  streamingAssistantId !== msg.id && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Follow-up questions</p>
+                      <div className="flex flex-wrap gap-2">
                         {msg.follow_up_questions.map((q) => (
                           <button
                             key={q}
                             type="button"
                             disabled={loading}
                             onClick={() => handleFollowUpClick(q)}
-                            className="text-left text-sm rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/80 disabled:opacity-50 transition-colors"
+                            className="chat-follow-up-chip text-left text-sm rounded-xl px-3 py-2 disabled:opacity-50 transition-colors"
                           >
                             {q}
                           </button>
@@ -626,16 +638,13 @@ export default function ChatPage() {
                       </div>
                     </div>
                   )}
-                {msg.role === "assistant" && streamingMessageId !== msg.id && (
-                  <div className="flex flex-wrap gap-2 mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center gap-1">
+                {msg.role === "assistant" && streamingAssistantId !== msg.id && msg.content.trim() && (
+                  <div className="flex items-center gap-0.5 mt-3 -ml-1">
                       <button
                         type="button"
                         onClick={() => handleThumbsUp(msg)}
-                        className={`p-1.5 rounded-md transition-colors ${
-                          thumbsUp.has(msg.id)
-                            ? "text-blue-500 bg-blue-500/10"
-                            : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className={`chat-action-btn p-2 rounded-lg transition-colors ${
+                          thumbsUp.has(msg.id) ? "text-[#10a37f]" : ""
                         }`}
                         aria-label="Good response"
                       >
@@ -646,10 +655,8 @@ export default function ChatPage() {
                       <button
                         type="button"
                         onClick={() => handleThumbsDown(msg)}
-                        className={`p-1.5 rounded-md transition-colors ${
-                          thumbsDown.has(msg.id)
-                            ? "text-gray-500 bg-gray-500/10"
-                            : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className={`chat-action-btn p-2 rounded-lg transition-colors ${
+                          thumbsDown.has(msg.id) ? "text-gray-600" : ""
                         }`}
                         aria-label="Bad response"
                       >
@@ -657,11 +664,10 @@ export default function ChatPage() {
                           <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
                         </svg>
                       </button>
-                    </div>
                     <button
                       type="button"
                       onClick={() => handleCopy(msg.content)}
-                      className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      className="chat-action-btn p-2 rounded-lg transition-colors"
                       aria-label="Copy"
                     >
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -673,7 +679,7 @@ export default function ChatPage() {
                       <button
                         type="button"
                         onClick={() => handleRegenerate(msg)}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        className="chat-action-btn p-2 rounded-lg transition-colors"
                         aria-label="Regenerate"
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -687,9 +693,9 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
-          {loading && (
+          {showStandaloneLoading && (
             <div className="flex justify-start w-full">
-              <div className="chat-assistant-bubble rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2 text-[15px] text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-2 py-1 text-[15px] text-gray-500 dark:text-gray-400">
                 <span className="flex gap-1">
                   <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:0ms]" />
                   <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:150ms]" />
