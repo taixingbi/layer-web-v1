@@ -59,7 +59,18 @@ export function metaFromGatewayData(dataRaw: string): GatewayMeta {
   }
 }
 
+export function rewriteTextFromGatewayData(dataRaw: string): string | null {
+  try {
+    const obj = JSON.parse(dataRaw) as Record<string, unknown>;
+    const rewrite = obj.rewrite;
+    return typeof rewrite === "string" && rewrite.trim() ? rewrite.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function donePayloadFromGatewayData(dataRaw: string): {
+  rewrite: string | null;
   citations: unknown[];
   follow_up_questions: string[];
 } {
@@ -69,8 +80,9 @@ export function donePayloadFromGatewayData(dataRaw: string): {
     const follow_up_questions = Array.isArray(obj.follow_up_questions)
       ? obj.follow_up_questions.filter((q): q is string => typeof q === "string")
       : [];
-    return { citations, follow_up_questions };
+    const rewrite = rewriteTextFromGatewayData(dataRaw);
+    return { rewrite, citations, follow_up_questions };
   } catch {
-    return { citations: [], follow_up_questions: [] };
+    return { rewrite: null, citations: [], follow_up_questions: [] };
   }
 }

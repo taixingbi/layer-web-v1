@@ -6,6 +6,7 @@ import {
   errorMessageFromGatewayData,
   metaFromGatewayData,
   parseSseBlock,
+  rewriteTextFromGatewayData,
   tokenDeltaFromGatewayData,
 } from "@/lib/gateway-chat";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
@@ -66,6 +67,7 @@ async function pumpGatewayUpstreamToClientEvents(
   const decoder = new TextDecoder();
   let buffer = "";
   let accumulated = "";
+  let rewrite: string | null = null;
   const meta: { request_id?: string; trace_id?: string; session_id?: string } = {};
 
   const handleBlock = (block: string) => {
@@ -76,6 +78,9 @@ async function pumpGatewayUpstreamToClientEvents(
     if (ev === "meta") {
       Object.assign(meta, metaFromGatewayData(parsed.dataRaw));
       send("status", "thinking");
+    } else if (ev === "rewrite") {
+      const text = rewriteTextFromGatewayData(parsed.dataRaw);
+      if (text) rewrite = text;
     } else if (ev === "token") {
       const delta = tokenDeltaFromGatewayData(parsed.dataRaw);
       if (delta) {
@@ -94,6 +99,7 @@ async function pumpGatewayUpstreamToClientEvents(
         /* treat as success */
       }
       const done = donePayloadFromGatewayData(parsed.dataRaw);
+      const effectiveRewrite = rewrite ?? done.rewrite;
       if (logFields) {
         logWebEvent("stream_end", "INFO", {
           ...logFields,
@@ -101,11 +107,12 @@ async function pumpGatewayUpstreamToClientEvents(
           ...(meta.request_id ? { gateway_request_id: meta.request_id } : {}),
           ...(meta.trace_id ? { gateway_trace_id: meta.trace_id } : {}),
           ...(meta.session_id ? { session_id: meta.session_id } : {}),
-          note: `citations=${done.citations.length} follow_ups=${done.follow_up_questions.length}`,
+          note: `citations=${done.citations.length} follow_ups=${done.follow_up_questions.length} rewrite=${effectiveRewrite ? "yes" : "no"}`,
         });
       }
       send("stream_end", {
         response: accumulated,
+        ...(effectiveRewrite ? { rewrite: effectiveRewrite } : {}),
         run_id: meta.trace_id ?? "",
         request_id: meta.request_id ?? "",
         trace_id: meta.trace_id ?? "",

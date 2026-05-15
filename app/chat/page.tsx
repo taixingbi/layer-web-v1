@@ -237,6 +237,7 @@ export default function ChatPage() {
         typeof data === "object" && data !== null
           ? (data as {
               response?: string;
+              rewrite?: string;
               run_id?: string;
               request_id?: string;
               trace_id?: string;
@@ -244,7 +245,10 @@ export default function ChatPage() {
               follow_up_questions?: string[];
             })
           : {};
-      const full = typeof obj.response === "string" ? obj.response : "";
+      const answer = typeof obj.response === "string" ? obj.response : "";
+      const rewrite = typeof obj.rewrite === "string" ? obj.rewrite : null;
+      const prefix = rewrite ? `${REWRITE_PREFIX} ${rewrite}${CONTENT_SEP}` : "";
+      const full = prefix + answer;
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
       const followUps = Array.isArray(obj.follow_up_questions)
         ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
