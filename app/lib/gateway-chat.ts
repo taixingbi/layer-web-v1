@@ -63,7 +63,10 @@ export function rewriteTextFromGatewayData(dataRaw: string): string | null {
   try {
     const obj = JSON.parse(dataRaw) as Record<string, unknown>;
     const rewrite = obj.rewrite;
-    return typeof rewrite === "string" && rewrite.trim() ? rewrite.trim() : null;
+    if (typeof rewrite === "string" && rewrite.trim()) return rewrite.trim();
+    const text = obj.text;
+    if (typeof text === "string" && text.trim()) return text.trim();
+    return null;
   } catch {
     return null;
   }

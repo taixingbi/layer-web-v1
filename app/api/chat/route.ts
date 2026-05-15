@@ -80,7 +80,10 @@ async function pumpGatewayUpstreamToClientEvents(
       send("status", "thinking");
     } else if (ev === "rewrite") {
       const text = rewriteTextFromGatewayData(parsed.dataRaw);
-      if (text) rewrite = text;
+      if (text) {
+        rewrite = text;
+        send("rewrite", { text });
+      }
     } else if (ev === "token") {
       const delta = tokenDeltaFromGatewayData(parsed.dataRaw);
       if (delta) {

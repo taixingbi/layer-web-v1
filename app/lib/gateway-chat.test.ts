@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { donePayloadFromGatewayData, rewriteTextFromGatewayData } from "./gateway-chat";
 
 describe("rewriteTextFromGatewayData", () => {
-  it("reads rewrite from gateway rewrite or done payloads", () => {
-    expect(rewriteTextFromGatewayData(JSON.stringify({ text: "Rewritten Q" }))).toBeNull();
+  it("reads rewrite from gateway rewrite event or done payloads", () => {
+    expect(rewriteTextFromGatewayData(JSON.stringify({ text: "Taixing Bi's US visa status" }))).toBe(
+      "Taixing Bi's US visa status"
+    );
     expect(
       rewriteTextFromGatewayData(JSON.stringify({ rewrite: "What is the candidate's visa status?" }))
     ).toBe("What is the candidate's visa status?");

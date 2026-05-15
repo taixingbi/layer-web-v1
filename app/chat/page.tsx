@@ -8,6 +8,7 @@ type Message = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  rewrite?: string;
   run_id?: string;
   request_id?: string;
   citations?: Citation[];
@@ -22,9 +23,6 @@ const FEEDBACK_REASONS = [
   { id: "wrong_language", label: "Wrong language" },
   { id: "other", label: "Other" },
 ] as const;
-
-const CONTENT_SEP = "\n\n";
-const REWRITE_PREFIX = "I think your question is:";
 
 function nextId() {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -182,6 +180,17 @@ export default function ChatPage() {
       setStatus(data as Status);
       return;
     }
+    if (event === "rewrite") {
+      const obj = typeof data === "object" && data !== null ? (data as { text?: string }) : {};
+      const text = typeof obj.text === "string" ? obj.text.trim() : "";
+      if (!text) return;
+      const targetId = streamingAssistantIdRef.current;
+      if (!targetId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === targetId ? { ...m, rewrite: text } : m))
+      );
+      return;
+    }
     if (event === "result_chunk") {
       const obj = typeof data === "object" && data !== null ? (data as { delta?: string }) : {};
       const delta = typeof obj.delta === "string" ? obj.delta : "";
@@ -206,9 +215,7 @@ export default function ChatPage() {
             })
           : { response: data };
       const answer = typeof obj.response === "string" ? obj.response : JSON.stringify(obj.response ?? data);
-      const rewrite = typeof obj.rewrite === "string" ? obj.rewrite : null;
-      const prefix = rewrite ? `${REWRITE_PREFIX} ${rewrite}${CONTENT_SEP}` : "";
-      const fullContent = prefix + answer;
+      const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
       const followUps = Array.isArray(obj.follow_up_questions)
         ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
         : undefined;
@@ -218,7 +225,8 @@ export default function ChatPage() {
           m.id === targetId
             ? {
                 ...m,
-                content: fullContent,
+                content: answer,
+                ...(rewrite ? { rewrite } : {}),
                 run_id: obj.run_id,
                 request_id: obj.request_id,
                 citations: Array.isArray(obj.citations) ? obj.citations : undefined,
@@ -246,9 +254,7 @@ export default function ChatPage() {
             })
           : {};
       const answer = typeof obj.response === "string" ? obj.response : "";
-      const rewrite = typeof obj.rewrite === "string" ? obj.rewrite : null;
-      const prefix = rewrite ? `${REWRITE_PREFIX} ${rewrite}${CONTENT_SEP}` : "";
-      const full = prefix + answer;
+      const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
       const followUps = Array.isArray(obj.follow_up_questions)
         ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
@@ -260,7 +266,8 @@ export default function ChatPage() {
             m.id === targetId
               ? {
                   ...m,
-                  content: full || m.content,
+                  content: answer || m.content,
+                  rewrite: rewrite ?? m.rewrite,
                   run_id: obj.run_id || obj.trace_id || m.run_id,
                   request_id: obj.request_id || m.request_id,
                   citations: cites && cites.length > 0 ? cites : m.citations,
@@ -270,13 +277,14 @@ export default function ChatPage() {
               : m
           )
         );
-      } else if (full) {
+      } else if (answer || rewrite) {
         setMessages((prev) => [
           ...prev,
           {
             id: nextId(),
             role: "assistant",
-            content: full,
+            content: answer,
+            ...(rewrite ? { rewrite } : {}),
             run_id: obj.run_id || obj.trace_id,
             request_id: obj.request_id,
             citations: cites,
@@ -556,6 +564,11 @@ export default function ChatPage() {
                 }
               >
                 <div className="whitespace-pre-wrap break-words">
+                  {msg.role === "assistant" && msg.rewrite && (
+                    <div className="border-l-4 border-gray-200 dark:border-gray-700 pl-3 mb-2 text-sm text-gray-500 dark:text-gray-400 italic">
+                      Interpreted as: &ldquo;{msg.rewrite}&rdquo;
+                    </div>
+                  )}
                   {msg.role === "assistant" && !msg.content.trim() && streamingAssistantId === msg.id ? (
                     <div className="flex items-center gap-2 py-1 text-gray-500 dark:text-gray-400">
                       <span className="flex gap-1">
@@ -565,27 +578,14 @@ export default function ChatPage() {
                       </span>
                       <span>{statusLabel}</span>
                     </div>
-                  ) : (() => {
-                    const text = msg.content;
-                    const sepIdx = text.indexOf(CONTENT_SEP);
-                    const hasRewrite = text.startsWith(REWRITE_PREFIX);
-                    const isStreaming = streamingAssistantId === msg.id;
-                    const cursor = isStreaming ? <span className="inline-block w-2 h-4 ml-0.5 bg-current animate-pulse align-middle" aria-hidden /> : null;
-                    const rewriteClass = "text-sm text-gray-500 dark:text-gray-400 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3";
-
-                    if (hasRewrite && sepIdx >= 0) {
-                      return (
-                        <>
-                          <p className={rewriteClass}>{text.slice(0, sepIdx)}</p>
-                          <p>{text.slice(sepIdx + CONTENT_SEP.length)}{cursor}</p>
-                        </>
-                      );
-                    }
-                    if (hasRewrite) {
-                      return <p className={rewriteClass}>{text}{cursor}</p>;
-                    }
-                    return <p>{text}{cursor}</p>;
-                  })()}
+                  ) : (
+                    <p>
+                      {msg.content}
+                      {msg.role === "assistant" && streamingAssistantId === msg.id ? (
+                        <span className="inline-block w-2 h-4 ml-0.5 bg-current animate-pulse align-middle" aria-hidden />
+                      ) : null}
+                    </p>
+                  )}
                 </div>
                 {msg.role === "assistant" &&
                   msg.citations &&
