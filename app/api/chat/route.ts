@@ -132,8 +132,12 @@ export async function POST(req: NextRequest) {
 
   logWebEvent("request_received", "INFO", baseLog);
 
-  const body = (await req.json()) as { message?: string; conversation_id?: string };
-  const { message, conversation_id: conversationId } = body;
+  const body = (await req.json()) as {
+    message?: string;
+    conversation_id?: string;
+    history?: Array<{ role: string; content: string }>;
+  };
+  const { message, conversation_id: conversationId, history } = body;
   if (typeof conversationId === "string" && conversationId.trim()) {
     baseLog.conversation_id = conversationId.trim();
   }
@@ -195,6 +199,7 @@ export async function POST(req: NextRequest) {
         ...(typeof conversationId === "string" && conversationId.trim()
           ? { conversation_id: conversationId.trim() }
           : {}),
+        ...(Array.isArray(history) && history.length > 0 ? { history } : {}),
         metadata: { page: "/chat", source: "nextjs-web", user_agent: "nextjs-bff" },
       }),
       signal: AbortSignal.timeout(65_000),

@@ -329,6 +329,8 @@ export default function ChatPage() {
       intervalRef.current = null;
     }
 
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+
     try {
       const doFetch = () => {
         let sessionId: string | null = null;
@@ -351,7 +353,10 @@ export default function ChatPage() {
             "X-Request-Id": clientRequestId,
             "X-Trace-Id": clientTraceId,
           },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify({
+            message: text,
+            ...(history.length > 0 ? { history } : {}),
+          }),
         });
       };
 
@@ -475,7 +480,7 @@ export default function ChatPage() {
       setLoading(false);
       setStatus(null);
     }
-  }, [loading, handleSSEEvent]);
+  }, [loading, handleSSEEvent, messages]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
