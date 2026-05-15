@@ -11,6 +11,14 @@ import {
 } from "@/lib/gateway-chat";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { logWebEvent } from "@/lib/server-log";
+import {
+  chatClientRequestForLog,
+  chatClientResponseForLog,
+  chatGatewayJsonResponseForLog,
+  chatGatewayRequestForLog,
+  payloadForLog,
+  webMeta,
+} from "@/lib/web-log-payload";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -58,16 +66,25 @@ function resolveGatewayBearer(req: NextRequest): string {
   return "";
 }
 
+type StreamPumpResult = {
+  rewrite: string | null;
+  response: string;
+  citations: unknown[];
+  follow_up_questions: string[];
+};
+
 async function pumpGatewayUpstreamToClientEvents(
   upstreamBody: ReadableStream<Uint8Array>,
   send: (event: string, data: unknown) => void,
   logFields?: Record<string, unknown>
-): Promise<void> {
+): Promise<StreamPumpResult> {
   const reader = upstreamBody.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let accumulated = "";
   let rewrite: string | null = null;
+  let lastCitations: unknown[] = [];
+  let lastFollowUps: string[] = [];
   const meta: { request_id?: string; trace_id?: string; session_id?: string } = {};
 
   const handleBlock = (block: string) => {
@@ -103,6 +120,8 @@ async function pumpGatewayUpstreamToClientEvents(
       }
       const done = donePayloadFromGatewayData(parsed.dataRaw);
       const effectiveRewrite = rewrite ?? done.rewrite;
+      lastCitations = done.citations;
+      lastFollowUps = done.follow_up_questions;
       if (logFields) {
         logWebEvent("stream_end", "INFO", {
           ...logFields,
@@ -111,6 +130,29 @@ async function pumpGatewayUpstreamToClientEvents(
           ...(meta.trace_id ? { gateway_trace_id: meta.trace_id } : {}),
           ...(meta.session_id ? { session_id: meta.session_id } : {}),
           note: `citations=${done.citations.length} follow_ups=${done.follow_up_questions.length} rewrite=${effectiveRewrite ? "yes" : "no"}`,
+          ...webMeta({
+            gateway_api_response: {
+              done: payloadForLog(
+                (() => {
+                  try {
+                    return JSON.parse(parsed.dataRaw) as Record<string, unknown>;
+                  } catch {
+                    return { raw: parsed.dataRaw };
+                  }
+                })()
+              ),
+            },
+            web_api_response: chatClientResponseForLog({
+              stream: true,
+              response: accumulated,
+              rewrite: effectiveRewrite,
+              citations: done.citations,
+              follow_up_questions: done.follow_up_questions,
+              request_id: meta.request_id,
+              trace_id: meta.trace_id,
+              session_id: meta.session_id,
+            }),
+          }),
         });
       }
       send("stream_end", {
@@ -139,6 +181,14 @@ async function pumpGatewayUpstreamToClientEvents(
   if (buffer.trim()) {
     handleBlock(buffer);
   }
+
+  const effectiveRewrite = rewrite;
+  return {
+    rewrite: effectiveRewrite,
+    response: accumulated,
+    citations: lastCitations,
+    follow_up_questions: lastFollowUps,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -170,6 +220,10 @@ export async function POST(req: NextRequest) {
       stream: false,
       latency_ms: msSince(t0),
       error: "missing_message",
+      ...webMeta({
+        web_api_request: chatClientRequestForLog(body),
+        web_api_response: { status: "error", error: "missing_message" },
+      }),
     });
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
   }
@@ -207,22 +261,37 @@ export async function POST(req: NextRequest) {
   if (requestId) headers["X-Request-Id"] = requestId;
   if (traceId) headers["X-Trace-Id"] = traceId;
 
-  logWebEvent("request_validated", "INFO", baseLog);
+  const gatewayRequestBody: Record<string, unknown> = {
+    message,
+    stream: true,
+    ...(typeof conversationId === "string" && conversationId.trim()
+      ? { conversation_id: conversationId.trim() }
+      : {}),
+    ...(Array.isArray(history) && history.length > 0 ? { history } : {}),
+    metadata: { page: "/chat", source: "nextjs-web", user_agent: "nextjs-bff" },
+  };
+
+  logWebEvent("request_validated", "INFO", {
+    ...baseLog,
+    ...webMeta({
+      web_api_request: chatClientRequestForLog(body),
+    }),
+  });
+
+  logWebEvent("gateway_api_request", "INFO", {
+    ...baseLog,
+    stream: true,
+    ...webMeta({
+      gateway_api_request: chatGatewayRequestForLog(gatewayRequestBody),
+    }),
+  });
 
   let upstream: Response;
   try {
     upstream = await fetch(`${config.gatewayBaseUrl}/api/chat`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        message,
-        stream: true,
-        ...(typeof conversationId === "string" && conversationId.trim()
-          ? { conversation_id: conversationId.trim() }
-          : {}),
-        ...(Array.isArray(history) && history.length > 0 ? { history } : {}),
-        metadata: { page: "/chat", source: "nextjs-web", user_agent: "nextjs-bff" },
-      }),
+      body: JSON.stringify(gatewayRequestBody),
       signal: AbortSignal.timeout(65_000),
     });
   } catch (err) {
@@ -237,19 +306,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: { code: "gateway_unreachable", message: msg } }, { status: 502 });
   }
 
+  const contentType = upstream.headers.get("content-type") || "";
+
   logWebEvent("gateway_response", upstream.ok ? "INFO" : "WARN", {
     ...baseLog,
     ...gatewayResponseLogFields(upstream),
+    ...(upstream.ok && contentType.includes("text/event-stream")
+      ? webMeta({ gateway_api_response: { streaming: true } })
+      : {}),
   });
 
   if (!upstream.ok) {
     const text = await upstream.text();
+    let gatewayErrorBody: unknown = text;
+    try {
+      gatewayErrorBody = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      /* keep text */
+    }
+    logWebEvent("gateway_api_response", "WARN", {
+      ...baseLog,
+      status: upstream.status,
+      stream: false,
+      ...webMeta({
+        gateway_api_response: gatewayErrorBody,
+      }),
+    });
     logWebEvent("request_complete", "WARN", {
       ...baseLog,
       status: upstream.status,
       stream: false,
       latency_ms: msSince(t0),
       error: text.slice(0, 500),
+      ...webMeta({
+        web_api_response: { status: "error", body: gatewayErrorBody },
+      }),
     });
     try {
       const j = JSON.parse(text) as Record<string, unknown>;
@@ -262,24 +353,46 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const contentType = upstream.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
     const json = (await upstream.json()) as Record<string, unknown>;
     const answer = typeof json.answer === "string" ? json.answer : "";
-    logWebEvent("request_complete", "INFO", {
-      ...baseLog,
-      status: 200,
-      stream: false,
-      latency_ms: msSince(t0),
-    });
-    return NextResponse.json({
+    const clientResponse = {
       response: answer,
       session_id: json.session_id,
       request_id: json.request_id,
       trace_id: json.trace_id,
       citations: json.citations,
       follow_up_questions: json.follow_up_questions,
+    };
+    logWebEvent("gateway_api_response", "INFO", {
+      ...baseLog,
+      status: 200,
+      stream: false,
+      ...webMeta({
+        gateway_api_response: chatGatewayJsonResponseForLog(json),
+      }),
     });
+    logWebEvent("request_complete", "INFO", {
+      ...baseLog,
+      status: 200,
+      stream: false,
+      latency_ms: msSince(t0),
+      ...webMeta({
+        web_api_response: chatClientResponseForLog({
+          stream: false,
+          response: answer,
+          rewrite: typeof json.rewrite === "string" ? json.rewrite : null,
+          citations: Array.isArray(json.citations) ? json.citations : [],
+          follow_up_questions: Array.isArray(json.follow_up_questions)
+            ? (json.follow_up_questions as string[])
+            : [],
+          request_id: typeof json.request_id === "string" ? json.request_id : undefined,
+          trace_id: typeof json.trace_id === "string" ? json.trace_id : undefined,
+          session_id: typeof json.session_id === "string" ? json.session_id : undefined,
+        }),
+      }),
+    });
+    return NextResponse.json(clientResponse);
   }
 
   if (!upstream.body) {
@@ -306,7 +419,16 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         terminalStatus = 502;
         level = "ERROR";
-        send("error", err instanceof Error ? err.message : String(err));
+        const errMsg = err instanceof Error ? err.message : String(err);
+        send("error", errMsg);
+        logWebEvent("web_api_response", "ERROR", {
+          ...baseLog,
+          stream: true,
+          status: 502,
+          ...webMeta({
+            web_api_response: { status: "error", message: errMsg },
+          }),
+        });
       } finally {
         logWebEvent("request_complete", level, {
           ...baseLog,

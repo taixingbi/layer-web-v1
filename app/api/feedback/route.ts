@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { logWebEvent } from "@/lib/server-log";
+import {
+  feedbackClientRequestForLog,
+  feedbackGatewayRequestForLog,
+  payloadForLog,
+  webMeta,
+} from "@/lib/web-log-payload";
 
 export const runtime = "nodejs";
 
@@ -127,7 +133,19 @@ export async function POST(req: NextRequest) {
   if (body.comment) gatewayBody.comment = body.comment;
   if (body.question) gatewayBody.question = body.question;
 
-  logWebEvent("request_validated", "INFO", baseLog);
+  logWebEvent("request_validated", "INFO", {
+    ...baseLog,
+    ...webMeta({
+      web_api_request: feedbackClientRequestForLog(body),
+    }),
+  });
+
+  logWebEvent("gateway_api_request", "INFO", {
+    ...baseLog,
+    ...webMeta({
+      gateway_api_request: feedbackGatewayRequestForLog(gatewayBody),
+    }),
+  });
 
   try {
     const res = await fetch(`${config.gatewayBaseUrl}/api/feedback`, {
@@ -145,13 +163,33 @@ export async function POST(req: NextRequest) {
     });
     const responseText = await res.text();
 
+    let gatewayResponseBody: unknown = null;
+    if (responseText) {
+      try {
+        gatewayResponseBody = JSON.parse(responseText) as Record<string, unknown>;
+      } catch {
+        gatewayResponseBody = responseText;
+      }
+    }
+
     if (!res.ok) {
+      logWebEvent("gateway_api_response", "WARN", {
+        ...baseLog,
+        status: res.status,
+        stream: false,
+        ...webMeta({
+          gateway_api_response: gatewayResponseBody,
+        }),
+      });
       logWebEvent("request_complete", "WARN", {
         ...baseLog,
         status: res.status,
         stream: false,
         latency_ms: msSince(t0),
         error: responseText.slice(0, 500),
+        ...webMeta({
+          web_api_response: { status: "error", body: gatewayResponseBody },
+        }),
       });
       try {
         const parsed = JSON.parse(responseText || "{}") as { detail?: unknown };
@@ -163,11 +201,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: responseText || res.statusText }, { status: 502 });
       }
     }
+    logWebEvent("gateway_api_response", "INFO", {
+      ...baseLog,
+      status: res.status,
+      stream: false,
+      ...webMeta({
+        gateway_api_response:
+          res.status === 204 ? { status: 204, body: null } : gatewayResponseBody,
+      }),
+    });
     logWebEvent("request_complete", "INFO", {
       ...baseLog,
       status: res.status,
       stream: false,
       latency_ms: msSince(t0),
+      ...webMeta({
+        web_api_response:
+          res.status === 204
+            ? { status: 204 }
+            : { status: res.status, body: payloadForLog(gatewayResponseBody) },
+      }),
     });
     if (res.status === 204) {
       return new NextResponse(null, { status: 204 });

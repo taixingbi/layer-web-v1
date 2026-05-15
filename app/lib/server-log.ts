@@ -25,6 +25,7 @@ export const LOG_FIELD_PRIORITY = [
   "path",
   "method",
   "status",
+  "web_meta",
   "latency_ms",
   "ttfb_ms",
   "stream",
@@ -44,6 +45,10 @@ const EVENT_PHASE: Record<string, string> = {
   request_complete: "access",
   gateway_response: "upstream",
   stream_end: "upstream",
+  web_api_request: "ingress",
+  web_api_response: "access",
+  gateway_api_request: "upstream",
+  gateway_api_response: "upstream",
 };
 
 const EVENT_MESSAGE: Record<string, string> = {
@@ -52,6 +57,10 @@ const EVENT_MESSAGE: Record<string, string> = {
   request_complete: "Request complete",
   gateway_response: "Gateway response",
   stream_end: "Stream complete",
+  web_api_request: "web_api_request",
+  web_api_response: "web_api_response",
+  gateway_api_request: "gateway_api_request",
+  gateway_api_response: "gateway_api_response",
 };
 
 export function phaseForEvent(event: string): string {
