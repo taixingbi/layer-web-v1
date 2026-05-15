@@ -698,7 +698,7 @@ export default function ChatPage() {
                 <div className="whitespace-pre-wrap break-words">
                   {msg.rewrite && (
                     <p className="chat-rewrite-meta">
-                      <span className="chat-rewrite-meta-label">Searching for: </span>
+                      <span className="chat-rewrite-meta-label">Rewrite: </span>
                       <span className="chat-rewrite-meta-query">&ldquo;{msg.rewrite}&rdquo;</span>
                       {streamingAssistantId === msg.id && !msg.content.trim() ? <StreamingCursor /> : null}
                     </p>
