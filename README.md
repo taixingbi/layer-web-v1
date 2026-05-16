@@ -2,7 +2,7 @@
 
 ## Design
 
-Full technical design: **[docs/design.md](docs/design.md)**.
+Full technical design: **[docs/design.md](docs/design.md)**. Auth (BFF bearer, stub vs JWT, browser token hook): **[docs/auth-design.md](docs/auth-design.md)**.
 
 ### Architecture
 

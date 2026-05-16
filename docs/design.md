@@ -76,9 +76,37 @@ Non-stream JSON responses from the gateway are handled as a separate path in the
 
 Parsing helpers: [`app/lib/gateway-chat.ts`](../app/lib/gateway-chat.ts).
 
+### Verifying SSE with curl (gateway vs Next BFF)
+
+Use **`curl -N`** so stdout is not buffered and you see events as they arrive.
+
+| Target | URL (example) | Event names on the wire |
+|--------|----------------|-------------------------|
+| **Gateway** (`layer-gateway-api-v1`) | `http://<gateway-host>:<port>/api/chat` | `meta`, `rewrite`, `token`, `done`, `error` |
+| **Next.js BFF** (this app) | `http://<web-host>:<port>/api/chat` | `status`, `rewrite`, `result_chunk`, `stream_end`, `error` |
+
+- **Gateway smoke curls** (full request shape, correlation headers): sibling repo [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-test.md).
+- **Next BFF** expects a **smaller JSON body** from the browser: `message`, optional `conversation_id`, optional `history` (the BFF adds `stream: true` and gateway metadata when calling upstream). Example against local web:
+
+```bash
+curl -N -sS -X POST "http://localhost:3000/api/chat" \
+  -H "Authorization: Bearer demo-token" \
+  -H "Content-Type: application/json" \
+  -H "X-Session-Id: curl-web-sess-1" \
+  -H "X-Request-Id: curl-web-req-1" \
+  -H "X-Trace-Id: curl-web-trace-1" \
+  -d '{"message":"Hello from curl via Next","conversation_id":"conv-curl-1"}'
+```
+
+Expect `Content-Type: text/event-stream` and lines like `event: status`, `event: result_chunk`, `event: stream_end` (not `meta` / `token` / `done`). Use the same bearer as `GATEWAY_BEARER_TOKEN` when the gateway uses `AUTH_MODE=stub`.
+
+**One `token` / one `result_chunk`:** the upstream may emit a single chunk for a short answer, so the UI still uses the stream path but visually updates once. Longer prompts may produce many chunks; if the gateway still sends one `token` event, chunking is decided upstream (orchestrator / LLM), not by Next.
+
 ---
 
 ## Auth (gateway + web)
+
+Full bearer resolution, trust boundaries, errors, and future OIDC: **[docs/auth-design.md](auth-design.md)**.
 
 | Gateway `AUTH_MODE` | Typical web setup | Result |
 |---------------------|-------------------|--------|
@@ -139,4 +167,5 @@ Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env`](../.en
 ## Related docs
 
 - **README** — quick start, CI, Docker: [`README.md`](../README.md)
+- **Auth design** — BFF bearer, `sessionStorage`, stub vs JWT: [`auth-design.md`](auth-design.md)
 - **Gateway** — API schema, smoke tests, auth: sibling **layer-gateway-api-v1** `docs/`
