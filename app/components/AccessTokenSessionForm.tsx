@@ -41,8 +41,13 @@ export function AccessTokenSessionForm({ submitLabel, redirectPath = "/chat" }: 
           body: JSON.stringify({ access_token: trimmed }),
         });
         if (!res.ok) {
-          const j = (await res.json().catch(() => ({}))) as { error?: string };
-          setError(j.error ?? `Request failed (${res.status})`);
+          const j = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+          const msg = j.error ?? `Request failed (${res.status})`;
+          setError(
+            res.status === 401 && j.code === "invalid_gateway_token"
+              ? `${msg} With stub auth, use demo-token or set AUTH_VALIDATE_TOKEN_ON_LOGIN=false for local dev.`
+              : msg
+          );
           return;
         }
         setToken("");

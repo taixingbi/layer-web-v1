@@ -10,13 +10,16 @@ import { DemoEnvLoginForm } from "@/components/DemoEnvLoginForm";
 export default function LoginPage() {
   const router = useRouter();
   const [demoEnabled, setDemoEnabled] = useState(false);
+  const [validateTokenOnLogin, setValidateTokenOnLogin] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     void fetch("/api/auth/config")
-      .then((r) => r.json() as Promise<{ demoLogin?: boolean }>)
+      .then((r) => r.json() as Promise<{ demoLogin?: boolean; validateTokenOnLogin?: boolean }>)
       .then((j) => {
-        if (!cancelled && j.demoLogin) setDemoEnabled(true);
+        if (cancelled) return;
+        if (j.demoLogin) setDemoEnabled(true);
+        if (typeof j.validateTokenOnLogin === "boolean") setValidateTokenOnLogin(j.validateTokenOnLogin);
       })
       .catch(() => {});
     return () => {
@@ -41,8 +44,21 @@ export default function LoginPage() {
           <h1 className="text-xl font-semibold">Sign in</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Store your gateway access token in an httpOnly cookie for <code className="text-xs">/api/chat</code> and{" "}
-            <code className="text-xs">/api/feedback</code>. Use a JWT accepted by your gateway when{" "}
-            <code className="text-xs">AUTH_MODE=jwt</code>.
+            <code className="text-xs">/api/feedback</code>.
+            {validateTokenOnLogin ? (
+              <>
+                {" "}
+                The server checks the token against the gateway before saving it (invalid JWT returns an error when{" "}
+                <code className="text-xs">AUTH_MODE=jwt</code>).
+              </>
+            ) : (
+              <>
+                {" "}
+                Token check against the gateway is off (<code className="text-xs">AUTH_VALIDATE_TOKEN_ON_LOGIN=false</code>
+                ); with gateway <code className="text-xs">AUTH_MODE=stub</code>, any non-empty string such as{" "}
+                <code className="text-xs">demo-token</code> works.
+              </>
+            )}
           </p>
         </div>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { LAYER_ACCESS_TOKEN_COOKIE } from "@/lib/auth-cookie";
 import { config } from "@/lib/config";
+import { probeGatewayBearer, shouldValidateTokenOnLogin } from "@/lib/validate-gateway-bearer";
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -19,6 +20,16 @@ export async function POST(req: NextRequest) {
       : "";
   if (!token) {
     return NextResponse.json({ error: "access_token is required and must be non-empty" }, { status: 400 });
+  }
+
+  if (shouldValidateTokenOnLogin()) {
+    const probe = await probeGatewayBearer(token);
+    if (!probe.ok) {
+      return NextResponse.json(
+        { error: probe.message, code: "invalid_gateway_token", gateway_status: probe.gatewayStatus },
+        { status: 401 }
+      );
+    }
   }
 
   const res = NextResponse.json({ ok: true });

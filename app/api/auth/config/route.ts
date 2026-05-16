@@ -7,5 +7,7 @@ export async function GET() {
     Boolean(process.env.AUTH_DEMO_PASSWORD?.trim()) &&
     Boolean(process.env.AUTH_DEMO_ACCESS_TOKEN?.trim());
   const signupUrl = process.env.AUTH_SIGNUP_URL?.trim() || null;
-  return NextResponse.json({ demoLogin: demo, signupUrl });
+  const validateRaw = process.env.AUTH_VALIDATE_TOKEN_ON_LOGIN?.trim().toLowerCase();
+  const validateTokenOnLogin = !(validateRaw === "false" || validateRaw === "0" || validateRaw === "no");
+  return NextResponse.json({ demoLogin: demo, signupUrl, validateTokenOnLogin });
 }
