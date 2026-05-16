@@ -46,11 +46,11 @@ See [`.env.example`](.env.example) at repo root (or `.env.local` per Next.js).
 | `GATEWAY_BASE_URL` | Gateway origin, no trailing slash (default `http://localhost:8000`) |
 | `GATEWAY_BEARER_TOKEN` | Fallback when the browser sends **no** `Authorization` header. **Local stub:** e.g. `demo-token` with gateway `AUTH_MODE=stub`. **Production (`AUTH_MODE=jwt`, per-user):** each user should send their own JWT from login/SSO; leave this unset or use only for non-interactive/service calls — if unset, the browser **must** send `Authorization: Bearer` (e.g. via `sessionStorage.layer_bearer_token`). If the browser sends `Authorization: Bearer …`, that token is forwarded **instead** of this env value. |
 | `AUTH_SESSION_MAX_AGE_SECONDS` | Optional. Max-Age (seconds) for httpOnly session cookie after **`/login`** (default 8h). |
-| `AUTH_DEMO_EMAIL` / `AUTH_DEMO_PASSWORD` / `AUTH_DEMO_ACCESS_TOKEN` | Optional. Enables demo password block on **`/login`** for local JWT testing only. |
+| `AUTH_SIGNUP_URL` | Optional. IdP self-service signup URL shown on **`/signup`**. |
 
 ### Auth: production JWT (per-user) vs stub (local)
 
-**Production** targets gateway **`AUTH_MODE=jwt`** with a **per-user access token** the gateway accepts. **Sign in:** open **`/login`**, paste the access token (stored in an **httpOnly** cookie for `/api/chat` and `/api/feedback`), **or** integrate your IdP and call **`POST /api/auth/session`** from your own UI. Optional **`sessionStorage.layer_bearer_token`** still sends `Authorization` and overrides the cookie. Avoid relying on a single shared `GATEWAY_BEARER_TOKEN` for all humans unless you intentionally want one service identity.
+**Production** targets gateway **`AUTH_MODE=jwt`** with a **per-user access token** the gateway accepts. **Sign in:** **`/login`**. **Sign up:** **`/signup`** (optional **`AUTH_SIGNUP_URL`** to your IdP registration page), then paste your access token or use **`POST /api/auth/session`** from your own UI. Optional **`sessionStorage.layer_bearer_token`** still sends `Authorization` and overrides the cookie. Avoid relying on a single shared `GATEWAY_BEARER_TOKEN` for all humans unless you intentionally want one service identity.
 
 | Gateway `AUTH_MODE` | Typical web setup | Result |
 |---------------------|-------------------|--------|

@@ -4,9 +4,14 @@ export default function Home() {
       <a href="/chat" className="text-3xl font-bold">
         Go to chat &#8594;
       </a>
-      <a href="/login" className="text-lg text-[#10a37f] hover:underline">
-        Sign in
-      </a>
+      <div className="flex gap-4 text-lg">
+        <a href="/login" className="text-[#10a37f] hover:underline">
+          Sign in
+        </a>
+        <a href="/signup" className="text-[#10a37f] hover:underline">
+          Sign up
+        </a>
+      </div>
       <p className="opacity-60 text-sm">Instructions in the README.md</p>
     </div>
   );

@@ -664,6 +664,11 @@ export default function ChatPage() {
                 <Link href="/login" className="text-[#10a37f] hover:underline whitespace-nowrap">
                   {authUi.hasCookie || authUi.hasStorage ? "Account" : "Sign in"}
                 </Link>
+                {!authUi.hasCookie && !authUi.hasStorage ? (
+                  <Link href="/signup" className="text-[#10a37f] hover:underline whitespace-nowrap">
+                    Sign up
+                  </Link>
+                ) : null}
                 {(authUi.hasCookie || authUi.hasStorage) ? (
                   <button
                     type="button"

@@ -36,7 +36,7 @@ flowchart TD
 ### Chat UI (`app/chat/page.tsx`)
 
 - Renders conversation, streaming assistant text, citations, follow-up chips, user message edit (ChatGPT-style branch), feedback affordances.
-- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; optional **`layer_bearer_token`** → `Authorization` (overrides cookie). **Sign-in:** **`/login`** sets an httpOnly **`layer_access_token`** cookie read by the BFF when forwarding to the gateway.
+- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; optional **`layer_bearer_token`** → `Authorization` (overrides cookie). **Auth:** **`/login`** and **`/signup`** set an httpOnly **`layer_access_token`** cookie (see [auth-design.md](auth-design.md)).
 - Generates `X-Request-Id` and `X-Trace-Id` per outbound `/api/chat` request.
 - Consumes the **BFF event stream**, not raw gateway SSE: `status`, `result_chunk`, `rewrite`, `stream_end`, `error`.
 
@@ -116,7 +116,7 @@ Full bearer resolution, trust boundaries, errors, and **production JWT per-user*
 | `stub` (local dev) | `GATEWAY_BEARER_TOKEN=demo-token`; browser often sends no bearer | Any non-empty bearer; identity from gateway `AUTH_STUB_*`. |
 | `stub` | `sessionStorage.layer_bearer_token` set | Token forwarded; gateway still uses stub identity. |
 
-**Production** uses **`jwt`** plus a **real access token** per user. Use **`/login`** (token paste or optional demo env) or integrate your IdP and call **`POST /api/auth/session`**. Details: **[auth-design.md](auth-design.md)**.
+**Production** uses **`jwt`** plus a **real access token** per user. Use **`/login`** or **`/signup`** (optional IdP link via **`AUTH_SIGNUP_URL`**), then paste token or **`POST /api/auth/session`**. Details: **[auth-design.md](auth-design.md)**.
 
 See also: gateway [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-test.md) and [`README.md`](../../layer-gateway-api-v1/README.md) for `AUTH_MODE` and `AUTH_JWT_*`.
 
@@ -144,7 +144,11 @@ Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env.example`
 
 | Path | Role |
 |------|------|
-| `app/login/page.tsx` | Sign-in UI (`/login`); token → httpOnly session cookie |
+| `app/login/page.tsx` | Sign-in UI (`/login`) |
+| `app/signup/page.tsx` | Sign-up UI (`/signup`); optional `AUTH_SIGNUP_URL` |
+| `app/components/AccessTokenSessionForm.tsx` | Shared access token → session cookie |
+| `app/components/DemoEnvLoginForm.tsx` | Shared demo email/password → `/api/auth/demo` |
+| `app/api/auth/config/route.ts` | `GET` exposes `demoLogin`, `signupUrl` |
 | `app/api/auth/session/route.ts` | `POST` sets `layer_access_token` cookie |
 | `app/api/auth/logout/route.ts` | `POST` clears session cookie |
 | `app/lib/auth-cookie.ts` | Cookie name + read helper for BFF |
@@ -164,7 +168,7 @@ Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env.example`
 
 - Orchestrator, RAG, or LLM logic.
 - Gateway-only features (JWT verification, inflight limits, orchestrator retries) — see **layer-gateway-api-v1**.
-- Full **hosted IdP** OAuth/OIDC flows in this repo (use **`/login`** or **`POST /api/auth/session`** after your IdP issues a token; see [auth-design.md](auth-design.md)).
+- Full **hosted IdP** OAuth/OIDC flows in this repo (use **`/login`**, **`/signup`**, or **`POST /api/auth/session`** after your IdP issues a token; see [auth-design.md](auth-design.md)).
 
 ---
 
