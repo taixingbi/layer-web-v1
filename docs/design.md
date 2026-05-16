@@ -67,6 +67,13 @@ flowchart TD
 
 Non-stream JSON responses from the gateway are handled as a separate path in the BFF and normalized for the client.
 
+### Stream render (chat UI)
+
+| BFF response to the browser | Stream render assistant text? |
+|-----------------------------|-------------------------------|
+| **SSE** (`Content-Type: text/event-stream`) | **Yes.** `app/chat/page.tsx` reads `fetch`’s `Response.body` with `getReader()`, parses BFF SSE frames, and appends each `result_chunk` `{ delta }` to the in-flight assistant message so the answer grows token-by-token. |
+| **JSON** (`application/json`, e.g. BFF normalized gateway JSON) | **No.** The UI applies the full `response` string once after the body is parsed. |
+
 Parsing helpers: [`app/lib/gateway-chat.ts`](../app/lib/gateway-chat.ts).
 
 ---
