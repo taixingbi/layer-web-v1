@@ -4,7 +4,9 @@ export default function Home() {
       <a href="/chat" className="text-3xl font-bold">
         Go to chat &#8594;
       </a>
-
+      <a href="/login" className="text-lg text-[#10a37f] hover:underline">
+        Sign in
+      </a>
       <p className="opacity-60 text-sm">Instructions in the README.md</p>
     </div>
   );

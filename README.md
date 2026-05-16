@@ -39,27 +39,28 @@ flowchart LR
 
 ### Environment
 
-See `.env` at repo root (or `.env.local` per Next.js).
+See [`.env.example`](.env.example) at repo root (or `.env.local` per Next.js).
 
 | Variable | Purpose |
 |----------|---------|
 | `GATEWAY_BASE_URL` | Gateway origin, no trailing slash (default `http://localhost:8000`) |
 | `GATEWAY_BEARER_TOKEN` | Fallback when the browser sends **no** `Authorization` header. **Local stub:** e.g. `demo-token` with gateway `AUTH_MODE=stub`. **Production (`AUTH_MODE=jwt`, per-user):** each user should send their own JWT from login/SSO; leave this unset or use only for non-interactive/service calls — if unset, the browser **must** send `Authorization: Bearer` (e.g. via `sessionStorage.layer_bearer_token`). If the browser sends `Authorization: Bearer …`, that token is forwarded **instead** of this env value. |
-| `WEB_SERVICE_NAME` | Optional. JSON log field `service` for Next.js API routes (default `huntai-web`) |
+| `AUTH_SESSION_MAX_AGE_SECONDS` | Optional. Max-Age (seconds) for httpOnly session cookie after **`/login`** (default 8h). |
+| `AUTH_DEMO_EMAIL` / `AUTH_DEMO_PASSWORD` / `AUTH_DEMO_ACCESS_TOKEN` | Optional. Enables demo password block on **`/login`** for local JWT testing only. |
 
 ### Auth: production JWT (per-user) vs stub (local)
 
-**Production** targets gateway **`AUTH_MODE=jwt`** with a **per-user access token** on every `/api/chat` and `/api/feedback` call (after **login, signup, or SSO** you add — not in this repo). Wire the access token into the browser (today: `sessionStorage.layer_bearer_token` → `Authorization`; see [docs/auth-design.md](docs/auth-design.md)). Avoid relying on a single shared `GATEWAY_BEARER_TOKEN` for all humans unless you intentionally want one service identity.
+**Production** targets gateway **`AUTH_MODE=jwt`** with a **per-user access token** the gateway accepts. **Sign in:** open **`/login`**, paste the access token (stored in an **httpOnly** cookie for `/api/chat` and `/api/feedback`), **or** integrate your IdP and call **`POST /api/auth/session`** from your own UI. Optional **`sessionStorage.layer_bearer_token`** still sends `Authorization` and overrides the cookie. Avoid relying on a single shared `GATEWAY_BEARER_TOKEN` for all humans unless you intentionally want one service identity.
 
 | Gateway `AUTH_MODE` | Typical web setup | Result |
 |---------------------|-------------------|--------|
-| **`jwt` (production)** | User JWT on each request (e.g. after OIDC); `GATEWAY_BEARER_TOKEN` unset or non-interactive only | **Per-user** claims on the gateway/orchestrator. |
+| **`jwt` (production)** | User JWT from **`/login`** cookie and/or `layer_bearer_token` after your IdP | **Per-user** claims on the gateway/orchestrator. |
 | **`jwt`** | Only `GATEWAY_BEARER_TOKEN` service JWT, no browser bearer | One shared identity for all chat (only if intentional). |
 | **`jwt`** | `GATEWAY_BEARER_TOKEN=demo-token` only, no client bearer | **401** from gateway (expected). |
 | `stub` (local dev) | `GATEWAY_BEARER_TOKEN=demo-token`; browser usually has no bearer | Works: any non-empty upstream bearer; identity from gateway `AUTH_STUB_*`. |
 | `stub` | Browser sets `sessionStorage.layer_bearer_token` | Token forwarded; gateway still uses stub identity. |
 
-For manual JWT testing without a login UI: `sessionStorage.setItem("layer_bearer_token", "<access_token>")` in devtools, or set `GATEWAY_BEARER_TOKEN` to a valid JWT for server-only tests.
+For manual JWT testing without visiting **`/login`**: `sessionStorage.setItem("layer_bearer_token", "<access_token>")` in devtools, or set `GATEWAY_BEARER_TOKEN` to a valid JWT for server-only tests.
 
 ### Gateway contract (curl)
 

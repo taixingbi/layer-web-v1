@@ -36,7 +36,7 @@ flowchart TD
 ### Chat UI (`app/chat/page.tsx`)
 
 - Renders conversation, streaming assistant text, citations, follow-up chips, user message edit (ChatGPT-style branch), feedback affordances.
-- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; **`layer_bearer_token`** → `Authorization: Bearer` for **production per-user JWT** (set after your login/SSO layer; not wired to a sign-in page in this repo yet).
+- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; optional **`layer_bearer_token`** → `Authorization` (overrides cookie). **Sign-in:** **`/login`** sets an httpOnly **`layer_access_token`** cookie read by the BFF when forwarding to the gateway.
 - Generates `X-Request-Id` and `X-Trace-Id` per outbound `/api/chat` request.
 - Consumes the **BFF event stream**, not raw gateway SSE: `status`, `result_chunk`, `rewrite`, `stream_end`, `error`.
 
@@ -110,13 +110,13 @@ Full bearer resolution, trust boundaries, errors, and **production JWT per-user*
 
 | Gateway `AUTH_MODE` | Typical web setup | Result |
 |---------------------|-------------------|--------|
-| **`jwt` (production)** | Per-user access JWT on every `/api/chat` and `/api/feedback` (e.g. from `layer_bearer_token` after login/SSO) | Gateway verifies JWT; **per-user** orchestrator `auth` from claims. |
+| **`jwt` (production)** | Per-user JWT via **`/login`** session cookie and/or `layer_bearer_token` after your IdP | Gateway verifies JWT; **per-user** orchestrator `auth` from claims. |
 | **`jwt`** | Only `GATEWAY_BEARER_TOKEN` set to a service JWT, no browser bearer | Single service identity for all users (only if intentional). |
 | **`jwt`** | `demo-token` / missing JWT, no client bearer | **401** from gateway. |
 | `stub` (local dev) | `GATEWAY_BEARER_TOKEN=demo-token`; browser often sends no bearer | Any non-empty bearer; identity from gateway `AUTH_STUB_*`. |
 | `stub` | `sessionStorage.layer_bearer_token` set | Token forwarded; gateway still uses stub identity. |
 
-**Production** uses **`jwt`** plus **login/signup or SSO** (not implemented in this repo) so each user has their own token. Details: **[auth-design.md](auth-design.md)** (*Target production model*).
+**Production** uses **`jwt`** plus a **real access token** per user. Use **`/login`** (token paste or optional demo env) or integrate your IdP and call **`POST /api/auth/session`**. Details: **[auth-design.md](auth-design.md)**.
 
 See also: gateway [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-test.md) and [`README.md`](../../layer-gateway-api-v1/README.md) for `AUTH_MODE` and `AUTH_JWT_*`.
 
@@ -128,11 +128,10 @@ See also: gateway [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-t
 |----------|---------|
 | `GATEWAY_BASE_URL` | Gateway origin, no trailing slash (default `http://localhost:8000` in code). |
 | `GATEWAY_BEARER_TOKEN` | Fallback bearer when the browser sends no `Authorization`. **Production (per-user JWT):** often omitted for interactive users; required for typical **stub** local dev (`demo-token`). |
+| `AUTH_SESSION_MAX_AGE_SECONDS` | Optional. Max-Age (seconds) for httpOnly session cookie after `/login` (default 8h in code). |
 | `WEB_SERVICE_NAME` | JSON log field `service` (default `huntai-web`). |
 
-Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env`](../.env) / `.env.local` pattern per README.
-
----
+Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env.example`](../.env.example) to `.env` / `.env.local` per README.
 
 ## Observability
 
@@ -145,6 +144,10 @@ Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env`](../.en
 
 | Path | Role |
 |------|------|
+| `app/login/page.tsx` | Sign-in UI (`/login`); token → httpOnly session cookie |
+| `app/api/auth/session/route.ts` | `POST` sets `layer_access_token` cookie |
+| `app/api/auth/logout/route.ts` | `POST` clears session cookie |
+| `app/lib/auth-cookie.ts` | Cookie name + read helper for BFF |
 | `app/chat/page.tsx` | Chat UI, streaming, edit/regenerate, feedback triggers |
 | `app/api/chat/route.ts` | Chat BFF, SSE pump, upstream fetch |
 | `app/api/feedback/route.ts` | Feedback BFF |
@@ -161,7 +164,7 @@ Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env`](../.en
 
 - Orchestrator, RAG, or LLM logic.
 - Gateway-only features (JWT verification, inflight limits, orchestrator retries) — see **layer-gateway-api-v1**.
-- Full OIDC / NextAuth **implementation** in this repo (production still **requires** login/SSO you add; see [auth-design.md](auth-design.md)).
+- Full **hosted IdP** OAuth/OIDC flows in this repo (use **`/login`** or **`POST /api/auth/session`** after your IdP issues a token; see [auth-design.md](auth-design.md)).
 
 ---
 

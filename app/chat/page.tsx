@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { buildHistory, truncateBeforeMessageId } from "@/lib/chat-history";
 
@@ -98,6 +99,11 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [authUi, setAuthUi] = useState<{
+    loading: boolean;
+    hasCookie: boolean;
+    hasStorage: boolean;
+  }>({ loading: true, hasCookie: false, hasStorage: false });
   const [status, setStatus] = useState<Status>(null);
   const [thumbsUp, setThumbsUp] = useState<Set<string>>(new Set());
   const [thumbsDown, setThumbsDown] = useState<Set<string>>(new Set());
@@ -116,6 +122,51 @@ export default function ChatPage() {
       editOriginalRef.current = "";
     }
   }, [loading, editingMessageId]);
+
+  useEffect(() => {
+    let alive = true;
+    let hasStorage = false;
+    try {
+      hasStorage = Boolean(sessionStorage.getItem("layer_bearer_token")?.trim());
+    } catch {
+      /* storage blocked */
+    }
+    void fetch("/api/auth/me")
+      .then((r) => r.json() as Promise<{ signedIn?: boolean }>)
+      .then((j) => {
+        if (!alive) return;
+        setAuthUi({ loading: false, hasCookie: Boolean(j.signedIn), hasStorage });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setAuthUi({ loading: false, hasCookie: false, hasStorage });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem("layer_bearer_token");
+    } catch {
+      /* ignore */
+    }
+    setAuthUi({ loading: false, hasCookie: false, hasStorage: false });
+  }, []);
+
+  const authStatusLine = useMemo(() => {
+    if (authUi.loading) return "…";
+    if (authUi.hasCookie && authUi.hasStorage) return "Session + browser bearer";
+    if (authUi.hasCookie) return "Signed in";
+    if (authUi.hasStorage) return "Browser bearer";
+    return "Server default";
+  }, [authUi]);
 
   const lastAssistantId = useMemo(
     () => (messages.length > 0 ? [...messages].reverse().find((m) => m.role === "assistant")?.id ?? null : null),
@@ -601,8 +652,31 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">
-      <header className="shrink-0 flex items-center justify-center border-b border-gray-200 dark:border-gray-700 py-3">
-        <h1 className="text-base font-semibold">huntAI</h1>
+      <header className="shrink-0 border-b border-gray-200 dark:border-gray-700 py-3">
+        <div className="chat-container px-4 flex items-center justify-between gap-3 w-full">
+          <h1 className="text-base font-semibold">huntAI</h1>
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400 shrink-0">
+            {!authUi.loading ? (
+              <>
+                <span className="hidden sm:inline max-w-[11rem] truncate" title={authStatusLine}>
+                  {authStatusLine}
+                </span>
+                <Link href="/login" className="text-[#10a37f] hover:underline whitespace-nowrap">
+                  {authUi.hasCookie || authUi.hasStorage ? "Account" : "Sign in"}
+                </Link>
+                {(authUi.hasCookie || authUi.hasStorage) ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleSignOut()}
+                    className="text-gray-600 dark:text-gray-300 hover:underline whitespace-nowrap"
+                  >
+                    Sign out
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto min-h-0" role="log" aria-live="polite" aria-relevant="additions text">
