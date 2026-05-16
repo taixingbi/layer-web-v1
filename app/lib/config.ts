@@ -21,8 +21,9 @@ export const config = {
   },
 
   /**
-   * Bearer token for gateway Authorization (server-only).
-   * Production: JWT from session after OIDC. Dev: any non-empty string with gateway stub auth.
+   * Fallback bearer when the inbound request has no `Authorization: Bearer` (server-only).
+   * Production (per-user JWT): prefer user token from the client; leave unset or use only for
+   * service paths — do not use one shared secret for all humans unless intentional. Dev stub: e.g. `demo-token`.
    */
   get gatewayBearerToken(): string {
     return fromEnv("GATEWAY_BEARER_TOKEN", "demo-token");

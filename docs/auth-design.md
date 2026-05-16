@@ -6,11 +6,24 @@ Related: [design.md](design.md) (architecture), sibling [layer-gateway-api-v1 `d
 
 ---
 
+## Target production model: JWT, per-user identity
+
+In **production**, run the gateway with **`AUTH_MODE=jwt`**. Each end user must present their own **short-lived access token** on calls to this app’s `/api/chat` and `/api/feedback` so the BFF forwards **`Authorization: Bearer <user_jwt>`** to the gateway and the orchestrator receives **claims-derived `auth` per user**.
+
+- **Login / signup / SSO** (e.g. NextAuth, Auth.js, or corporate IdP) lives **outside this repo’s UI today**; you still need it in the product so users obtain that access token after sign-in.
+- After login, the browser should attach the token on same-origin API calls (today’s hook: set `sessionStorage.layer_bearer_token` from the session access token, or replace with **httpOnly cookie + server-only** upstream if you want no JWT in JS).
+- **`GATEWAY_BEARER_TOKEN`** in production is usually **empty or unused** for interactive chat so anonymous traffic cannot impersonate a user; if set, it is only used when the browser sends **no** `Authorization` header (service or break-glass paths). Prefer **requiring** a client bearer for human traffic.
+
+**Local development** often uses gateway **`AUTH_MODE=stub`** and `GATEWAY_BEARER_TOKEN=demo-token` with no browser bearer (see matrix below).
+
+---
+
 ## Goals
 
-1. **Never embed gateway secrets in client bundles.** `GATEWAY_BEARER_TOKEN` is server-only (`app/lib/config.ts`).
-2. **Prefer the caller’s bearer** when present so a logged-in user (future OIDC) can send a short-lived access token from the browser without the server minting it.
-3. **Keep local dev simple:** empty or missing browser bearer + `GATEWAY_BEARER_TOKEN=demo-token` against gateway `AUTH_MODE=stub`.
+1. **Production: per-user JWT** on the browser → BFF → gateway so identity and authorization follow the user’s claims.
+2. **Never embed gateway secrets in client bundles.** `GATEWAY_BEARER_TOKEN` is server-only ([`app/lib/config.ts`](../app/lib/config.ts)).
+3. **Prefer the inbound `Authorization` bearer** over `GATEWAY_BEARER_TOKEN` so the forwarded token is always the user’s when they are signed in.
+4. **Local dev:** stub gateway + `GATEWAY_BEARER_TOKEN=demo-token` without a login UI.
 
 ---
 
@@ -18,7 +31,7 @@ Related: [design.md](design.md) (architecture), sibling [layer-gateway-api-v1 `d
 
 | Zone | What it knows |
 |------|----------------|
-| **Browser** | Optional `sessionStorage.layer_bearer_token` (forwarded as `Authorization` on same-origin `/api/*` only if set). `layer_chat_session_id` is **not** auth; it is correlation for `X-Session-Id`. |
+| **Browser** | **Production:** access token after login (today: optional `sessionStorage.layer_bearer_token` → `Authorization: Bearer` on `/api/chat` and `/api/feedback`). `layer_chat_session_id` is **not** auth; it is correlation for `X-Session-Id`. |
 | **Next.js BFF** | Inbound `Authorization` from the browser request, plus env `GATEWAY_BASE_URL`, `GATEWAY_BEARER_TOKEN`. Builds upstream `Authorization: Bearer <resolved>` to the gateway. |
 | **Gateway** | Validates bearer per `AUTH_MODE` (`stub` vs `jwt`), builds orchestrator `auth`. |
 
@@ -43,14 +56,14 @@ If the resolved token is empty, the BFF returns **401** with a JSON error (befor
 
 ---
 
-## Browser → BFF: optional user token
+## Browser → BFF: user access token
 
 [`app/chat/page.tsx`](../app/chat/page.tsx) defines `optionalLayerBearerHeaders()`: if `sessionStorage.getItem("layer_bearer_token")` is non-empty, chat and feedback `fetch` calls include `Authorization: Bearer …`.
 
-- **Not set:** BFF uses `GATEWAY_BEARER_TOKEN` only (typical local stub).
-- **Set:** That value is forwarded to the BFF and wins over `GATEWAY_BEARER_TOKEN` for upstream resolution.
+- **Production (per-user JWT):** after your login/SSO flow, set the user’s access token here (or migrate to cookie-based session where the BFF reads the token server-side only). The BFF **must** see a non-empty bearer for interactive users when `GATEWAY_BEARER_TOKEN` is not used as a shared dev secret.
+- **Not set:** BFF uses `GATEWAY_BEARER_TOKEN` only — acceptable for **stub** dev; **avoid for real users** when the gateway is in **jwt** mode (everyone would share one service identity or hit **401** if the env token is invalid).
 
-There is **no sign-in page** in this repository; `layer_bearer_token` is a **manual or future OIDC** hook (e.g. set after NextAuth session in a later change).
+There is **no login/signup page** in this repository yet; production assumes you add one (or SSO) and wire the resulting access token into the pattern above.
 
 ---
 
@@ -58,10 +71,11 @@ There is **no sign-in page** in this repository; `layer_bearer_token` is a **man
 
 | Gateway `AUTH_MODE` | Typical web / BFF setup | Result |
 |---------------------|-------------------------|--------|
-| `stub` | `GATEWAY_BEARER_TOKEN=demo-token`; browser often omits `Authorization` | Gateway accepts any non-empty bearer; identity from gateway stub env (`AUTH_STUB_*`). |
-| `stub` | `layer_bearer_token` set in the browser | Same stub identity on the gateway; forwarded token is still “any non-empty bearer” for stub. |
-| `jwt` | Valid access JWT in `layer_bearer_token` **or** in `GATEWAY_BEARER_TOKEN` | Gateway verifies JWT and passes claims-derived `auth` downstream. |
-| `jwt` | Only `demo-token` / no real JWT, no client bearer | **401** from gateway (expected). |
+| **`jwt` (production)** | Valid **per-user** access JWT on browser `Authorization` (e.g. from `layer_bearer_token` after login) | Gateway verifies JWT; **per-user** orchestrator `auth` from claims. |
+| **`jwt`** | Valid JWT only in `GATEWAY_BEARER_TOKEN`, no client bearer | Single **service** identity for all browser users (only if that matches your threat model). |
+| **`jwt`** | `demo-token` or missing/invalid JWT, no client bearer | **401** from gateway (expected). |
+| `stub` (local dev) | `GATEWAY_BEARER_TOKEN=demo-token`; browser often omits `Authorization` | Any non-empty upstream bearer; identity from gateway `AUTH_STUB_*`. |
+| `stub` | `layer_bearer_token` set | Still stub identity; token only has to be non-empty. |
 
 Exact JWT settings (`AUTH_JWT_*`, issuers, JWKS) are documented in **layer-gateway-api-v1** (README, `.env.example`).
 
@@ -71,7 +85,7 @@ Exact JWT settings (`AUTH_JWT_*`, issuers, JWKS) are documented in **layer-gatew
 
 | Variable | Role in auth |
 |----------|----------------|
-| `GATEWAY_BEARER_TOKEN` | Fallback bearer when the browser does not send a non-empty `Authorization: Bearer`. |
+| `GATEWAY_BEARER_TOKEN` | Fallback when the browser sends no bearer. **Production (per-user JWT):** often unset for interactive users so only real tokens are forwarded; use for stub dev or tightly scoped service calls. |
 | `GATEWAY_BASE_URL` | Gateway origin only; not a secret. |
 
 ---
@@ -91,14 +105,16 @@ Bearer tokens must not appear in full in structured logs. Use existing redaction
 
 ## Out of scope (this repo)
 
-- OIDC / NextAuth (or other) login UI and session cookies.
+- **Login, signup, and SSO UI** (required in the product for production JWT per-user identity; implement with NextAuth / Auth.js / your IdP and connect to the bearer pattern above).
 - Gateway-side JWT validation implementation and claim schema.
 - Service-to-service auth between gateway and orchestrator (gateway concern).
 
 ---
 
-## Future direction (recommended)
+## Implementation checklist (production JWT, per-user)
 
-1. Add an OIDC provider + NextAuth (or Auth.js) with a session or access token.
-2. On session ready, set `sessionStorage.setItem("layer_bearer_token", access_token)` (or switch to httpOnly cookie + server-only upstream if you want zero token in JS).
-3. Keep `resolveGatewayBearer` precedence: user bearer first preserves per-user identity on the gateway under `AUTH_MODE=jwt`.
+1. Gateway: **`AUTH_MODE=jwt`**, configure **`AUTH_JWT_*`** (see gateway README / `.env.example`).
+2. Web: add **sign-in** (and optional sign-up) so each user receives an **access token** accepted by the gateway.
+3. After sign-in, supply that token on `/api/chat` and `/api/feedback` (e.g. `sessionStorage.layer_bearer_token`, or refactor to httpOnly session read in BFF only).
+4. Keep **`resolveGatewayBearer`** precedence: **client bearer first** so the gateway always sees the user’s JWT for interactive traffic.
+5. Decide **`GATEWAY_BEARER_TOKEN`**: omit or restrict to non-interactive use so you do not collapse all users to one identity.

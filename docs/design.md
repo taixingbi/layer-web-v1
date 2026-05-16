@@ -27,7 +27,7 @@ flowchart TD
   GW --> ORCH
 ```
 
-**Trust boundary:** The browser never holds long-lived gateway secrets. Optional short-lived access tokens may be passed via `Authorization` (see Auth below). Server env `GATEWAY_BEARER_TOKEN` is the fallback when the browser sends no bearer.
+**Trust boundary:** Production assumes **per-user JWT** (`AUTH_MODE=jwt`): the browser sends a short-lived access token via `Authorization` after login/SSO (see [auth-design.md](auth-design.md)). The server env **`GATEWAY_BEARER_TOKEN`** is a fallback when the browser sends no bearer (local stub dev, or tightly scoped service use — avoid sharing one token for all humans in production).
 
 ---
 
@@ -36,7 +36,7 @@ flowchart TD
 ### Chat UI (`app/chat/page.tsx`)
 
 - Renders conversation, streaming assistant text, citations, follow-up chips, user message edit (ChatGPT-style branch), feedback affordances.
-- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; optional `layer_bearer_token` forwarded as `Authorization: Bearer` when set (dev / future OIDC).
+- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; **`layer_bearer_token`** → `Authorization: Bearer` for **production per-user JWT** (set after your login/SSO layer; not wired to a sign-in page in this repo yet).
 - Generates `X-Request-Id` and `X-Trace-Id` per outbound `/api/chat` request.
 - Consumes the **BFF event stream**, not raw gateway SSE: `status`, `result_chunk`, `rewrite`, `stream_end`, `error`.
 
@@ -98,7 +98,7 @@ curl -N -sS -X POST "http://localhost:3000/api/chat" \
   -d '{"message":"Hello from curl via Next","conversation_id":"conv-curl-1"}'
 ```
 
-Expect `Content-Type: text/event-stream` and lines like `event: status`, `event: result_chunk`, `event: stream_end` (not `meta` / `token` / `done`). Use the same bearer as `GATEWAY_BEARER_TOKEN` when the gateway uses `AUTH_MODE=stub`.
+Expect `Content-Type: text/event-stream` and lines like `event: status`, `event: result_chunk`, `event: stream_end` (not `meta` / `token` / `done`). With gateway **`AUTH_MODE=stub`**, use the same bearer as `GATEWAY_BEARER_TOKEN` (e.g. `demo-token`). With **`AUTH_MODE=jwt`**, use a **valid user access token** in `Authorization: Bearer`.
 
 **One `token` / one `result_chunk`:** the upstream may emit a single chunk for a short answer, so the UI still uses the stream path but visually updates once. Longer prompts may produce many chunks; if the gateway still sends one `token` event, chunking is decided upstream (orchestrator / LLM), not by Next.
 
@@ -106,16 +106,17 @@ Expect `Content-Type: text/event-stream` and lines like `event: status`, `event:
 
 ## Auth (gateway + web)
 
-Full bearer resolution, trust boundaries, errors, and future OIDC: **[docs/auth-design.md](auth-design.md)**.
+Full bearer resolution, trust boundaries, errors, and **production JWT per-user** model: **[docs/auth-design.md](auth-design.md)**.
 
 | Gateway `AUTH_MODE` | Typical web setup | Result |
 |---------------------|-------------------|--------|
-| `stub` | `GATEWAY_BEARER_TOKEN=demo-token`; browser often sends no bearer | Works: gateway accepts any non-empty bearer; identity from gateway `AUTH_STUB_*`. |
+| **`jwt` (production)** | Per-user access JWT on every `/api/chat` and `/api/feedback` (e.g. from `layer_bearer_token` after login/SSO) | Gateway verifies JWT; **per-user** orchestrator `auth` from claims. |
+| **`jwt`** | Only `GATEWAY_BEARER_TOKEN` set to a service JWT, no browser bearer | Single service identity for all users (only if intentional). |
+| **`jwt`** | `demo-token` / missing JWT, no client bearer | **401** from gateway. |
+| `stub` (local dev) | `GATEWAY_BEARER_TOKEN=demo-token`; browser often sends no bearer | Any non-empty bearer; identity from gateway `AUTH_STUB_*`. |
 | `stub` | `sessionStorage.layer_bearer_token` set | Token forwarded; gateway still uses stub identity. |
-| `jwt` | Valid JWT in `layer_bearer_token` or in `GATEWAY_BEARER_TOKEN` | Gateway verifies JWT; orchestrator `auth` from claims. |
-| `jwt` | Only `demo-token`, no real JWT | **401** from gateway. |
 
-There is **no OIDC login UI** in this repo yet; production typically adds a session layer and sets `layer_bearer_token` (or passes bearer another way).
+**Production** uses **`jwt`** plus **login/signup or SSO** (not implemented in this repo) so each user has their own token. Details: **[auth-design.md](auth-design.md)** (*Target production model*).
 
 See also: gateway [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-test.md) and [`README.md`](../../layer-gateway-api-v1/README.md) for `AUTH_MODE` and `AUTH_JWT_*`.
 
@@ -126,7 +127,7 @@ See also: gateway [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-t
 | Variable | Purpose |
 |----------|---------|
 | `GATEWAY_BASE_URL` | Gateway origin, no trailing slash (default `http://localhost:8000` in code). |
-| `GATEWAY_BEARER_TOKEN` | Fallback bearer when the incoming request has no non-empty `Authorization: Bearer`. |
+| `GATEWAY_BEARER_TOKEN` | Fallback bearer when the browser sends no `Authorization`. **Production (per-user JWT):** often omitted for interactive users; required for typical **stub** local dev (`demo-token`). |
 | `WEB_SERVICE_NAME` | JSON log field `service` (default `huntai-web`). |
 
 Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env`](../.env) / `.env.local` pattern per README.
@@ -160,12 +161,12 @@ Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env`](../.en
 
 - Orchestrator, RAG, or LLM logic.
 - Gateway-only features (JWT verification, inflight limits, orchestrator retries) — see **layer-gateway-api-v1**.
-- Full OIDC / NextAuth integration (future).
+- Full OIDC / NextAuth **implementation** in this repo (production still **requires** login/SSO you add; see [auth-design.md](auth-design.md)).
 
 ---
 
 ## Related docs
 
 - **README** — quick start, CI, Docker: [`README.md`](../README.md)
-- **Auth design** — BFF bearer, `sessionStorage`, stub vs JWT: [`auth-design.md`](auth-design.md)
+- **Auth design** — production JWT per-user, BFF bearer, stub dev: [`auth-design.md`](auth-design.md)
 - **Gateway** — API schema, smoke tests, auth: sibling **layer-gateway-api-v1** `docs/`

@@ -2,7 +2,7 @@
 
 ## Design
 
-Full technical design: **[docs/design.md](docs/design.md)**. Auth (BFF bearer, stub vs JWT, browser token hook): **[docs/auth-design.md](docs/auth-design.md)**.
+Full technical design: **[docs/design.md](docs/design.md)**. Auth — **production JWT, per-user identity** (plus stub dev): **[docs/auth-design.md](docs/auth-design.md)**.
 
 ### Architecture
 
@@ -44,23 +44,26 @@ See `.env` at repo root (or `.env.local` per Next.js).
 | Variable | Purpose |
 |----------|---------|
 | `GATEWAY_BASE_URL` | Gateway origin, no trailing slash (default `http://localhost:8000`) |
-| `GATEWAY_BEARER_TOKEN` | Fallback bearer when the browser sends **no** `Authorization` header (local dev default `demo-token` with gateway `AUTH_MODE=stub`). If the browser sends `Authorization: Bearer …`, that token is forwarded to the gateway **instead** of this env value. |
+| `GATEWAY_BEARER_TOKEN` | Fallback when the browser sends **no** `Authorization` header. **Local stub:** e.g. `demo-token` with gateway `AUTH_MODE=stub`. **Production (`AUTH_MODE=jwt`, per-user):** each user should send their own JWT from login/SSO; leave this unset or use only for non-interactive/service calls — if unset, the browser **must** send `Authorization: Bearer` (e.g. via `sessionStorage.layer_bearer_token`). If the browser sends `Authorization: Bearer …`, that token is forwarded **instead** of this env value. |
 | `WEB_SERVICE_NAME` | Optional. JSON log field `service` for Next.js API routes (default `huntai-web`) |
 
-### Auth: stub vs JWT (gateway + BFF)
+### Auth: production JWT (per-user) vs stub (local)
+
+**Production** targets gateway **`AUTH_MODE=jwt`** with a **per-user access token** on every `/api/chat` and `/api/feedback` call (after **login, signup, or SSO** you add — not in this repo). Wire the access token into the browser (today: `sessionStorage.layer_bearer_token` → `Authorization`; see [docs/auth-design.md](docs/auth-design.md)). Avoid relying on a single shared `GATEWAY_BEARER_TOKEN` for all humans unless you intentionally want one service identity.
 
 | Gateway `AUTH_MODE` | Typical web setup | Result |
 |---------------------|-------------------|--------|
-| `stub` | `GATEWAY_BEARER_TOKEN=demo-token`; browser usually has no bearer | Works: any non-empty upstream bearer accepted; identity from gateway `AUTH_STUB_*`. |
-| `stub` | Browser sets `sessionStorage.layer_bearer_token` | Token forwarded, but gateway still uses stub identity. |
-| `jwt` | Set `sessionStorage.setItem("layer_bearer_token", "<access_token>")` after your OIDC login (or paste in devtools for testing), **or** set `GATEWAY_BEARER_TOKEN` to a valid JWT for server-only tests | Gateway verifies JWT and builds orchestrator `auth` from claims. |
-| `jwt` | `GATEWAY_BEARER_TOKEN=demo-token` only, no client bearer | **401** from gateway (expected). |
+| **`jwt` (production)** | User JWT on each request (e.g. after OIDC); `GATEWAY_BEARER_TOKEN` unset or non-interactive only | **Per-user** claims on the gateway/orchestrator. |
+| **`jwt`** | Only `GATEWAY_BEARER_TOKEN` service JWT, no browser bearer | One shared identity for all chat (only if intentional). |
+| **`jwt`** | `GATEWAY_BEARER_TOKEN=demo-token` only, no client bearer | **401** from gateway (expected). |
+| `stub` (local dev) | `GATEWAY_BEARER_TOKEN=demo-token`; browser usually has no bearer | Works: any non-empty upstream bearer; identity from gateway `AUTH_STUB_*`. |
+| `stub` | Browser sets `sessionStorage.layer_bearer_token` | Token forwarded; gateway still uses stub identity. |
 
-There is no OIDC login UI in this repo yet; production usually adds NextAuth (or similar) and sets `layer_bearer_token` from the session/access token.
+For manual JWT testing without a login UI: `sessionStorage.setItem("layer_bearer_token", "<access_token>")` in devtools, or set `GATEWAY_BEARER_TOKEN` to a valid JWT for server-only tests.
 
 ### Gateway contract (curl)
 
-The **example** gateway implementation is **layer-gateway-api-v1** (sibling repo / same workspace). Match its **`docs/smoke-test.md`**: paths, optional `X-Session-Id` / `X-Request-Id` / `X-Trace-Id` / `X-Conversation-Id`, JSON bodies. **`Authorization: Bearer`** is required on the gateway: with **`AUTH_MODE=stub`** any non-empty bearer works (e.g. `demo-token`); with **`AUTH_MODE=jwt`** use a valid access token (see gateway README / `.env.example`).
+The **example** gateway implementation is **layer-gateway-api-v1** (sibling repo / same workspace). Match its **`docs/smoke-test.md`**: paths, optional `X-Session-Id` / `X-Request-Id` / `X-Trace-Id` / `X-Conversation-Id`, JSON bodies. **`Authorization: Bearer`** is required on the gateway. **Production:** **`AUTH_MODE=jwt`** and a **valid per-user access token**. **Local stub:** **`AUTH_MODE=stub`** accepts any non-empty bearer (e.g. `demo-token`); see gateway README / `.env.example`.
 
 ## Workflow (in-app)
 
