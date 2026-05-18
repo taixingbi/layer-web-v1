@@ -482,7 +482,7 @@ export default function ChatPage() {
         }
         if (res.status === 401) {
           msg =
-            "Not authorized. Set GATEWAY_BEARER_TOKEN on the server, or send Authorization with a valid JWT (e.g. sessionStorage.setItem(\"layer_bearer_token\", token)).";
+            "Not authorized. Sign in at /login, or set sessionStorage.layer_bearer_token for manual API testing.";
         }
         if (res.status === 503) {
           msg = "Service busy (503). Please try again shortly.";

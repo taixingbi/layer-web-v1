@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { LAYER_ACCESS_TOKEN_COOKIE } from "@/lib/auth-cookie";
+import { clearSessionCookies } from "@/lib/auth-session";
 
 export async function POST() {
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(LAYER_ACCESS_TOKEN_COOKIE, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  clearSessionCookies(res);
   return res;
 }

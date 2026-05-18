@@ -28,15 +28,6 @@ export const config = {
     return cachedGatewayBaseUrl;
   },
 
-  /**
-   * Fallback bearer when the inbound request has no `Authorization: Bearer` (server-only).
-   * Production (per-user JWT): prefer user token from the client; leave unset or use only for
-   * service paths — do not use one shared secret for all humans unless intentional. Dev stub: e.g. `demo-token`.
-   */
-  get gatewayBearerToken(): string {
-    return fromEnv("GATEWAY_BEARER_TOKEN", "demo-token");
-  },
-
   /** Value for structured log field ``service`` (BFF / Next.js server). */
   get webServiceName(): string {
     return fromEnv("WEB_SERVICE_NAME", "huntai-web");

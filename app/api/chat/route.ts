@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
         error: {
           code: "unauthorized",
           message:
-            "Missing bearer for gateway. Set GATEWAY_BEARER_TOKEN on the server or send Authorization: Bearer <token> on /api/chat (use a valid JWT when the gateway uses AUTH_MODE=jwt).",
+            "Missing bearer for gateway. Sign in at /login so the session cookie is sent, or send Authorization: Bearer <access_token>.",
         },
       },
       { status: 401 }
