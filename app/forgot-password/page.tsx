@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Enter your account email. We will send a link to set a new password.
           </p>
-        </motion.div>
+        </div>
 
         {setup?.supabaseSetup ? (
           <div className="rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 space-y-1">
