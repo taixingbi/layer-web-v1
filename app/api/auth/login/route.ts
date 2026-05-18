@@ -4,22 +4,24 @@ import { applySessionCookies } from "@/lib/auth-session";
 import { gatewayJson } from "@/lib/gateway-proxy";
 
 export async function POST(req: NextRequest) {
-  let body: { email?: string; password?: string };
+  let body: { email?: string; identifier?: string; password?: string };
   try {
-    body = (await req.json()) as { email?: string; password?: string };
+    body = (await req.json()) as { email?: string; identifier?: string; password?: string };
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const identifier =
+    (typeof body.identifier === "string" ? body.identifier.trim() : "") ||
+    (typeof body.email === "string" ? body.email.trim() : "");
   const password = typeof body.password === "string" ? body.password : "";
-  if (!email || !password) {
-    return NextResponse.json({ error: "email and password are required" }, { status: 400 });
+  if (!identifier || !password) {
+    return NextResponse.json({ error: "identifier and password are required" }, { status: 400 });
   }
 
   const upstream = await gatewayJson("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password }),
   });
 
   if (!upstream.ok) {

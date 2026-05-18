@@ -11,7 +11,7 @@ export default function LoginPage() {
         <div className="text-center">
           <h1 className="text-xl font-semibold">Sign in</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Email and password are verified by the gateway (Supabase Auth). Your session is stored in httpOnly cookies
+            Sign in with email or username. Your session is stored in httpOnly cookies
             for <code className="text-xs">/api/chat</code> and <code className="text-xs">/api/feedback</code>.
           </p>
         </div>

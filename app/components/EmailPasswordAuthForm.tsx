@@ -10,6 +10,7 @@ type Props = {
 
 export function EmailPasswordAuthForm({ mode }: Props) {
   const router = useRouter();
+  const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -26,7 +27,7 @@ export function EmailPasswordAuthForm({ mode }: Props) {
     try {
       const body =
         mode === "login"
-          ? { email: email.trim(), password }
+          ? { identifier: identifier.trim(), password }
           : { email: email.trim(), password, username: username.trim() || undefined };
       const res = await fetch(endpoint, {
         method: "POST",
@@ -72,20 +73,37 @@ export function EmailPasswordAuthForm({ mode }: Props) {
           />
         </div>
       ) : null}
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium mb-1">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2 text-sm"
-        />
-      </div>
+      {mode === "login" ? (
+        <div>
+          <label htmlFor="identifier" className="block text-sm font-medium mb-1">
+            Email or username
+          </label>
+          <input
+            id="identifier"
+            type="text"
+            required
+            autoComplete="username"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2 text-sm"
+          />
+        </div>
+      ) : (
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium mb-1">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent px-3 py-2 text-sm"
+          />
+        </div>
+      )}
       <div>
         <label htmlFor="password" className="block text-sm font-medium mb-1">
           Password
