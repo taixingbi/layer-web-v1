@@ -4,27 +4,32 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-function parseHashTokens(): { access_token: string; refresh_token: string } | null {
-  if (typeof window === "undefined") return null;
-  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
-  if (!hash) return null;
-  const params = new URLSearchParams(hash);
-  const access_token = params.get("access_token")?.trim() ?? "";
-  const refresh_token = params.get("refresh_token")?.trim() ?? "";
-  if (!access_token) return null;
-  return { access_token, refresh_token };
-}
+import { hashErrorMessage, parseSupabaseAuthHash } from "@/lib/supabase-auth-hash";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [tokens, setTokens] = useState<{ access_token: string; refresh_token: string } | null>(null);
+  const [hashError, setHashError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setTokens(parseHashTokens());
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    const parsed = parseSupabaseAuthHash(hash);
+    if (!parsed) {
+      setTokens(null);
+      setHashError(null);
+      return;
+    }
+    if (parsed.kind === "error") {
+      setTokens(null);
+      setHashError(hashErrorMessage(parsed));
+      return;
+    }
+    setHashError(null);
+    setTokens({ access_token: parsed.access_token, refresh_token: parsed.refresh_token });
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -86,7 +91,7 @@ export default function ResetPasswordPage() {
 
         {!tokens ? (
           <p className="text-sm text-red-600 dark:text-red-400 text-center">
-            This reset link is invalid or has expired.{" "}
+            {hashError ?? "This reset link is invalid or has expired."}{" "}
             <Link href="/forgot-password" className="text-[#10a37f] hover:underline">
               Request a new link
             </Link>

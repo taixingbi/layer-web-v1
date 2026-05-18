@@ -1,13 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+type AuthConfig = {
+  resetPasswordRedirectUrl?: string;
+  supabaseSetup?: { siteUrl?: string; redirectUrls?: string[]; note?: string };
+};
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [setup, setSetup] = useState<AuthConfig | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/auth/config")
+      .then((r) => r.json() as Promise<AuthConfig>)
+      .then(setSetup)
+      .catch(() => {});
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +33,12 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
-      const data = (await res.json()) as { detail?: string; message?: string; error?: string };
+      const data = (await res.json()) as {
+        detail?: string;
+        message?: string;
+        error?: string;
+        redirect_to?: string;
+      };
       if (!res.ok) {
         setError(
           typeof data.detail === "string"
@@ -31,10 +49,11 @@ export default function ForgotPasswordPage() {
         );
         return;
       }
+      const sentTo = typeof data.redirect_to === "string" ? data.redirect_to : setup?.resetPasswordRedirectUrl;
       setMessage(
-        typeof data.message === "string"
-          ? data.message
-          : "If an account exists for that email, a password reset link was sent.",
+        `${typeof data.message === "string" ? data.message : "If an account exists for that email, a password reset link was sent."}${
+          sentTo ? ` Link will target: ${sentTo}` : ""
+        } Use only the newest email.`,
       );
     } catch {
       setError("Network error. Is the gateway running?");
@@ -51,7 +70,21 @@ export default function ForgotPasswordPage() {
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             Enter your account email. We will send a link to set a new password.
           </p>
-        </div>
+        </motion.div>
+
+        {setup?.supabaseSetup ? (
+          <div className="rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+            <p className="font-medium">Supabase URL configuration (one-time)</p>
+            <p>
+              <span className="text-gray-600 dark:text-gray-400">Site URL:</span>{" "}
+              <code className="break-all">{setup.supabaseSetup.siteUrl}</code>
+            </p>
+            <p>
+              <span className="text-gray-600 dark:text-gray-400">Redirect URL:</span>{" "}
+              <code className="break-all">{setup.resetPasswordRedirectUrl}</code>
+            </p>
+          </div>
+        ) : null}
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>

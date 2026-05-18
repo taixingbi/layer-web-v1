@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { passwordResetRedirectUrl } from "@/lib/app-url";
 import { gatewayJson } from "@/lib/gateway-proxy";
 
 export async function POST(req: NextRequest) {
@@ -15,10 +16,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "email is required" }, { status: 400 });
   }
 
+  const redirect_to = passwordResetRedirectUrl(req);
+
   const upstream = await gatewayJson("/auth/forgot-password", {
     method: "POST",
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, redirect_to }),
   });
 
-  return NextResponse.json(upstream.data, { status: upstream.status });
+  return NextResponse.json(
+    { ...upstream.data, redirect_to: upstream.data.redirect_to ?? redirect_to },
+    { status: upstream.status },
+  );
 }
