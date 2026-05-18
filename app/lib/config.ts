@@ -40,6 +40,6 @@ export const config = {
 
   /** Public web origin (no trailing slash). Must match gateway FRONTEND_URL and Supabase Site URL. */
   get appUrl(): string {
-    return fromEnv("APP_URL", "http://localhost:3000").replace(/\/$/, "");
+    return fromEnv("APP_URL", "").replace(/\/$/, "");
   },
 };
