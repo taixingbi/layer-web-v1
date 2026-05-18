@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { authFetch } from "@/lib/auth-fetch";
+
 type Props = {
   mode: "login" | "signup";
 };
@@ -29,12 +31,18 @@ export function EmailPasswordAuthForm({ mode }: Props) {
         mode === "login"
           ? { identifier: identifier.trim(), password }
           : { email: email.trim(), password, username: username.trim() || undefined };
-      const res = await fetch(endpoint, {
+      const res = await authFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json()) as { detail?: string; error?: string; message?: string };
+      const data = (await res.json()) as {
+        detail?: string;
+        error?: string;
+        message?: string;
+        signedIn?: boolean;
+        email_confirmation_required?: boolean;
+      };
       if (!res.ok) {
         const msg =
           typeof data.detail === "string"
@@ -45,6 +53,12 @@ export function EmailPasswordAuthForm({ mode }: Props) {
                 ? data.error
                 : "Authentication failed";
         setError(msg);
+        return;
+      }
+      if (data.signedIn === false || data.email_confirmation_required) {
+        setError(
+          "Account created. Confirm your email before signing in, then use the login page.",
+        );
         return;
       }
       router.push("/chat");

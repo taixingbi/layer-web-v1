@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { authFetch } from "@/lib/auth-fetch";
+
 type AuthConfig = {
   resetPasswordRedirectUrl?: string;
   supabaseSetup?: { siteUrl?: string; redirectUrls?: string[]; note?: string };
@@ -16,7 +18,7 @@ export default function ForgotPasswordPage() {
   const [setup, setSetup] = useState<AuthConfig | null>(null);
 
   useEffect(() => {
-    void fetch("/api/auth/config")
+    void authFetch("/api/auth/config")
       .then((r) => r.json() as Promise<AuthConfig>)
       .then(setSetup)
       .catch(() => {});
@@ -28,7 +30,7 @@ export default function ForgotPasswordPage() {
     setMessage(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/forgot-password", {
+      const res = await authFetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),

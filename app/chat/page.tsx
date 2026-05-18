@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import { buildHistory, truncateBeforeMessageId } from "@/lib/chat-history";
 
 type Citation = Record<string, unknown>;
@@ -131,7 +132,7 @@ export default function ChatPage() {
     } catch {
       /* storage blocked */
     }
-    void fetch("/api/auth/me")
+    void authFetch("/api/auth/me")
       .then((r) => r.json() as Promise<{ signedIn?: boolean }>)
       .then((j) => {
         if (!alive) return;
@@ -148,7 +149,7 @@ export default function ChatPage() {
 
   const handleSignOut = useCallback(async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await authFetch("/api/auth/logout", { method: "POST" });
     } catch {
       /* ignore */
     }
@@ -165,7 +166,7 @@ export default function ChatPage() {
     if (authUi.hasCookie && authUi.hasStorage) return "Session + browser bearer";
     if (authUi.hasCookie) return "Signed in";
     if (authUi.hasStorage) return "Browser bearer";
-    return "Server default";
+    return "Not signed in";
   }, [authUi]);
 
   const lastAssistantId = useMemo(
@@ -176,7 +177,7 @@ export default function ChatPage() {
   const handleThumbsUp = useCallback(async (message: Message) => {
     if (!message.run_id) return;
     try {
-      await fetch("/api/feedback", {
+      await authFetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...optionalLayerBearerHeaders() },
         body: JSON.stringify({
@@ -208,7 +209,7 @@ export default function ChatPage() {
       if (!feedbackModal?.runId) return;
       const comment = feedbackComment.trim() || undefined;
       try {
-        await fetch("/api/feedback", {
+        await authFetch("/api/feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...optionalLayerBearerHeaders() },
           body: JSON.stringify({
@@ -430,7 +431,7 @@ export default function ChatPage() {
         }
         const clientRequestId = correlationUuid();
         const clientTraceId = correlationUuid();
-        return fetch("/api/chat", {
+        return authFetch("/api/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -30,12 +30,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(upstream.data, { status: upstream.status });
   }
 
+  const accessToken = upstream.data.access_token as string | null | undefined;
+  const emailConfirmationRequired = Boolean(upstream.data.email_confirmation_required);
+
+  if (!accessToken?.trim()) {
+    return NextResponse.json({
+      signedIn: false,
+      email_confirmation_required: emailConfirmationRequired,
+      user: upstream.data.user ?? null,
+    });
+  }
+
   const res = NextResponse.json({
-    signedIn: Boolean(upstream.data.access_token),
+    signedIn: true,
     user: upstream.data.user ?? null,
   });
   applySessionCookies(res, {
-    access_token: upstream.data.access_token as string | null | undefined,
+    access_token: accessToken,
     refresh_token: upstream.data.refresh_token as string | null | undefined,
     expires_in: upstream.data.expires_in as number | null | undefined,
   });

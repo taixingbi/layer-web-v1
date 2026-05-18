@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { authFetch } from "@/lib/auth-fetch";
 import { hashErrorMessage, parseSupabaseAuthHash } from "@/lib/supabase-auth-hash";
 
 export default function ResetPasswordPage() {
@@ -50,7 +51,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
+      const res = await authFetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
