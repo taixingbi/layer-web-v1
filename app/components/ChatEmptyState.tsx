@@ -23,7 +23,7 @@ export function ChatEmptyState({ onPick, disabled }: ChatEmptyStateProps) {
         How can I help you today?
       </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
-        Ask about Taixing's resume, work experience, visa status, compensation...
+        Ask about Taixing&apos;s resume, work experience, visa status, compensation…
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {STARTER_PROMPTS.map((prompt) => (
