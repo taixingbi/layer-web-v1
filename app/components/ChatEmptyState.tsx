@@ -19,9 +19,6 @@ export function ChatEmptyState({ onPick, disabled }: ChatEmptyStateProps) {
   return (
     <div className="chat-empty-state w-full max-w-2xl mx-auto text-center px-4 mb-8">
       <ChatBrand size="md" className="justify-center mb-6" />
-      <h2 className="text-2xl sm:text-3xl font-semibold text-gray-800 dark:text-gray-100 mb-2 tracking-tight">
-        How can I help you today?
-      </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
         Ask about Taixing&apos;s resume, work experience, visa status, compensation…
       </p>
