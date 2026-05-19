@@ -11,6 +11,10 @@ import { passwordResetRedirectUrl, resolvePublicAppUrl } from "@/lib/app-url";
  * GET — Site URL and redirect URL for Supabase Dashboard configuration.
  */
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({});
+  }
+
   const siteUrl = resolvePublicAppUrl(req);
   const resetPasswordRedirectUrl = passwordResetRedirectUrl(req);
   return NextResponse.json({

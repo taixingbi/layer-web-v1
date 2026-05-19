@@ -103,8 +103,16 @@ export async function POST(req: NextRequest) {
     level: upstream.ok ? "INFO" : "WARN",
   });
 
-  return NextResponse.json(
-    { ...upstream.data, redirect_to: upstream.data.redirect_to ?? redirect_to },
-    { status: upstream.status },
-  );
+  const responseBody: Record<string, unknown> = {
+    message:
+      typeof upstream.data.message === "string"
+        ? upstream.data.message
+        : "If an account exists for that email, a password reset link was sent.",
+  };
+
+  if (process.env.NODE_ENV !== "production") {
+    responseBody.redirect_to = upstream.data.redirect_to ?? redirect_to;
+  }
+
+  return NextResponse.json(responseBody, { status: upstream.status });
 }

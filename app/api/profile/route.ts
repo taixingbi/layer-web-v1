@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest) {
   const patch = whitelistProfilePatch(body);
   if (!hasProfilePatchFields(patch)) {
     return NextResponse.json(
-      { error: "At least one of username, display_name, team, group is required" },
+      { error: "At least one of username, display_name, team, or department is required" },
       { status: 400 },
     );
   }
