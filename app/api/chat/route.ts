@@ -84,7 +84,12 @@ async function pumpGatewayUpstreamToClientEvents(
   let rewrite: string | null = null;
   let lastCitations: unknown[] = [];
   let lastFollowUps: string[] = [];
-  const meta: { request_id?: string; trace_id?: string; session_id?: string } = {};
+  const meta: {
+    request_id?: string;
+    trace_id?: string;
+    session_id?: string;
+    conversation_id?: string;
+  } = {};
 
   const handleBlock = (block: string) => {
     if (!block.trim()) return;
@@ -161,6 +166,7 @@ async function pumpGatewayUpstreamToClientEvents(
         request_id: meta.request_id ?? "",
         trace_id: meta.trace_id ?? "",
         session_id: meta.session_id ?? "",
+        ...(meta.conversation_id ? { conversation_id: meta.conversation_id } : {}),
         citations: done.citations,
         follow_up_questions: done.follow_up_questions,
       });
@@ -365,6 +371,9 @@ export async function POST(req: NextRequest) {
       session_id: json.session_id,
       request_id: json.request_id,
       trace_id: json.trace_id,
+      ...(typeof json.conversation_id === "string" && json.conversation_id.trim()
+        ? { conversation_id: json.conversation_id.trim() }
+        : {}),
       citations: json.citations,
       follow_up_questions: json.follow_up_questions,
     };

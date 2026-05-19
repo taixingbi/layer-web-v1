@@ -7,8 +7,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { ChatSidebar } from "@/components/ChatSidebar";
 import { authFetch } from "@/lib/auth-fetch";
 import { buildHistory, truncateBeforeMessageId } from "@/lib/chat-history";
+import {
+  type ConversationListResponse,
+  type ConversationMessagesResponse,
+  type ConversationSummary,
+  getActiveConversationId,
+  setActiveConversationId as persistActiveConversationId,
+  storedMessagesToChatTurns,
+} from "@/lib/conversations";
 
 type Citation = Record<string, unknown>;
 
@@ -122,6 +131,16 @@ export default function ChatPage() {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const editOriginalRef = useRef("");
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const activeConversationIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
 
   useEffect(() => {
     if (loading && editingMessageId) {
@@ -155,6 +174,88 @@ export default function ChatPage() {
   }, []);
 
   const isAuthenticated = authUi.hasCookie || authUi.hasStorage;
+
+  const refreshConversations = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setConversationsLoading(true);
+    try {
+      const res = await authFetch("/api/conversations", {
+        headers: { ...optionalLayerBearerHeaders() },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as ConversationListResponse;
+      setConversations(Array.isArray(data.conversations) ? data.conversations : []);
+    } catch {
+      /* ignore */
+    } finally {
+      setConversationsLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  const applyConversationId = useCallback(
+    (id: string | undefined) => {
+      if (!id?.trim()) return;
+      const cid = id.trim();
+      setActiveConversationId(cid);
+      persistActiveConversationId(cid);
+      void refreshConversations();
+    },
+    [refreshConversations],
+  );
+
+  const loadConversation = useCallback(
+    async (id: string) => {
+      if (loading) return;
+      setThreadLoading(true);
+      setActiveConversationId(id);
+      persistActiveConversationId(id);
+      setSidebarOpen(false);
+      try {
+        const res = await authFetch(
+          `/api/conversations/${encodeURIComponent(id)}/messages`,
+          { headers: { ...optionalLayerBearerHeaders() } },
+        );
+        if (!res.ok) {
+          if (res.status === 404) {
+            setActiveConversationId(null);
+            persistActiveConversationId(null);
+            setMessages([]);
+          }
+          return;
+        }
+        const data = (await res.json()) as ConversationMessagesResponse;
+        setMessages(storedMessagesToChatTurns(data.messages ?? []));
+      } catch {
+        /* ignore */
+      } finally {
+        setThreadLoading(false);
+      }
+    },
+    [loading],
+  );
+
+  const startNewChat = useCallback(() => {
+    if (loading) return;
+    setActiveConversationId(null);
+    persistActiveConversationId(null);
+    setMessages([]);
+    setSidebarOpen(false);
+    setEditingMessageId(null);
+    setEditDraft("");
+    editOriginalRef.current = "";
+  }, [loading]);
+
+  useEffect(() => {
+    if (authUi.loading || !isAuthenticated) return;
+    void refreshConversations();
+  }, [authUi.loading, isAuthenticated, refreshConversations]);
+
+  useEffect(() => {
+    if (authUi.loading || !isAuthenticated) return;
+    const stored = getActiveConversationId();
+    if (stored) void loadConversation(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore thread once after sign-in
+  }, [authUi.loading, isAuthenticated]);
 
   useEffect(() => {
     if (authUi.loading || isAuthenticated) return;
@@ -346,10 +447,14 @@ export default function ChatPage() {
               run_id?: string;
               request_id?: string;
               trace_id?: string;
+              conversation_id?: string;
               citations?: Citation[];
               follow_up_questions?: string[];
             })
           : {};
+      if (typeof obj.conversation_id === "string") {
+        applyConversationId(obj.conversation_id);
+      }
       const answer = typeof obj.response === "string" ? obj.response : "";
       const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
@@ -413,7 +518,7 @@ export default function ChatPage() {
       setStatus(null);
       setLoading(false);
     }
-  }, [beginStreamingAssistant, clearStreamingAssistant]);
+  }, [beginStreamingAssistant, clearStreamingAssistant, applyConversationId]);
 
   const sendUserMessage = useCallback(async (
     userMessage: string,
@@ -449,17 +554,20 @@ export default function ChatPage() {
         }
         const clientRequestId = correlationUuid();
         const clientTraceId = correlationUuid();
+        const convId = activeConversationIdRef.current;
         return authFetch("/api/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             ...optionalLayerBearerHeaders(),
             ...(sessionId ? { "X-Session-Id": sessionId } : {}),
+            ...(convId ? { "X-Conversation-Id": convId } : {}),
             "X-Request-Id": clientRequestId,
             "X-Trace-Id": clientTraceId,
           },
           body: JSON.stringify({
             message: text,
+            ...(convId ? { conversation_id: convId } : {}),
             ...(history.length > 0 ? { history } : {}),
           }),
         });
@@ -513,11 +621,15 @@ export default function ChatPage() {
       if (contentType.includes("application/json")) {
         const json = (await res.json()) as {
           response?: string;
+          conversation_id?: string;
           citations?: Citation[];
           follow_up_questions?: string[];
           request_id?: string;
           trace_id?: string;
         };
+        if (typeof json.conversation_id === "string") {
+          applyConversationId(json.conversation_id);
+        }
         const followUps = Array.isArray(json.follow_up_questions)
           ? json.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
           : undefined;
@@ -605,6 +717,7 @@ export default function ChatPage() {
     authUi.hasCookie,
     authUi.hasStorage,
     router,
+    applyConversationId,
   ]);
 
   const cancelEdit = useCallback(() => {
@@ -687,10 +800,40 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">
+    <div className="flex h-screen bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">
+      {sidebarOpen ? (
+        <button
+          type="button"
+          className="md:hidden fixed inset-0 z-30 bg-black/40"
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
+      <ChatSidebar
+        conversations={conversations}
+        activeId={activeConversationId}
+        loadingList={conversationsLoading}
+        loadingThread={threadLoading || loading}
+        onNewChat={startNewChat}
+        onSelect={(id) => void loadConversation(id)}
+        className={`${sidebarOpen ? "flex fixed inset-y-0 left-0 z-40" : "hidden"} md:flex md:relative md:z-0`}
+      />
+      <div className="flex flex-col flex-1 min-w-0 h-full">
       <header className="shrink-0 border-b border-gray-200 dark:border-gray-700 py-3">
         <div className="chat-container px-4 flex items-center justify-between gap-3 w-full">
-          <h1 className="text-base font-semibold">huntAI</h1>
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              className="md:hidden p-2 -ml-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10"
+              aria-label="Open chat history"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+              </svg>
+            </button>
+            <h1 className="text-base font-semibold truncate">huntAI</h1>
+          </div>
           <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400 shrink-0">
             {!authUi.loading ? (
               <>
@@ -727,7 +870,12 @@ export default function ChatPage() {
 
       <div className="flex-1 overflow-y-auto min-h-0" role="log" aria-live="polite" aria-relevant="additions text">
         <div className="chat-container px-4 py-6 space-y-6">
-          {messages.length === 0 && !loading && (
+          {threadLoading && messages.length === 0 ? (
+            <div className="flex justify-center pt-16 text-sm text-gray-500 dark:text-gray-400">
+              Loading conversation…
+            </div>
+          ) : null}
+          {messages.length === 0 && !loading && !threadLoading && (
             <div className="flex flex-col items-center justify-center pt-16 text-center">
               <p className="text-2xl font-medium text-gray-400 dark:text-gray-500 mb-2">
                 How can I help you today?
@@ -1039,6 +1187,7 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

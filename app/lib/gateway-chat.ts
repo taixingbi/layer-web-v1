@@ -8,6 +8,7 @@ export type GatewayMeta = {
   request_id?: string;
   trace_id?: string;
   session_id?: string;
+  conversation_id?: string;
 };
 
 /** Parse one SSE block (``event:`` + ``data:`` lines) from gateway upstream. */
@@ -58,6 +59,8 @@ export function metaFromGatewayData(dataRaw: string): GatewayMeta {
       request_id: typeof obj.request_id === "string" ? obj.request_id : undefined,
       trace_id: typeof obj.trace_id === "string" ? obj.trace_id : undefined,
       session_id: typeof obj.session_id === "string" ? obj.session_id : undefined,
+      conversation_id:
+        typeof obj.conversation_id === "string" ? obj.conversation_id : undefined,
     };
   } catch {
     return {};

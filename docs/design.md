@@ -16,6 +16,7 @@ flowchart TD
   end
   subgraph nextjs [Next.js server]
     BFFChat[POST /api/chat]
+    BFFConv[GET /api/conversations]
     BFFFb[POST /api/feedback]
     BFFProfile[GET PATCH /api/profile]
   end
@@ -23,9 +24,11 @@ flowchart TD
   ORCH[Orchestrator]
 
   ChatPage --> BFFChat
+  ChatPage --> BFFConv
   ChatPage --> BFFFb
   ProfilePage --> BFFProfile
   BFFChat --> GW
+  BFFConv --> GW
   BFFFb --> GW
   BFFProfile --> GW
   GW --> ORCH
@@ -40,9 +43,16 @@ flowchart TD
 ### Chat UI (`app/chat/page.tsx`)
 
 - Renders conversation, streaming assistant text, citations, follow-up chips, user message edit (ChatGPT-style branch), feedback affordances.
-- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; optional **`layer_bearer_token`** → `Authorization` (overrides cookie). **Auth:** **`/login`** and **`/signup`** set an httpOnly **`layer_access_token`** cookie (see [auth-design.md](auth-design.md)).
+- **ChatGPT-style sidebar** ([`app/components/ChatSidebar.tsx`](../app/components/ChatSidebar.tsx)): lists persisted threads after sign-in; **New chat** starts a fresh thread; selecting a thread loads messages from the gateway.
+- **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; **`layer_active_conversation_id`** for the current thread UUID (from gateway); optional **`layer_bearer_token`** → `Authorization` (overrides cookie). **Auth:** **`/login`** and **`/signup`** set an httpOnly **`layer_access_token`** cookie (see [auth-design.md](auth-design.md)).
+- Sends `conversation_id` / `X-Conversation-Id` on each message when a thread is active; stores gateway-returned `conversation_id` from JSON or `stream_end`.
 - Generates `X-Request-Id` and `X-Trace-Id` per outbound `/api/chat` request.
 - Consumes the **BFF event stream**, not raw gateway SSE: `status`, `result_chunk`, `rewrite`, `stream_end`, `error`.
+
+### BFF — conversation history
+
+- **`GET /api/conversations`** — proxies gateway list (newest `updated_at` first).
+- **`GET /api/conversations/[conversationId]/messages`** — loads one thread for the sidebar selection.
 
 ### BFF — `POST /api/chat` (`app/api/chat/route.ts`)
 

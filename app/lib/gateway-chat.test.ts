@@ -3,7 +3,11 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { donePayloadFromGatewayData, rewriteTextFromGatewayData } from "./gateway-chat";
+import {
+  donePayloadFromGatewayData,
+  metaFromGatewayData,
+  rewriteTextFromGatewayData,
+} from "./gateway-chat";
 
 describe("rewriteTextFromGatewayData", () => {
   it("reads rewrite from gateway rewrite event or done payloads", () => {
@@ -45,5 +49,19 @@ describe("donePayloadFromGatewayData", () => {
       follow_up_questions: ["ok", 42, null, "also ok"],
     });
     expect(donePayloadFromGatewayData(raw).follow_up_questions).toEqual(["ok", "also ok"]);
+  });
+});
+
+describe("metaFromGatewayData", () => {
+  it("includes conversation_id from gateway meta event", () => {
+    const raw = JSON.stringify({
+      request_id: "req_1",
+      trace_id: "trace_1",
+      session_id: "sess_1",
+      conversation_id: "550e8400-e29b-41d4-a716-446655440000",
+    });
+    expect(metaFromGatewayData(raw).conversation_id).toBe(
+      "550e8400-e29b-41d4-a716-446655440000",
+    );
   });
 });
