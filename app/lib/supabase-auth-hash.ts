@@ -27,6 +27,21 @@ export function parseSupabaseAuthHash(hash: string): SupabaseAuthHash | null {
   };
 }
 
+/** Masked landing URL for logs — never includes real tokens. */
+export function maskPasswordResetLandingUrl(pageUrl: string, hash: string): string {
+  const base = pageUrl.split("#")[0];
+  const parsed = parseSupabaseAuthHash(hash);
+  if (!parsed) return base;
+  if (parsed.kind === "error") {
+    const code = parsed.code || "unknown";
+    return `${base}#error=access_denied&error_code=${code}&error_description=...`;
+  }
+  const raw = hash.startsWith("#") ? hash.slice(1) : hash;
+  const params = new URLSearchParams(raw);
+  const type = params.get("type")?.trim() || "recovery";
+  return `${base}#access_token=...&refresh_token=...&type=${type}`;
+}
+
 export function hashErrorMessage(parsed: Extract<SupabaseAuthHash, { kind: "error" }>): string {
   if (parsed.code === "otp_expired") {
     return "This reset link has expired or was already used. Request a new one (use only the latest email).";

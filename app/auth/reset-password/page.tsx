@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { authFetch } from "@/lib/auth-fetch";
+import { reportResetLinkOpened } from "@/lib/report-reset-link-opened";
 import { hashErrorMessage, parseSupabaseAuthHash } from "@/lib/supabase-auth-hash";
 
 export default function ResetPasswordPage() {
@@ -18,6 +19,12 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const hash = typeof window !== "undefined" ? window.location.hash : "";
+    if (hash && typeof window !== "undefined") {
+      void reportResetLinkOpened(
+        hash,
+        window.location.origin + window.location.pathname,
+      );
+    }
     const parsed = parseSupabaseAuthHash(hash);
     if (!parsed) {
       setTokens(null);
