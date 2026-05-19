@@ -12,18 +12,22 @@ Authoritative gateway contracts: [layer-gateway-api-v1 `docs/schema.md`](../../l
 flowchart TD
   subgraph browser [Browser]
     ChatPage[app/chat/page.tsx]
+    ProfilePage[app/profile/page.tsx]
   end
   subgraph nextjs [Next.js server]
     BFFChat[POST /api/chat]
     BFFFb[POST /api/feedback]
+    BFFProfile[GET PATCH /api/profile]
   end
   GW[layer-gateway-api-v1]
   ORCH[Orchestrator]
 
   ChatPage --> BFFChat
   ChatPage --> BFFFb
+  ProfilePage --> BFFProfile
   BFFChat --> GW
   BFFFb --> GW
+  BFFProfile --> GW
   GW --> ORCH
 ```
 
@@ -52,6 +56,16 @@ flowchart TD
 
 - Maps UI fields to gateway feedback JSON (`run_id` → `trace_id`, etc.).
 - Same bearer resolution as chat.
+
+### BFF — `GET` / `PATCH` `/api/profile` (`app/api/profile/route.ts`)
+
+- Proxies to gateway `GET /profile` and `PATCH /profile` with bearer from httpOnly session cookie ([`resolveGatewayBearer`](../app/lib/gateway-auth.ts)).
+- PATCH whitelists user-editable fields only: `username`, `display_name`, `team`, `group` ([`app/lib/profile.ts`](../app/lib/profile.ts)).
+
+### Profile UI (`app/profile/page.tsx`)
+
+- Signed-in users edit profile fields; email, roles, and plan are read-only.
+- Redirects to `/login?next=/profile` when unsigned.
 
 ---
 

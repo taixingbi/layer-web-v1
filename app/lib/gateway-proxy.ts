@@ -37,3 +37,20 @@ export async function gatewayJson(
   }
   return { ok: res.ok, status: res.status, data };
 }
+
+/**
+ * ``gatewayJson`` with ``Authorization: Bearer`` for authenticated gateway routes.
+ */
+export async function gatewayJsonAuthed(
+  path: string,
+  accessToken: string,
+  init?: RequestInit,
+): Promise<GatewayJsonResult> {
+  return gatewayJson(path, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...(init?.headers ?? {}),
+    },
+  });
+}

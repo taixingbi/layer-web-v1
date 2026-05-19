@@ -697,6 +697,11 @@ export default function ChatPage() {
                 <span className="hidden sm:inline max-w-[11rem] truncate" title={authStatusLine}>
                   {authStatusLine}
                 </span>
+                {(authUi.hasCookie || authUi.hasStorage) ? (
+                  <Link href="/profile" className="text-[#10a37f] hover:underline whitespace-nowrap">
+                    Profile
+                  </Link>
+                ) : null}
                 <Link href="/login" className="text-[#10a37f] hover:underline whitespace-nowrap">
                   {authUi.hasCookie || authUi.hasStorage ? "Account" : "Sign in"}
                 </Link>
