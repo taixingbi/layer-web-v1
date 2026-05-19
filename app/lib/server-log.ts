@@ -50,6 +50,7 @@ const EVENT_PHASE: Record<string, string> = {
   gateway_api_request: "upstream",
   gateway_api_response: "upstream",
   password_reset_link_opened: "auth",
+  password_reset_requested: "auth",
 };
 
 const EVENT_MESSAGE: Record<string, string> = {
@@ -63,6 +64,7 @@ const EVENT_MESSAGE: Record<string, string> = {
   gateway_api_request: "gateway_api_request",
   gateway_api_response: "gateway_api_response",
   password_reset_link_opened: "Password reset link opened",
+  password_reset_requested: "Password reset requested",
 };
 
 export function phaseForEvent(event: string): string {
