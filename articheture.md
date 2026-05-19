@@ -1,4 +1,4 @@
-# huntAI architecture
+# HuntAI architecture
 
 Next.js UI + BFF that talks **only** to **layer-gateway-api-v1** (see that repo’s `docs/smoke-test.md` for curl examples).
 

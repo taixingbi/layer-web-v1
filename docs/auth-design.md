@@ -1,4 +1,4 @@
-# huntAI Web — Auth design
+# HuntAI Web — Auth design
 
 How the browser, Next.js BFF, and **layer-gateway-api-v1** agree on identity for `/api/chat` and `/api/feedback`. Gateway token verification and claim mapping live in the gateway repo; this document covers the **web + BFF** contract only.
 

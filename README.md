@@ -1,4 +1,4 @@
-# huntAI
+# HuntAI
 
 ## Design
 
@@ -75,7 +75,7 @@ The **example** gateway implementation is **layer-gateway-api-v1** (sibling repo
 
 ## End-to-end local run (example gateway)
 
-This app does **not** run an orchestrator. Use **layer-gateway-api-v1** as the reference gateway: configure it with your orchestrator (see that repo’s **README** and **`.env.example`**), then point huntAI at it.
+This app does **not** run an orchestrator. Use **layer-gateway-api-v1** as the reference gateway: configure it with your orchestrator (see that repo’s **README** and **`.env.example`**), then point HuntAI at it.
 
 ### 1) Run the example gateway (layer-gateway-api-v1)
 

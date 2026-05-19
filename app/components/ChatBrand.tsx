@@ -1,5 +1,5 @@
 /**
- * huntAI product mark for chat header, empty state, and landing.
+ * HuntAI product mark for chat header, empty state, and landing.
  */
 
 type ChatBrandProps = {
@@ -59,7 +59,7 @@ export function ChatBrand({
       </span>
       {showWordmark ? (
         <span className={`font-semibold tracking-tight text-[#0d0d0d] dark:text-[#ececec] ${text}`}>
-          huntAI
+          HuntAI
         </span>
       ) : null}
     </div>

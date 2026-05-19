@@ -1,4 +1,4 @@
-# huntAI Web — Design
+# HuntAI Web — Design
 
 Next.js **App Router** app: chat UI plus a small **BFF** that proxies to **layer-gateway-api-v1** only. It does not talk to the orchestrator or models directly.
 

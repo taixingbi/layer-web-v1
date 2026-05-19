@@ -9,8 +9,8 @@ import "./globals.css";
 
 /** Default document metadata for all routes. */
 export const metadata: Metadata = {
-  title: "huntAI",
-  description: "huntAI",
+  title: "HuntAI",
+  description: "HuntAI",
 };
 
 /** Wraps all pages with document structure and client-side hash recovery routing. */

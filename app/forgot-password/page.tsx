@@ -36,10 +36,10 @@ export default function ForgotPasswordPage() {
       .then((data) => {
         setDevSetup(data);
         if (data.resetPasswordRedirectUrl) {
-          console.info("[huntAI dev] password reset redirect:", data.resetPasswordRedirectUrl);
+          console.info("[HuntAI dev] password reset redirect:", data.resetPasswordRedirectUrl);
         }
         if (data.supabaseSetup) {
-          console.info("[huntAI dev] Supabase URL config:", data.supabaseSetup);
+          console.info("[HuntAI dev] Supabase URL config:", data.supabaseSetup);
         }
       })
       .catch(() => {});
@@ -89,14 +89,8 @@ export default function ForgotPasswordPage() {
   return (
     <div className="auth-page min-h-screen flex flex-col items-center justify-center px-4 py-12 bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">
       <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-4">
+        <div className="text-center">
           <ChatBrand size="md" layout="stacked" className="justify-center" />
-          <div>
-            <h1 className="text-xl font-semibold">Forgot password</h1>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-sm mx-auto">
-              Enter your email address and we&apos;ll send you a link to reset your password.
-            </p>
-          </div>
         </div>
 
         {isDev && devSetup?.supabaseSetup ? (
