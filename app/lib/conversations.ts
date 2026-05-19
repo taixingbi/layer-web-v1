@@ -53,6 +53,24 @@ export function setActiveConversationId(id: string | null): void {
   }
 }
 
+/** Relative time for sidebar (e.g. ``2h ago``, ``Yesterday``). */
+export function formatConversationTime(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return "Yesterday";
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 /** Sidebar label: title, else first-line preview, else fallback. */
 export function conversationLabel(
   conv: ConversationSummary,

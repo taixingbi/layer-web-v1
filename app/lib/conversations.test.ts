@@ -2,8 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   conversationLabel,
+  formatConversationTime,
   storedMessagesToChatTurns,
 } from "@/lib/conversations";
+
+describe("formatConversationTime", () => {
+  it("returns relative labels", () => {
+    const recent = new Date(Date.now() - 5 * 60_000).toISOString();
+    expect(formatConversationTime(recent)).toBe("5m ago");
+    expect(formatConversationTime(null)).toBeNull();
+  });
+});
 
 describe("conversationLabel", () => {
   it("uses title when present", () => {

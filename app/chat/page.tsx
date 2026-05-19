@@ -4,10 +4,13 @@
 
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { ChatBrand } from "@/components/ChatBrand";
+import { ChatEmptyState } from "@/components/ChatEmptyState";
+import { ChatPrompt } from "@/components/ChatPrompt";
 import { ChatSidebar } from "@/components/ChatSidebar";
+import { ChatUserMenu } from "@/components/ChatUserMenu";
 import { authFetch } from "@/lib/auth-fetch";
 import { buildHistory, truncateBeforeMessageId } from "@/lib/chat-history";
 import {
@@ -137,6 +140,7 @@ export default function ChatPage() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const activeConversationIdRef = useRef<string | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
@@ -276,14 +280,6 @@ export default function ChatPage() {
     setAuthUi({ loading: false, hasCookie: false, hasStorage: false });
   }, []);
 
-  const authStatusLine = useMemo(() => {
-    if (authUi.loading) return "…";
-    if (authUi.hasCookie && authUi.hasStorage) return "Session + browser bearer";
-    if (authUi.hasCookie) return "Signed in";
-    if (authUi.hasStorage) return "Browser bearer";
-    return "Not signed in";
-  }, [authUi]);
-
   const lastAssistantId = useMemo(
     () => (messages.length > 0 ? [...messages].reverse().find((m) => m.role === "assistant")?.id ?? null : null),
     [messages]
@@ -372,6 +368,29 @@ export default function ChatPage() {
     streamingAssistantIdRef.current = null;
     setStreamingAssistantId(null);
   }, []);
+
+  const stopGenerating = useCallback(() => {
+    const targetId = streamingAssistantIdRef.current;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    clearStreamingAssistant();
+    setLoading(false);
+    setStatus(null);
+    if (targetId) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === targetId
+            ? {
+                ...m,
+                content: m.content.trim()
+                  ? `${m.content.trim()}\n\n— Stopped`
+                  : "— Stopped",
+              }
+            : m,
+        ),
+      );
+    }
+  }, [clearStreamingAssistant]);
 
   const handleSSEEvent = useCallback((event: string, data: unknown) => {
     if (event === "status") {
@@ -541,6 +560,10 @@ export default function ChatPage() {
     const history = buildHistory(historySource);
 
     try {
+      chatAbortRef.current?.abort();
+      chatAbortRef.current = new AbortController();
+      const signal = chatAbortRef.current.signal;
+
       const doFetch = () => {
         let sessionId: string | null = null;
         try {
@@ -557,6 +580,7 @@ export default function ChatPage() {
         const convId = activeConversationIdRef.current;
         return authFetch("/api/chat", {
           method: "POST",
+          signal,
           headers: {
             "Content-Type": "application/json",
             ...optionalLayerBearerHeaders(),
@@ -691,6 +715,9 @@ export default function ChatPage() {
         }
       }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       const errText = err instanceof Error ? err.message : String(err);
       const targetId = streamingAssistantIdRef.current;
       if (targetId) {
@@ -704,6 +731,7 @@ export default function ChatPage() {
         ]);
       }
     } finally {
+      chatAbortRef.current = null;
       clearStreamingAssistant();
       setLoading(false);
       setStatus(null);
@@ -763,15 +791,18 @@ export default function ChatPage() {
     [messages, lastAssistantId, sendUserMessage, cancelEdit]
   );
 
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      const text = input.trim();
-      if (!text) return;
-      setInput("");
-      await sendUserMessage(text);
+  const submitInput = useCallback(async () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    await sendUserMessage(text);
+  }, [input, sendUserMessage]);
+
+  const handleStarterPick = useCallback(
+    (text: string) => {
+      void sendUserMessage(text);
     },
-    [input, sendUserMessage]
+    [sendUserMessage],
   );
 
   const handleFollowUpClick = useCallback(
@@ -790,6 +821,9 @@ export default function ChatPage() {
 
   const showStandaloneLoading =
     loading && (messages.length === 0 || messages[messages.length - 1]?.role !== "assistant");
+
+  const hasThread = messages.length > 0;
+  const showHero = !hasThread && !threadLoading;
 
   if (!authUi.loading && !isAuthenticated) {
     return (
@@ -818,9 +852,9 @@ export default function ChatPage() {
         onSelect={(id) => void loadConversation(id)}
         className={`${sidebarOpen ? "flex fixed inset-y-0 left-0 z-40" : "hidden"} md:flex md:relative md:z-0`}
       />
-      <div className="flex flex-col flex-1 min-w-0 h-full">
-      <header className="shrink-0 border-b border-gray-200 dark:border-gray-700 py-3">
-        <div className="chat-container px-4 flex items-center justify-between gap-3 w-full">
+      <div className="chat-main flex flex-col flex-1 min-w-0 h-full">
+      <header className="chat-header shrink-0 py-2.5 px-3 sm:px-4">
+        <div className="flex items-center justify-between gap-3 w-full max-w-[52rem] mx-auto">
           <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
@@ -832,59 +866,35 @@ export default function ChatPage() {
                 <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
               </svg>
             </button>
-            <h1 className="text-base font-semibold truncate">huntAI</h1>
+            <ChatBrand />
           </div>
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400 shrink-0">
-            {!authUi.loading ? (
-              <>
-                <span className="hidden sm:inline max-w-[11rem] truncate" title={authStatusLine}>
-                  {authStatusLine}
-                </span>
-                {(authUi.hasCookie || authUi.hasStorage) ? (
-                  <Link href="/profile" className="text-[#10a37f] hover:underline whitespace-nowrap">
-                    Profile
-                  </Link>
-                ) : null}
-                <Link href="/login" className="text-[#10a37f] hover:underline whitespace-nowrap">
-                  {authUi.hasCookie || authUi.hasStorage ? "Account" : "Sign in"}
-                </Link>
-                {!authUi.hasCookie && !authUi.hasStorage ? (
-                  <Link href="/signup" className="text-[#10a37f] hover:underline whitespace-nowrap">
-                    Sign up
-                  </Link>
-                ) : null}
-                {(authUi.hasCookie || authUi.hasStorage) ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleSignOut()}
-                    className="text-gray-600 dark:text-gray-300 hover:underline whitespace-nowrap"
-                  >
-                    Sign out
-                  </button>
-                ) : null}
-              </>
-            ) : null}
-          </div>
+          {!authUi.loading && isAuthenticated ? (
+            <ChatUserMenu onSignOut={handleSignOut} />
+          ) : null}
         </div>
       </header>
 
+      {showHero ? (
+        <div className="flex-1 flex flex-col items-center justify-center min-h-0 px-4 pb-6 overflow-y-auto">
+          <ChatEmptyState onPick={handleStarterPick} disabled={loading} />
+          <ChatPrompt
+            mode="hero"
+            value={input}
+            onChange={setInput}
+            onSubmit={() => void submitInput()}
+            loading={loading}
+            onStop={loading ? stopGenerating : undefined}
+          />
+        </div>
+      ) : (
+        <>
       <div className="flex-1 overflow-y-auto min-h-0" role="log" aria-live="polite" aria-relevant="additions text">
-        <div className="chat-container px-4 py-6 space-y-6">
+        <div className="chat-thread chat-container px-4 py-6 space-y-6">
           {threadLoading && messages.length === 0 ? (
             <div className="flex justify-center pt-16 text-sm text-gray-500 dark:text-gray-400">
               Loading conversation…
             </div>
           ) : null}
-          {messages.length === 0 && !loading && !threadLoading && (
-            <div className="flex flex-col items-center justify-center pt-16 text-center">
-              <p className="text-2xl font-medium text-gray-400 dark:text-gray-500 mb-2">
-                How can I help you today?
-              </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500">
-                Ask about jobs, salaries, or anything else.
-              </p>
-            </div>
-          )}
           {messages.map((msg) =>
             msg.role === "user" ? (
               <div key={msg.id} className="flex w-full justify-end group">
@@ -1113,32 +1123,16 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="shrink-0 p-4 bg-white dark:bg-[#0d0d0d]">
-        <div className="chat-container">
-          <div className="chat-input-wrap rounded-2xl flex gap-2 px-4 py-3 transition-colors">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Message…"
-              disabled={loading}
-              className="flex-1 bg-transparent text-[15px] outline-none placeholder:text-gray-500 dark:placeholder:text-gray-400 disabled:opacity-50"
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="shrink-0 p-2 rounded-lg text-[#10a37f] hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 disabled:pointer-events-none transition-colors"
-              aria-label="Send"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M22 2L11 13" />
-                <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </form>
+      <ChatPrompt
+        mode="sticky"
+        value={input}
+        onChange={setInput}
+        onSubmit={() => void submitInput()}
+        loading={loading}
+        onStop={loading ? stopGenerating : undefined}
+      />
+        </>
+      )}
 
       {feedbackModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setFeedbackModal(null); setFeedbackComment(""); }}>
