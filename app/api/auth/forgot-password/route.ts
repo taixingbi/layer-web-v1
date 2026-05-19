@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  gatewayJsonWithAuthLog,
   logAuthGatewayError,
   logAuthGatewayRequest,
   logAuthGatewayResponse,
