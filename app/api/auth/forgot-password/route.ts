@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  gatewayJsonWithAuthLog,
+  logAuthGatewayError,
+  logAuthGatewayRequest,
+  logAuthGatewayResponse,
+  maskIdentifier,
+} from "@/lib/auth-route-log";
 import { passwordResetRedirectUrl } from "@/lib/app-url";
 import { gatewayJson } from "@/lib/gateway-proxy";
-import { logWebEvent } from "@/lib/server-log";
-
-function maskEmail(email: string): string {
-  const at = email.indexOf("@");
-  if (at <= 0) return "***";
-  return `***${email.slice(at)}`;
-}
 
 export async function POST(req: NextRequest) {
+  const apiPath = "/api/auth/forgot-password";
   let body: { email?: string };
   try {
     body = (await req.json()) as { email?: string };
@@ -24,24 +25,40 @@ export async function POST(req: NextRequest) {
   }
 
   const redirect_to = passwordResetRedirectUrl(req);
+  const gateway_path = "/auth/forgot-password";
+  const gateway_payload = { email, redirect_to };
 
-  const upstream = await gatewayJson("/auth/forgot-password", {
-    method: "POST",
-    body: JSON.stringify({ email, redirect_to }),
-  });
+  logAuthGatewayRequest(apiPath, gateway_path, gateway_payload);
 
-  logWebEvent("password_reset_requested", upstream.ok ? "INFO" : "WARN", {
-    phase: "auth",
-    path: "/api/auth/forgot-password",
-    method: "POST",
-    redirect_to:
-      typeof upstream.data.redirect_to === "string"
-        ? upstream.data.redirect_to
-        : redirect_to,
-    email_masked: maskEmail(email),
-    gateway_status: upstream.status,
-    outcome: upstream.ok ? "sent" : "failed",
-  });
+  let upstream;
+  try {
+    upstream = await gatewayJson(gateway_path, {
+      method: "POST",
+      body: JSON.stringify(gateway_payload),
+    });
+  } catch (err) {
+    logAuthGatewayError("password_reset_requested", apiPath, gateway_path, gateway_payload, err);
+    return NextResponse.json(
+      { error: "Gateway unreachable. Is layer-gateway-api running?" },
+      { status: 502 },
+    );
+  }
+
+  const resolved_redirect_to =
+    typeof upstream.data.redirect_to === "string" ? upstream.data.redirect_to : redirect_to;
+
+  logAuthGatewayResponse(
+    "password_reset_requested",
+    apiPath,
+    gateway_path,
+    gateway_payload,
+    upstream,
+    {
+      redirect_to: resolved_redirect_to,
+      email_masked: maskIdentifier(email),
+      outcome: upstream.ok ? "sent" : "failed",
+    },
+  );
 
   return NextResponse.json(
     { ...upstream.data, redirect_to: upstream.data.redirect_to ?? redirect_to },

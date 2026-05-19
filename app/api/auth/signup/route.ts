@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { gatewayJsonWithAuthLog, maskIdentifier } from "@/lib/auth-route-log";
 import { applySessionCookies } from "@/lib/auth-session";
-import { gatewayJson } from "@/lib/gateway-proxy";
 
 export async function POST(req: NextRequest) {
+  const apiPath = "/api/auth/signup";
+  const gateway_path = "/auth/signup";
   let body: { email?: string; password?: string; username?: string };
   try {
     body = (await req.json()) as { email?: string; password?: string; username?: string };
@@ -17,14 +19,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "email and password are required" }, { status: 400 });
   }
 
-  const payload: Record<string, string> = { email, password };
+  const gateway_payload: Record<string, string> = { email, password };
   const username = typeof body.username === "string" ? body.username.trim() : "";
-  if (username) payload.username = username;
+  if (username) gateway_payload.username = username;
 
-  const upstream = await gatewayJson("/auth/signup", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  let upstream;
+  try {
+    upstream = await gatewayJsonWithAuthLog(
+      "auth_signup_completed",
+      apiPath,
+      gateway_path,
+      gateway_payload,
+      { email_masked: maskIdentifier(email), has_username: Boolean(username) },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Gateway unreachable. Is layer-gateway-api running?" },
+      { status: 502 },
+    );
+  }
 
   if (!upstream.ok) {
     return NextResponse.json(upstream.data, { status: upstream.status });

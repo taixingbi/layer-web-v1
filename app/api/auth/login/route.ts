@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { gatewayJsonWithAuthLog, logAuthGatewayError, maskIdentifier } from "@/lib/auth-route-log";
 import { applySessionCookies } from "@/lib/auth-session";
-import { gatewayJson } from "@/lib/gateway-proxy";
 
 export async function POST(req: NextRequest) {
+  const apiPath = "/api/auth/login";
+  const gateway_path = "/auth/login";
   let body: { email?: string; identifier?: string; password?: string };
   try {
     body = (await req.json()) as { email?: string; identifier?: string; password?: string };
@@ -19,10 +21,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "identifier and password are required" }, { status: 400 });
   }
 
-  const upstream = await gatewayJson("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ identifier, password }),
-  });
+  const gateway_payload = { identifier, password };
+
+  let upstream;
+  try {
+    upstream = await gatewayJsonWithAuthLog(
+      "auth_login_completed",
+      apiPath,
+      gateway_path,
+      gateway_payload,
+      { identifier_masked: maskIdentifier(identifier) },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Gateway unreachable. Is layer-gateway-api running?" },
+      { status: 502 },
+    );
+  }
 
   if (!upstream.ok) {
     return NextResponse.json(upstream.data, { status: upstream.status });
@@ -30,6 +45,13 @@ export async function POST(req: NextRequest) {
 
   const accessToken = upstream.data.access_token as string | null | undefined;
   if (!accessToken || typeof accessToken !== "string" || !accessToken.trim()) {
+    logAuthGatewayError(
+      "auth_login_completed",
+      apiPath,
+      gateway_path,
+      gateway_payload,
+      new Error("no_access_token"),
+    );
     return NextResponse.json(
       { signedIn: false, error: "Login succeeded but no access token was returned." },
       { status: 401 },

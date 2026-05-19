@@ -49,7 +49,14 @@ const EVENT_PHASE: Record<string, string> = {
   web_api_response: "access",
   gateway_api_request: "upstream",
   gateway_api_response: "upstream",
+  auth_gateway_request: "auth",
+  auth_login_completed: "auth",
+  auth_signup_completed: "auth",
+  auth_reset_password_completed: "auth",
+  auth_logout_completed: "auth",
+  auth_session_checked: "auth",
   password_reset_link_opened: "auth",
+  password_reset_gateway_request: "auth",
   password_reset_requested: "auth",
 };
 
@@ -63,7 +70,14 @@ const EVENT_MESSAGE: Record<string, string> = {
   web_api_response: "web_api_response",
   gateway_api_request: "gateway_api_request",
   gateway_api_response: "gateway_api_response",
+  auth_gateway_request: "Auth gateway request",
+  auth_login_completed: "Auth login completed",
+  auth_signup_completed: "Auth signup completed",
+  auth_reset_password_completed: "Auth reset password completed",
+  auth_logout_completed: "Auth logout completed",
+  auth_session_checked: "Auth session checked",
   password_reset_link_opened: "Password reset link opened",
+  password_reset_gateway_request: "Password reset gateway request",
   password_reset_requested: "Password reset requested",
 };
 

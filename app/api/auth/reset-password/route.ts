@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { gatewayJsonWithAuthLog } from "@/lib/auth-route-log";
 import { applySessionCookies } from "@/lib/auth-session";
-import { gatewayJson } from "@/lib/gateway-proxy";
 
 export async function POST(req: NextRequest) {
+  const apiPath = "/api/auth/reset-password";
+  const gateway_path = "/auth/reset-password";
   let body: { access_token?: string; refresh_token?: string; password?: string };
   try {
     body = (await req.json()) as {
@@ -26,18 +28,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "access_token and password are required" }, { status: 400 });
   }
 
-  const upstream = await gatewayJson("/auth/reset-password", {
-    method: "POST",
-    body: JSON.stringify({ access_token, password, refresh_token }),
-  });
+  const gateway_payload: Record<string, string> = { access_token, password };
+  if (refresh_token) gateway_payload.refresh_token = refresh_token;
+
+  let upstream;
+  try {
+    upstream = await gatewayJsonWithAuthLog(
+      "auth_reset_password_completed",
+      apiPath,
+      gateway_path,
+      gateway_payload,
+      { has_refresh_token: Boolean(refresh_token) },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Gateway unreachable. Is layer-gateway-api running?" },
+      { status: 502 },
+    );
+  }
 
   if (!upstream.ok) {
     return NextResponse.json(upstream.data, { status: upstream.status });
   }
 
+  const signedIn = Boolean(upstream.data.access_token);
   const res = NextResponse.json({
     message: upstream.data.message ?? "Password updated successfully.",
-    signedIn: Boolean(upstream.data.access_token),
+    signedIn,
   });
   if (upstream.data.access_token) {
     applySessionCookies(res, {
