@@ -7,10 +7,7 @@
 import { ChatBrand } from "@/components/ChatBrand";
 
 export const STARTER_PROMPTS = [
-  "Explain JWT auth",
-  "Review my architecture",
-  "Summarize logs",
-  "Debug Kubernetes issue",
+  "What is Taixing Bi's visa status?"
 ] as const;
 
 type ChatEmptyStateProps = {
@@ -26,7 +23,7 @@ export function ChatEmptyState({ onPick, disabled }: ChatEmptyStateProps) {
         How can I help you today?
       </h2>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
-        Ask about jobs, architecture, logs, or anything your gateway and orchestrator stack can reach.
+        Ask about Taixing's resume, work experience, visa status, compensation...
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {STARTER_PROMPTS.map((prompt) => (
