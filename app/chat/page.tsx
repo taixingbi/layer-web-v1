@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 import { buildHistory, truncateBeforeMessageId } from "@/lib/chat-history";
@@ -97,6 +98,7 @@ function optionalLayerBearerHeaders(): Record<string, string> {
 }
 
 export default function ChatPage() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -146,6 +148,13 @@ export default function ChatPage() {
       alive = false;
     };
   }, []);
+
+  const isAuthenticated = authUi.hasCookie || authUi.hasStorage;
+
+  useEffect(() => {
+    if (authUi.loading || isAuthenticated) return;
+    router.replace("/login?next=/chat");
+  }, [authUi.loading, isAuthenticated, router]);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -407,6 +416,10 @@ export default function ChatPage() {
   ) => {
     const text = userMessage.trim();
     if (!text || loading) return;
+    if (!authUi.hasCookie && !authUi.hasStorage) {
+      router.push("/login?next=/chat");
+      return;
+    }
     const historySource = options?.priorMessages ?? messages;
     if (!options?.skipAppend) {
       setMessages((prev) => [...prev, { id: nextId(), role: "user", content: text }]);
@@ -578,7 +591,16 @@ export default function ChatPage() {
       setLoading(false);
       setStatus(null);
     }
-  }, [loading, handleSSEEvent, messages, beginStreamingAssistant, clearStreamingAssistant]);
+  }, [
+    loading,
+    handleSSEEvent,
+    messages,
+    beginStreamingAssistant,
+    clearStreamingAssistant,
+    authUi.hasCookie,
+    authUi.hasStorage,
+    router,
+  ]);
 
   const cancelEdit = useCallback(() => {
     setEditingMessageId(null);
@@ -650,6 +672,14 @@ export default function ChatPage() {
 
   const showStandaloneLoading =
     loading && (messages.length === 0 || messages[messages.length - 1]?.role !== "assistant");
+
+  if (!authUi.loading && !isAuthenticated) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center bg-white dark:bg-[#0d0d0d] text-gray-500">
+        <p>Redirecting to sign in…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">

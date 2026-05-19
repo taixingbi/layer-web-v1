@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 
-import { EmailPasswordAuthForm } from "@/components/EmailPasswordAuthForm";
+import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
   return (
@@ -16,7 +17,9 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <EmailPasswordAuthForm mode="login" />
+        <Suspense fallback={<p className="text-center text-sm text-gray-500">Loading…</p>}>
+          <LoginForm />
+        </Suspense>
 
         <p className="text-center text-sm">
           <Link href="/signup" className="text-[#10a37f] hover:underline">

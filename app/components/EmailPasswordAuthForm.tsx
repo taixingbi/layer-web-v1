@@ -8,10 +8,14 @@ import { authFetch } from "@/lib/auth-fetch";
 
 type Props = {
   mode: "login" | "signup";
+  /** Where to go after success (default `/chat`). Login page sets from `?next=`. */
+  redirectAfterAuth?: string;
 };
 
-export function EmailPasswordAuthForm({ mode }: Props) {
+export function EmailPasswordAuthForm({ mode, redirectAfterAuth = "/chat" }: Props) {
   const router = useRouter();
+  const afterAuthPath =
+    redirectAfterAuth.trim().startsWith("/") ? redirectAfterAuth.trim() : "/chat";
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,7 +65,7 @@ export function EmailPasswordAuthForm({ mode }: Props) {
         );
         return;
       }
-      router.push("/chat");
+      router.push(afterAuthPath);
       router.refresh();
     } catch {
       setError("Network error. Is the gateway running?");

@@ -11,10 +11,19 @@ type SessionTokens = {
   expires_in?: number | null;
 };
 
+function cookieSecure(): boolean {
+  const raw = process.env.COOKIE_SECURE?.trim().toLowerCase();
+  if (raw === "true" || raw === "1" || raw === "yes") return true;
+  if (raw === "false" || raw === "0" || raw === "no") return false;
+  // LAN / Docker over HTTP: NODE_ENV=production but cookies must not be Secure-only.
+  const appUrl = process.env.APP_URL?.trim() || "";
+  return appUrl.startsWith("https://");
+}
+
 function cookieBase() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: cookieSecure(),
     sameSite: "lax" as const,
     path: "/",
   };
