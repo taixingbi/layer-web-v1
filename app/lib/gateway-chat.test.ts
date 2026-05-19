@@ -1,3 +1,7 @@
+/**
+ * Unit tests for gateway SSE payload parsers in {@link gateway-chat}.
+ */
+
 import { describe, expect, it } from "vitest";
 import { donePayloadFromGatewayData, rewriteTextFromGatewayData } from "./gateway-chat";
 

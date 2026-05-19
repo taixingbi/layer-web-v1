@@ -1,8 +1,14 @@
+/**
+ * Build and truncate conversation history sent to ``POST /api/chat``.
+ */
+
+/** Single turn in gateway chat history (role + content only). */
 export type HistoryMessage = {
   role: "user" | "assistant";
   content: string;
 };
 
+/** In-memory message shape before mapping to {@link HistoryMessage}. */
 export type ChatTurn = {
   role: "user" | "assistant";
   content: string;

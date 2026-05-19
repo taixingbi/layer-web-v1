@@ -1,8 +1,11 @@
+/** BFF: complete password reset from email link tokens; may sign user in via cookies. */
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { gatewayJsonWithAuthLog } from "@/lib/auth-route-log";
 import { applySessionCookies } from "@/lib/auth-session";
 
+/** POST body: ``{ access_token, password, refresh_token? }`` (tokens from URL hash). */
 export async function POST(req: NextRequest) {
   const apiPath = "/api/auth/reset-password";
   const gateway_path = "/auth/reset-password";

@@ -1,3 +1,7 @@
+/**
+ * Unit tests for {@link gatewayResponseLogFields}.
+ */
+
 import { describe, expect, it } from "vitest";
 import { gatewayResponseLogFields } from "./gateway-upstream-log";
 

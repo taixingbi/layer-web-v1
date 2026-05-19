@@ -1,3 +1,7 @@
+/**
+ * Unit tests for log payload shaping ({@link webMeta}, {@link payloadForLog}, chat/feedback helpers).
+ */
+
 import { describe, expect, it } from "vitest";
 import {
   chatClientRequestForLog,

@@ -1,3 +1,7 @@
+/**
+ * Unit tests for {@link buildHistory} and {@link truncateBeforeMessageId}.
+ */
+
 import { describe, expect, it } from "vitest";
 import { buildHistory, truncateBeforeMessageId } from "./chat-history";
 

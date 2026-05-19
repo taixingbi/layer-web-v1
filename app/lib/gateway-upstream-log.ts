@@ -1,3 +1,7 @@
+/**
+ * Extract gateway HTTP response fields for structured BFF logs.
+ */
+
 /** Fields to merge into BFF JSON logs when the gateway HTTP response is available. */
 export function gatewayResponseLogFields(res: Response): Record<string, unknown> {
   const h = res.headers;

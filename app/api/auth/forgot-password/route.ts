@@ -1,14 +1,17 @@
+/** BFF: forgot password — logs email + reset target, proxies to gateway Supabase reset. */
+
 import { NextRequest, NextResponse } from "next/server";
 
 import {
   logAuthGatewayError,
   logAuthGatewayRequest,
   logAuthGatewayResponse,
-  maskIdentifier,
+  logPasswordResetSendLink,
 } from "@/lib/auth-route-log";
 import { passwordResetRedirectUrl } from "@/lib/app-url";
 import { gatewayJson } from "@/lib/gateway-proxy";
 
+/** POST body: ``{ email }`` → gateway ``/auth/forgot-password`` with ``redirect_to``. */
 export async function POST(req: NextRequest) {
   const apiPath = "/api/auth/forgot-password";
   let body: { email?: string };
@@ -23,7 +26,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "email is required" }, { status: 400 });
   }
 
-  const redirect_to = passwordResetRedirectUrl(req);
+  logPasswordResetSendLink({ email, step: "button_clicked" });
+
+  let redirect_to: string;
+  try {
+    redirect_to = passwordResetRedirectUrl(req);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logPasswordResetSendLink({
+      email,
+      step: "resolve_redirect_failed",
+      level: "ERROR",
+      error: message,
+    });
+    return NextResponse.json(
+      {
+        error:
+          "APP_URL is not configured on the web server. Set APP_URL (e.g. http://192.168.86.179:30186).",
+      },
+      { status: 500 },
+    );
+  }
+
+  logPasswordResetSendLink({
+    email,
+    reset_link_target: redirect_to,
+    step: "ready_to_send",
+  });
+
   const gateway_path = "/auth/forgot-password";
   const gateway_payload = { email, redirect_to };
 
@@ -37,6 +67,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     logAuthGatewayError("password_reset_requested", apiPath, gateway_path, gateway_payload, err);
+    logPasswordResetSendLink({
+      email,
+      reset_link_target: redirect_to,
+      step: "gateway_unreachable",
+      level: "ERROR",
+      error: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json(
       { error: "Gateway unreachable. Is layer-gateway-api running?" },
       { status: 502 },
@@ -53,11 +90,18 @@ export async function POST(req: NextRequest) {
     gateway_payload,
     upstream,
     {
-      redirect_to: resolved_redirect_to,
-      email_masked: maskIdentifier(email),
+      email,
+      reset_link_target: resolved_redirect_to,
       outcome: upstream.ok ? "sent" : "failed",
     },
   );
+
+  logPasswordResetSendLink({
+    email,
+    reset_link_target: resolved_redirect_to,
+    step: upstream.ok ? "email_triggered" : "gateway_rejected",
+    level: upstream.ok ? "INFO" : "WARN",
+  });
 
   return NextResponse.json(
     { ...upstream.data, redirect_to: upstream.data.redirect_to ?? redirect_to },

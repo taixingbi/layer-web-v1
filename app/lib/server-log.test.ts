@@ -1,3 +1,7 @@
+/**
+ * Unit tests for structured BFF logging ({@link logWebEvent}, timestamps, field order).
+ */
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   LOG_FIELD_PRIORITY,
@@ -27,9 +31,8 @@ describe("server-log", () => {
 
   it("logWebEvent emits gateway-compatible leading keys", () => {
     const lines: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
-      lines.push(String(chunk));
-      return true;
+    vi.spyOn(console, "error").mockImplementation((...args) => {
+      lines.push(String(args[0]));
     });
 
     logWebEvent("request_received", "INFO", {
@@ -58,9 +61,8 @@ describe("server-log", () => {
 
   it("logWebEvent request_complete uses access phase", () => {
     const lines: string[] = [];
-    vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
-      lines.push(String(chunk));
-      return true;
+    vi.spyOn(console, "error").mockImplementation((...args) => {
+      lines.push(String(args[0]));
     });
 
     logWebEvent("request_complete", "INFO", {

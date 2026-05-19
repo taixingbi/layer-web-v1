@@ -12,6 +12,7 @@ const stubStorage = {
   length: 0,
 };
 
+/** Next.js instrumentation hook: patch broken Node ``localStorage`` at server startup. */
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const g = globalThis as typeof globalThis & { localStorage?: typeof stubStorage };

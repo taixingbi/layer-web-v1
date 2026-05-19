@@ -3,12 +3,14 @@
  * shapes expected by `app/chat/page.tsx` (`status`, `result_chunk`, `error`, `stream_end`).
  */
 
+/** Correlation ids from gateway SSE ``meta`` events. */
 export type GatewayMeta = {
   request_id?: string;
   trace_id?: string;
   session_id?: string;
 };
 
+/** Parse one SSE block (``event:`` + ``data:`` lines) from gateway upstream. */
 export function parseSseBlock(block: string): { event: string; dataRaw: string } | null {
   const lines = block.split("\n").filter((l) => l.length > 0);
   let eventName = "message";
@@ -24,6 +26,7 @@ export function parseSseBlock(block: string): { event: string; dataRaw: string }
   return { event: eventName, dataRaw: dataParts.join("\n") };
 }
 
+/** Extract streamed token text from a gateway ``token`` event JSON payload. */
 export function tokenDeltaFromGatewayData(dataRaw: string): string {
   try {
     const obj = JSON.parse(dataRaw) as { text?: unknown; token?: unknown };
@@ -35,6 +38,7 @@ export function tokenDeltaFromGatewayData(dataRaw: string): string {
   }
 }
 
+/** Extract user-facing error message from gateway ``error`` event JSON. */
 export function errorMessageFromGatewayData(dataRaw: string): string {
   try {
     const obj = JSON.parse(dataRaw) as { error?: { message?: string }; message?: string };
@@ -46,6 +50,7 @@ export function errorMessageFromGatewayData(dataRaw: string): string {
   }
 }
 
+/** Parse request/trace/session ids from gateway ``meta`` event JSON. */
 export function metaFromGatewayData(dataRaw: string): GatewayMeta {
   try {
     const obj = JSON.parse(dataRaw) as Record<string, unknown>;
@@ -59,6 +64,7 @@ export function metaFromGatewayData(dataRaw: string): GatewayMeta {
   }
 }
 
+/** Extract rewritten query text from ``rewrite`` or ``done`` event JSON. */
 export function rewriteTextFromGatewayData(dataRaw: string): string | null {
   try {
     const obj = JSON.parse(dataRaw) as Record<string, unknown>;
@@ -72,6 +78,7 @@ export function rewriteTextFromGatewayData(dataRaw: string): string | null {
   }
 }
 
+/** Parse final answer metadata from gateway ``done`` event JSON. */
 export function donePayloadFromGatewayData(dataRaw: string): {
   rewrite: string | null;
   citations: unknown[];

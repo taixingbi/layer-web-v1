@@ -1,3 +1,7 @@
+/**
+ * Client-only redirect when Supabase lands on Site URL with recovery tokens in the hash.
+ */
+
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";

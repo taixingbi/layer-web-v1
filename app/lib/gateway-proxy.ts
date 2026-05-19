@@ -1,11 +1,19 @@
+/**
+ * Server-side HTTP client for layer-gateway-api (JSON request/response).
+ */
+
 import { config } from "@/lib/config";
 
+/** Parsed JSON response from a gateway ``fetch`` call. */
 export type GatewayJsonResult = {
   ok: boolean;
   status: number;
   data: Record<string, unknown>;
 };
 
+/**
+ * ``fetch`` gateway path and parse JSON body (or wrap non-JSON as ``detail``).
+ */
 export async function gatewayJson(
   path: string,
   init?: RequestInit,

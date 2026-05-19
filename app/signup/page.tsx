@@ -1,9 +1,14 @@
+/**
+ * Account registration page (gateway / Supabase signup).
+ */
+
 "use client";
 
 import Link from "next/link";
 
 import { EmailPasswordAuthForm } from "@/components/EmailPasswordAuthForm";
 
+/** Sign-up route; may require email confirmation before first sign-in. */
 export default function SignupPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">

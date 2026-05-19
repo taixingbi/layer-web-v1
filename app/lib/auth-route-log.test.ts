@@ -1,3 +1,7 @@
+/**
+ * Unit tests for auth log masking ({@link maskIdentifier}, {@link maskGatewayPayload}).
+ */
+
 import { describe, expect, it } from "vitest";
 
 import { maskGatewayPayload, maskIdentifier } from "./auth-route-log";

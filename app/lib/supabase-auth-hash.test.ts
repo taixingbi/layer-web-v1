@@ -1,3 +1,7 @@
+/**
+ * Unit tests for Supabase recovery hash parsing and URL masking.
+ */
+
 import { describe, expect, it } from "vitest";
 
 import { maskPasswordResetLandingUrl, parseSupabaseAuthHash } from "./supabase-auth-hash";

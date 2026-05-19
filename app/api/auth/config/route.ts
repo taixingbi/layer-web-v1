@@ -1,8 +1,15 @@
+/**
+ * Public auth configuration for the UI (Site URL, reset redirect; no secrets).
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { passwordResetRedirectUrl, resolvePublicAppUrl } from "@/lib/app-url";
 
-/** Public auth setup hints for the UI (no secrets). */
+/**
+ * Public auth setup hints for the UI (no secrets).
+ * GET — Site URL and redirect URL for Supabase Dashboard configuration.
+ */
 export async function GET(req: NextRequest) {
   const siteUrl = resolvePublicAppUrl(req);
   const resetPasswordRedirectUrl = passwordResetRedirectUrl(req);

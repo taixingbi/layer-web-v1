@@ -1,13 +1,17 @@
+/** BFF: log masked reset-link landing URL when user opens email link (client-reported). */
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { logWebEvent } from "@/lib/server-log";
 
 const JWT_LIKE = /eyJ[A-Za-z0-9_-]{20,}/;
 
+/** Reject log payloads that still contain JWT-shaped strings. */
 function looksLikeUnmaskedToken(value: string): boolean {
   return JWT_LIKE.test(value);
 }
 
+/** POST body: ``{ landing_url_masked, kind? }``. */
 export async function POST(req: NextRequest) {
   let body: { landing_url_masked?: string; kind?: string };
   try {

@@ -1,3 +1,7 @@
+/**
+ * Resolve gateway bearer token from incoming BFF requests (header or session cookie).
+ */
+
 import type { NextRequest } from "next/server";
 
 import { readLayerAccessTokenFromCookies } from "@/lib/auth-cookie";

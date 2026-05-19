@@ -1,3 +1,7 @@
+/**
+ * Main chat UI: streaming gateway responses, citations, feedback, edit/regenerate.
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -97,6 +101,7 @@ function optionalLayerBearerHeaders(): Record<string, string> {
   return {};
 }
 
+/** Authenticated chat page; proxies messages through ``POST /api/chat``. */
 export default function ChatPage() {
   const router = useRouter();
   const [input, setInput] = useState("");

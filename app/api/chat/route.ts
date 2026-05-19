@@ -1,3 +1,7 @@
+/**
+ * BFF chat route: proxies streaming SSE (or JSON) to layer-gateway-api-v1 with structured logs.
+ */
+
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
@@ -21,7 +25,9 @@ import {
   webMeta,
 } from "@/lib/web-log-payload";
 
+/** Node.js runtime (streaming fetch, structured logging). */
 export const runtime = "nodejs";
+/** Vercel/serverless max duration for long upstream streams (seconds). */
 export const maxDuration = 60;
 
 const SSE_HEADERS = {
@@ -184,6 +190,10 @@ async function pumpGatewayUpstreamToClientEvents(
   };
 }
 
+/**
+ * Stream or buffer chat from gateway; requires session cookie or ``Authorization`` bearer.
+ * Body: ``{ message, conversation_id?, history? }``.
+ */
 export async function POST(req: NextRequest) {
   const t0 = performance.now();
   const { sessionId, requestId, traceId, log: corr } = inboundCorrelation(req);

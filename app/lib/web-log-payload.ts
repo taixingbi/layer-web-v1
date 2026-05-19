@@ -1,7 +1,11 @@
-/** Truncate and shape bodies for structured BFF logs (aligned with gateway ``_payload_for_log``). */
+/**
+ * Truncate and shape request/response bodies for structured BFF logs
+ * (aligned with gateway ``_payload_for_log``).
+ */
 
 const LOG_BODY_MAX_CHARS = 8000;
 
+/** Truncate large JSON payloads for log fields. */
 export function payloadForLog(payload: unknown): unknown {
   if (payload === null || payload === undefined) {
     return payload;
@@ -32,6 +36,7 @@ export function webMeta(parts: Record<string, unknown>): { web_meta?: Record<str
   return Object.keys(meta).length > 0 ? { web_meta: meta } : {};
 }
 
+/** Shape inbound ``POST /api/chat`` body for ``web_meta.web_api_request``. */
 export function chatClientRequestForLog(body: {
   message?: string;
   conversation_id?: string;
@@ -46,10 +51,12 @@ export function chatClientRequestForLog(body: {
   };
 }
 
+/** Shape outbound gateway chat request for logs. */
 export function chatGatewayRequestForLog(body: Record<string, unknown>): Record<string, unknown> {
   return { ...body };
 }
 
+/** Shape non-streaming gateway chat JSON response for logs. */
 export function chatGatewayJsonResponseForLog(json: Record<string, unknown>): Record<string, unknown> {
   return {
     status: "success",
@@ -64,6 +71,7 @@ export function chatGatewayJsonResponseForLog(json: Record<string, unknown>): Re
   };
 }
 
+/** Shape BFF chat response returned to the browser for logs. */
 export function chatClientResponseForLog(parts: {
   response?: string;
   rewrite?: string | null;
@@ -88,6 +96,7 @@ export function chatClientResponseForLog(parts: {
   };
 }
 
+/** Shape inbound ``POST /api/feedback`` body for logs. */
 export function feedbackClientRequestForLog(body: Record<string, unknown>): Record<string, unknown> {
   return {
     run_id: body.run_id,
@@ -99,6 +108,7 @@ export function feedbackClientRequestForLog(body: Record<string, unknown>): Reco
   };
 }
 
+/** Shape outbound gateway feedback request for logs. */
 export function feedbackGatewayRequestForLog(body: Record<string, unknown>): Record<string, unknown> {
   return { ...body };
 }

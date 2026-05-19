@@ -1,3 +1,7 @@
+/**
+ * Set a new password after Supabase recovery email (hash tokens in URL).
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -8,6 +12,7 @@ import { authFetch } from "@/lib/auth-fetch";
 import { reportResetLinkOpened } from "@/lib/report-reset-link-opened";
 import { hashErrorMessage, parseSupabaseAuthHash } from "@/lib/supabase-auth-hash";
 
+/** Parses recovery hash, reports link-opened for logs, posts new password to BFF. */
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [tokens, setTokens] = useState<{ access_token: string; refresh_token: string } | null>(null);

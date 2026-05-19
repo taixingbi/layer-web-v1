@@ -19,6 +19,7 @@ function intEnv(name: string, fallback: number, max: number): number {
 
 let cachedGatewayBaseUrl: string | null = null;
 
+/** Server-side environment-backed settings (gateway URL, cookies, public app URL). */
 export const config = {
   /** layer-gateway-api-v1 origin (no trailing slash). Default matches local gateway in docs/smoke-test.md */
   get gatewayBaseUrl(): string {

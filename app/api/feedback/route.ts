@@ -1,3 +1,7 @@
+/**
+ * BFF feedback route: thumbs up/down and reasons proxied to the gateway with structured logs.
+ */
+
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
@@ -11,6 +15,7 @@ import {
   webMeta,
 } from "@/lib/web-log-payload";
 
+/** Node.js runtime for gateway proxy and logging. */
 export const runtime = "nodejs";
 
 const VALID_FEEDBACK_TYPES = new Set(["thumbs_up", "thumbs_down"] as const);
@@ -50,6 +55,10 @@ function inboundCorrelation(req: NextRequest): {
   return { sessionId, requestId, traceId, log };
 }
 
+/**
+ * Submit message feedback (thumbs, optional reason/comment) to the gateway.
+ * Body: ``{ run_id, request_id?, feedback_type, reason?, question?, comment? }``.
+ */
 export async function POST(req: NextRequest) {
   const t0 = performance.now();
   const { log: corr } = inboundCorrelation(req);

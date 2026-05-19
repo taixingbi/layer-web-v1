@@ -1,3 +1,7 @@
+/**
+ * Shared email/password form for login and signup (proxies to auth BFF routes).
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -6,12 +10,14 @@ import { useState } from "react";
 
 import { authFetch } from "@/lib/auth-fetch";
 
+/** Props for {@link EmailPasswordAuthForm}. */
 type Props = {
   mode: "login" | "signup";
   /** Where to go after success (default `/chat`). Login page sets from `?next=`. */
   redirectAfterAuth?: string;
 };
 
+/** Login or signup form; sets session cookies via BFF on success. */
 export function EmailPasswordAuthForm({ mode, redirectAfterAuth = "/chat" }: Props) {
   const router = useRouter();
   const afterAuthPath =

@@ -1,3 +1,7 @@
+/**
+ * Sign-in page: email/username + password via BFF session cookies.
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -5,6 +9,7 @@ import { Suspense } from "react";
 
 import { LoginForm } from "./LoginForm";
 
+/** Login route with optional ``?next=`` redirect after success. */
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">

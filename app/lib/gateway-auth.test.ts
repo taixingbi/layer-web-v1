@@ -1,3 +1,7 @@
+/**
+ * Unit tests for {@link resolveGatewayBearer} (header vs cookie precedence).
+ */
+
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 

@@ -1,3 +1,7 @@
+/**
+ * Request a password-reset email via the auth BFF and gateway.
+ */
+
 "use client";
 
 import Link from "next/link";
@@ -5,11 +9,13 @@ import { useEffect, useState } from "react";
 
 import { authFetch } from "@/lib/auth-fetch";
 
+/** Public auth config from ``GET /api/auth/config`` (redirect URLs, Supabase hints). */
 type AuthConfig = {
   resetPasswordRedirectUrl?: string;
   supabaseSetup?: { siteUrl?: string; redirectUrls?: string[]; note?: string };
 };
 
+/** Forgot-password form and optional Supabase URL setup hints. */
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);

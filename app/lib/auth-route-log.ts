@@ -1,10 +1,14 @@
 /**
  * Structured auth BFF logging (server-only).
+ * Masks secrets in payloads; emits gateway-compatible JSON via logWebEvent.
  */
 
 import { gatewayJson, type GatewayJsonResult } from "@/lib/gateway-proxy";
 import { logWebEvent, type WebLogLevel } from "@/lib/server-log";
 
+/**
+ * Mask email local-part or username for logs (``***@example.com``).
+ */
 export function maskIdentifier(value: string): string {
   const s = value.trim();
   const at = s.indexOf("@");
@@ -12,7 +16,9 @@ export function maskIdentifier(value: string): string {
   return "***";
 }
 
-/** Redact secrets before logging gateway request bodies. */
+/**
+ * Redact tokens and password before logging gateway request bodies.
+ */
 export function maskGatewayPayload(payload: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...payload };
   if (typeof out.access_token === "string" && out.access_token) out.access_token = "...";
@@ -21,6 +27,31 @@ export function maskGatewayPayload(payload: Record<string, unknown>): Record<str
   return out;
 }
 
+/**
+ * Log forgot-password flow step with full email and target URL (debug).
+ */
+export function logPasswordResetSendLink(fields: {
+  email: string;
+  reset_link_target?: string;
+  step: string;
+  level?: WebLogLevel;
+  error?: string;
+}): void {
+  const { email, reset_link_target, step, level = "INFO", error } = fields;
+  logWebEvent("password_reset_send_link", level, {
+    phase: "auth",
+    path: "/api/auth/forgot-password",
+    method: "POST",
+    email,
+    ...(reset_link_target ? { reset_link_target } : {}),
+    step,
+    ...(error ? { error } : {}),
+  });
+}
+
+/**
+ * Log outgoing auth request to gateway (masked payload).
+ */
 export function logAuthGatewayRequest(
   apiPath: string,
   gatewayPath: string,
@@ -35,6 +66,9 @@ export function logAuthGatewayRequest(
   });
 }
 
+/**
+ * Log gateway auth response (status, masked payload, optional extra fields).
+ */
 export function logAuthGatewayResponse(
   event: string,
   apiPath: string,
@@ -57,6 +91,9 @@ export function logAuthGatewayResponse(
   });
 }
 
+/**
+ * Log gateway unreachable or network failure for an auth call.
+ */
 export function logAuthGatewayError(
   event: string,
   apiPath: string,
@@ -75,6 +112,9 @@ export function logAuthGatewayError(
   });
 }
 
+/**
+ * Call gateway with JSON body and emit request/response (or error) auth logs.
+ */
 export async function gatewayJsonWithAuthLog(
   event: string,
   apiPath: string,

@@ -1,14 +1,22 @@
+/**
+ * Public app URL helpers for redirects and Supabase configuration hints.
+ */
+
 import type { NextRequest } from "next/server";
 
 import { config } from "@/lib/config";
 
 const RESET_PASSWORD_PATH = "/auth/reset-password";
 
+/** Remove trailing slash from a URL string. */
 function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, "");
 }
 
-/** Public web origin (no trailing slash). APP_URL env, else request Origin / forwarded headers. */
+/**
+ * Public web origin without trailing slash.
+ * Uses ``APP_URL``, else request ``Origin`` / ``Host`` / forwarded headers.
+ */
 export function resolvePublicAppUrl(req?: NextRequest): string {
   const fromEnv = config.appUrl;
   if (fromEnv) return fromEnv;
@@ -29,6 +37,7 @@ export function resolvePublicAppUrl(req?: NextRequest): string {
   );
 }
 
+/** Full password-reset landing URL passed to Supabase as ``redirect_to``. */
 export function passwordResetRedirectUrl(req?: NextRequest): string {
   return `${resolvePublicAppUrl(req)}${RESET_PASSWORD_PATH}`;
 }

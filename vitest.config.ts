@@ -1,3 +1,7 @@
+/**
+ * Vitest configuration for unit tests under ``app/`` with ``@`` path alias.
+ */
+
 import { defineConfig } from "vitest/config";
 import path from "path";
 

@@ -1,8 +1,11 @@
+/** BFF: register account; sets session cookies when Supabase returns tokens immediately. */
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { gatewayJsonWithAuthLog, maskIdentifier } from "@/lib/auth-route-log";
 import { applySessionCookies } from "@/lib/auth-session";
 
+/** POST body: ``{ email, password, username? }``. */
 export async function POST(req: NextRequest) {
   const apiPath = "/api/auth/signup";
   const gateway_path = "/auth/signup";

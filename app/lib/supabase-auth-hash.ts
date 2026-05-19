@@ -1,9 +1,13 @@
-/** Parse Supabase Auth redirect hash (#access_token=… or #error=…). */
+/** Parse and mask Supabase Auth redirect hash fragments (#access_token=… or #error=…). */
 
+/** Parsed Supabase Auth redirect hash (session tokens or error). */
 export type SupabaseAuthHash =
   | { kind: "session"; access_token: string; refresh_token: string }
   | { kind: "error"; code: string; description: string };
 
+/**
+ * Parse URL hash from Supabase email redirect into session tokens or error.
+ */
 export function parseSupabaseAuthHash(hash: string): SupabaseAuthHash | null {
   const raw = hash.startsWith("#") ? hash.slice(1) : hash;
   if (!raw) return null;
@@ -27,7 +31,9 @@ export function parseSupabaseAuthHash(hash: string): SupabaseAuthHash | null {
   };
 }
 
-/** Masked landing URL for logs — never includes real tokens. */
+/**
+ * Build a log-safe landing URL (literal ``...`` placeholders, never real tokens).
+ */
 export function maskPasswordResetLandingUrl(pageUrl: string, hash: string): string {
   const base = pageUrl.split("#")[0];
   const parsed = parseSupabaseAuthHash(hash);
@@ -42,6 +48,7 @@ export function maskPasswordResetLandingUrl(pageUrl: string, hash: string): stri
   return `${base}#access_token=...&refresh_token=...&type=${type}`;
 }
 
+/** User-facing message for hash error codes (e.g. ``otp_expired``). */
 export function hashErrorMessage(parsed: Extract<SupabaseAuthHash, { kind: "error" }>): string {
   if (parsed.code === "otp_expired") {
     return "This reset link has expired or was already used. Request a new one (use only the latest email).";

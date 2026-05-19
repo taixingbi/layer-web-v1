@@ -1,8 +1,11 @@
+/** BFF: login with identifier (email or username) + password; sets httpOnly session cookies. */
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { gatewayJsonWithAuthLog, logAuthGatewayError, maskIdentifier } from "@/lib/auth-route-log";
 import { applySessionCookies } from "@/lib/auth-session";
 
+/** POST body: ``{ identifier, password }`` (or legacy ``email``). */
 export async function POST(req: NextRequest) {
   const apiPath = "/api/auth/login";
   const gateway_path = "/auth/login";

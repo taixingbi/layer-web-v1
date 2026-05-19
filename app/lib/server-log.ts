@@ -56,6 +56,7 @@ const EVENT_PHASE: Record<string, string> = {
   auth_logout_completed: "auth",
   auth_session_checked: "auth",
   password_reset_link_opened: "auth",
+  password_reset_send_link: "auth",
   password_reset_gateway_request: "auth",
   password_reset_requested: "auth",
 };
@@ -77,18 +78,22 @@ const EVENT_MESSAGE: Record<string, string> = {
   auth_logout_completed: "Auth logout completed",
   auth_session_checked: "Auth session checked",
   password_reset_link_opened: "Password reset link opened",
+  password_reset_send_link: "Password reset send link",
   password_reset_gateway_request: "Password reset gateway request",
   password_reset_requested: "Password reset requested",
 };
 
+/** Map machine event name to log phase (ingress, auth, upstream, …). */
 export function phaseForEvent(event: string): string {
   return EVENT_PHASE[event] ?? "system";
 }
 
+/** Human-readable message for a machine event name. */
 export function messageForEvent(event: string): string {
   return EVENT_MESSAGE[event] ?? event;
 }
 
+/** Format date as Eastern wall-clock ``YYYY-MM-DDTHH:mm:ss`` (no offset). */
 function easternWallIso(d: Date): string {
   return d
     .toLocaleString("sv-SE", {
@@ -104,6 +109,7 @@ function easternWallIso(d: Date): string {
     .replace(" ", "T");
 }
 
+/** Format Eastern offset suffix ``-04:00`` for log timestamps. */
 function easternTimeZoneOffsetIso(d: Date): string {
   const raw = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
@@ -125,6 +131,7 @@ export function easternNowIsoSeconds(date = new Date()): string {
   return `${easternWallIso(date)}${easternTimeZoneOffsetIso(date)}`;
 }
 
+/** Order JSON keys to match gateway ``LOG_FIELD_PRIORITY`` then sorted remainder. */
 function orderLogFields(row: Record<string, unknown>): Record<string, unknown> {
   const ordered: Record<string, unknown> = {};
   const seen = new Set<string>();
@@ -144,6 +151,7 @@ function orderLogFields(row: Record<string, unknown>): Record<string, unknown> {
   return ordered;
 }
 
+/** Severity for structured BFF log lines. */
 export type WebLogLevel = "INFO" | "WARN" | "ERROR";
 
 /**
@@ -178,5 +186,6 @@ export function logWebEvent(
     service: typeof svcOverride === "string" && svcOverride ? svcOverride : config.webServiceName,
     ...rest,
   };
-  process.stdout.write(`${JSON.stringify(orderLogFields(row))}\n`);
+  // stderr: unbuffered in Docker/k8s (stdout can batch when not a TTY).
+  console.error(JSON.stringify(orderLogFields(row)));
 }
