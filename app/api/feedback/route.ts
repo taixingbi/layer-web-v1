@@ -1,10 +1,11 @@
 /**
- * BFF feedback route: thumbs up/down and reasons proxied to the gateway with structured logs.
+ * BFF feedback route: persists message feedback on the gateway (Supabase message_feedback).
  */
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
+import { buildGatewayFeedbackBody, type FeedbackClientBody } from "@/lib/feedback";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
 import { logWebEvent } from "@/lib/server-log";
@@ -15,10 +16,9 @@ import {
   webMeta,
 } from "@/lib/web-log-payload";
 
-/** Node.js runtime for gateway proxy and logging. */
 export const runtime = "nodejs";
 
-const VALID_FEEDBACK_TYPES = new Set(["thumbs_up", "thumbs_down"] as const);
+const VALID_RATINGS = new Set(["thumbs_up", "thumbs_down"] as const);
 const THUMBS_DOWN_REASONS = new Set([
   "not_factually_correct",
   "didnt_follow_instructions",
@@ -26,98 +26,73 @@ const THUMBS_DOWN_REASONS = new Set([
   "wrong_language",
   "other",
 ]);
-/** Maps UI reasons to gateway `feedback_type` strings (see gateway FeedbackRequest). */
-const REASON_TO_FEEDBACK_TYPE: Record<string, string> = {
-  not_factually_correct: "not_factual",
-  didnt_follow_instructions: "incomplete_instructions",
-  offensive_unsafe: "unsafe",
-  wrong_language: "not_relevant",
-  other: "other",
-};
 
 function msSince(start: number): number {
   return Math.round((performance.now() - start) * 1000) / 1000;
 }
 
-function inboundCorrelation(req: NextRequest): {
-  sessionId: string;
-  requestId: string;
-  traceId: string;
-  log: Record<string, string>;
-} {
-  const sessionId = (req.headers.get("x-session-id") || "").trim();
-  const requestId = (req.headers.get("x-request-id") || "").trim();
-  const traceId = (req.headers.get("x-trace-id") || "").trim();
-  const log: Record<string, string> = {};
-  if (sessionId) log.session_id = sessionId;
-  if (requestId) log.request_id = requestId;
-  if (traceId) log.trace_id = traceId;
-  return { sessionId, requestId, traceId, log };
-}
-
 /**
- * Submit message feedback (thumbs, optional reason/comment) to the gateway.
- * Body: ``{ run_id, request_id?, feedback_type, reason?, question?, comment? }``.
+ * Submit message feedback.
+ * Body: ``{ message_id, conversation_id, feedback_type|rating, reason?, comment?, run_id?, ... }``.
  */
 export async function POST(req: NextRequest) {
   const t0 = performance.now();
-  const { log: corr } = inboundCorrelation(req);
   const baseLog: Record<string, unknown> = {
     path: "/api/feedback",
     method: "POST",
     backend: "gateway",
-    ...corr,
   };
 
   logWebEvent("request_received", "INFO", baseLog);
 
-  const body = (await req.json()) as {
-    run_id?: string;
-    request_id?: string;
+  const body = (await req.json()) as FeedbackClientBody & {
     feedback_type?: "thumbs_up" | "thumbs_down";
-    reason?: string;
-    question?: string;
-    comment?: string;
   };
-  if (!body.run_id) {
+
+  const rating =
+    body.rating ??
+    (body.feedback_type && VALID_RATINGS.has(body.feedback_type) ? body.feedback_type : undefined);
+
+  const messageId = body.message_id?.trim() || "";
+  const conversationId =
+    body.conversation_id?.trim() || req.headers.get("x-conversation-id")?.trim() || "";
+  const normalizedBody: FeedbackClientBody = {
+    ...body,
+    message_id: messageId,
+    conversation_id: conversationId,
+    rating,
+  };
+
+  if (!messageId || !conversationId) {
     logWebEvent("request_complete", "WARN", {
       ...baseLog,
       status: 400,
-      stream: false,
       latency_ms: msSince(t0),
-      error: "missing_run_id",
+      error: "missing_message_or_conversation",
     });
-    return NextResponse.json({ error: "Missing run_id" }, { status: 400 });
+    return NextResponse.json(
+      { error: "message_id and conversation_id are required" },
+      { status: 400 },
+    );
   }
-  if (body.feedback_type !== undefined && !VALID_FEEDBACK_TYPES.has(body.feedback_type)) {
-    logWebEvent("request_complete", "WARN", {
-      ...baseLog,
-      status: 400,
-      stream: false,
-      latency_ms: msSince(t0),
-      error: "invalid_feedback_type",
-    });
-    return NextResponse.json({ error: "feedback_type must be thumbs_up or thumbs_down" }, { status: 400 });
+
+  if (rating !== undefined && !VALID_RATINGS.has(rating)) {
+    return NextResponse.json({ error: "rating must be thumbs_up or thumbs_down" }, { status: 400 });
   }
-  if (body.feedback_type === "thumbs_down" && body.reason !== undefined && !THUMBS_DOWN_REASONS.has(body.reason)) {
-    logWebEvent("request_complete", "WARN", {
-      ...baseLog,
-      status: 400,
-      stream: false,
-      latency_ms: msSince(t0),
-      error: "invalid_reason",
-    });
+  if (rating === "thumbs_down" && body.reason !== undefined && !THUMBS_DOWN_REASONS.has(body.reason)) {
     return NextResponse.json({ error: "Invalid reason" }, { status: 400 });
   }
 
-  const rating = body.feedback_type === "thumbs_up" ? "thumbs_up" : "thumbs_down";
+  const gatewayBody = buildGatewayFeedbackBody(normalizedBody);
+  if (!gatewayBody) {
+    return NextResponse.json({ error: "Invalid feedback payload" }, { status: 400 });
+  }
 
   const token = resolveGatewayBearer(req);
   if (!token) {
     logWebEvent("request_complete", "WARN", {
       ...baseLog,
       status: 401,
-      stream: false,
       latency_ms: msSince(t0),
       error: "missing_gateway_token",
     });
@@ -126,33 +101,19 @@ export async function POST(req: NextRequest) {
         error:
           "Missing bearer for gateway. Sign in at /login so the session cookie is sent, or send Authorization: Bearer <access_token>.",
       },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
-  const gatewayBody: Record<string, unknown> = {
-    trace_id: body.run_id,
-    rating,
-  };
-  if (body.request_id) gatewayBody.request_id = body.request_id;
-  if (body.feedback_type === "thumbs_down" && body.reason) {
-    gatewayBody.feedback_type = REASON_TO_FEEDBACK_TYPE[body.reason] ?? body.reason;
-  }
-  if (body.comment) gatewayBody.comment = body.comment;
-  if (body.question) gatewayBody.question = body.question;
-
   logWebEvent("request_validated", "INFO", {
     ...baseLog,
-    ...webMeta({
-      web_api_request: feedbackClientRequestForLog(body),
-    }),
+    conversation_id: conversationId,
+    ...webMeta({ web_api_request: feedbackClientRequestForLog(normalizedBody) }),
   });
 
   logWebEvent("gateway_api_request", "INFO", {
     ...baseLog,
-    ...webMeta({
-      gateway_api_request: feedbackGatewayRequestForLog(gatewayBody),
-    }),
+    ...webMeta({ gateway_api_request: feedbackGatewayRequestForLog(gatewayBody) }),
   });
 
   try {
@@ -161,6 +122,7 @@ export async function POST(req: NextRequest) {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        ...(conversationId ? { "X-Conversation-Id": conversationId } : {}),
       },
       body: JSON.stringify(gatewayBody),
       signal: AbortSignal.timeout(10_000),
@@ -181,55 +143,43 @@ export async function POST(req: NextRequest) {
     }
 
     if (!res.ok) {
-      logWebEvent("gateway_api_response", "WARN", {
-        ...baseLog,
-        status: res.status,
-        stream: false,
-        ...webMeta({
-          gateway_api_response: gatewayResponseBody,
-        }),
-      });
       logWebEvent("request_complete", "WARN", {
         ...baseLog,
         status: res.status,
-        stream: false,
         latency_ms: msSince(t0),
         error: responseText.slice(0, 500),
-        ...webMeta({
-          web_api_response: { status: "error", body: gatewayResponseBody },
-        }),
       });
       try {
-        const parsed = JSON.parse(responseText || "{}") as { detail?: unknown };
+        const parsed = JSON.parse(responseText || "{}") as {
+          detail?: unknown;
+          errors?: Array<{ msg?: string; loc?: unknown[] }>;
+        };
+        let errMsg = responseText || res.statusText;
+        if (typeof parsed.detail === "string") {
+          errMsg = parsed.detail;
+        } else if (Array.isArray(parsed.errors) && parsed.errors[0]?.msg) {
+          errMsg = parsed.errors[0].msg;
+        }
         return NextResponse.json(
-          { error: typeof parsed.detail === "string" ? parsed.detail : responseText || res.statusText },
-          { status: res.status === 401 ? 401 : 502 }
+          { error: errMsg },
+          { status: res.status === 401 ? 401 : res.status >= 500 ? 502 : res.status },
         );
       } catch {
         return NextResponse.json({ error: responseText || res.statusText }, { status: 502 });
       }
     }
-    logWebEvent("gateway_api_response", "INFO", {
-      ...baseLog,
-      status: res.status,
-      stream: false,
-      ...webMeta({
-        gateway_api_response:
-          res.status === 204 ? { status: 204, body: null } : gatewayResponseBody,
-      }),
-    });
+
     logWebEvent("request_complete", "INFO", {
       ...baseLog,
       status: res.status,
-      stream: false,
       latency_ms: msSince(t0),
       ...webMeta({
-        web_api_response:
-          res.status === 204
-            ? { status: 204 }
-            : { status: res.status, body: payloadForLog(gatewayResponseBody) },
+        web_api_response: payloadForLog(
+          res.status === 204 ? { status: 204 } : gatewayResponseBody,
+        ),
       }),
     });
+
     if (res.status === 204) {
       return new NextResponse(null, { status: 204 });
     }
@@ -243,7 +193,6 @@ export async function POST(req: NextRequest) {
     logWebEvent("request_complete", "ERROR", {
       ...baseLog,
       status: 502,
-      stream: false,
       latency_ms: msSince(t0),
       error: msg,
     });

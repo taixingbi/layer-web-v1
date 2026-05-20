@@ -9,6 +9,7 @@ export type GatewayMeta = {
   trace_id?: string;
   session_id?: string;
   conversation_id?: string;
+  assistant_message_id?: string;
 };
 
 /** Parse one SSE block (``event:`` + ``data:`` lines) from gateway upstream. */
@@ -61,6 +62,8 @@ export function metaFromGatewayData(dataRaw: string): GatewayMeta {
       session_id: typeof obj.session_id === "string" ? obj.session_id : undefined,
       conversation_id:
         typeof obj.conversation_id === "string" ? obj.conversation_id : undefined,
+      assistant_message_id:
+        typeof obj.assistant_message_id === "string" ? obj.assistant_message_id : undefined,
     };
   } catch {
     return {};
@@ -86,6 +89,7 @@ export function donePayloadFromGatewayData(dataRaw: string): {
   rewrite: string | null;
   citations: unknown[];
   follow_up_questions: string[];
+  assistant_message_id: string | null;
 } {
   try {
     const obj = JSON.parse(dataRaw) as Record<string, unknown>;
@@ -94,8 +98,12 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       ? obj.follow_up_questions.filter((q): q is string => typeof q === "string")
       : [];
     const rewrite = rewriteTextFromGatewayData(dataRaw);
-    return { rewrite, citations, follow_up_questions };
+    const assistant_message_id =
+      typeof obj.assistant_message_id === "string" && obj.assistant_message_id.trim()
+        ? obj.assistant_message_id.trim()
+        : null;
+    return { rewrite, citations, follow_up_questions, assistant_message_id };
   } catch {
-    return { rewrite: null, citations: [], follow_up_questions: [] };
+    return { rewrite: null, citations: [], follow_up_questions: [], assistant_message_id: null };
   }
 }

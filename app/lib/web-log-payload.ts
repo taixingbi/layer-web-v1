@@ -99,6 +99,9 @@ export function chatClientResponseForLog(parts: {
 /** Shape inbound ``POST /api/feedback`` body for logs. */
 export function feedbackClientRequestForLog(body: Record<string, unknown>): Record<string, unknown> {
   return {
+    has_message_id: typeof body.message_id === "string" && body.message_id.trim().length > 0,
+    has_conversation_id:
+      typeof body.conversation_id === "string" && body.conversation_id.trim().length > 0,
     run_id: body.run_id,
     request_id: body.request_id,
     feedback_type: body.feedback_type,

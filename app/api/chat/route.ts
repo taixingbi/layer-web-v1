@@ -97,8 +97,14 @@ async function pumpGatewayUpstreamToClientEvents(
     if (!parsed) return;
     const ev = parsed.event.toLowerCase();
     if (ev === "meta") {
-      Object.assign(meta, metaFromGatewayData(parsed.dataRaw));
-      send("status", "thinking");
+      const chunkMeta = metaFromGatewayData(parsed.dataRaw);
+      Object.assign(meta, chunkMeta);
+      if (chunkMeta.assistant_message_id) {
+        send("assistant_message_id", { assistant_message_id: chunkMeta.assistant_message_id });
+      }
+      if (!chunkMeta.assistant_message_id) {
+        send("status", "thinking");
+      }
     } else if (ev === "rewrite") {
       const text = rewriteTextFromGatewayData(parsed.dataRaw);
       if (text) {
@@ -126,6 +132,9 @@ async function pumpGatewayUpstreamToClientEvents(
       const effectiveRewrite = rewrite ?? done.rewrite;
       lastCitations = done.citations;
       lastFollowUps = done.follow_up_questions;
+      if (done.assistant_message_id) {
+        meta.assistant_message_id = done.assistant_message_id;
+      }
       if (logFields) {
         logWebEvent("stream_end", "INFO", {
           ...logFields,
@@ -167,6 +176,9 @@ async function pumpGatewayUpstreamToClientEvents(
         trace_id: meta.trace_id ?? "",
         session_id: meta.session_id ?? "",
         ...(meta.conversation_id ? { conversation_id: meta.conversation_id } : {}),
+        ...(meta.assistant_message_id
+          ? { assistant_message_id: meta.assistant_message_id }
+          : {}),
         citations: done.citations,
         follow_up_questions: done.follow_up_questions,
       });
@@ -374,6 +386,10 @@ export async function POST(req: NextRequest) {
       ...(typeof json.conversation_id === "string" && json.conversation_id.trim()
         ? { conversation_id: json.conversation_id.trim() }
         : {}),
+      ...(typeof json.assistant_message_id === "string" && json.assistant_message_id.trim()
+        ? { assistant_message_id: json.assistant_message_id.trim() }
+        : {}),
+      rewrite: typeof json.rewrite === "string" ? json.rewrite : null,
       citations: json.citations,
       follow_up_questions: json.follow_up_questions,
     };

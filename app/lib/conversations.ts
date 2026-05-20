@@ -12,9 +12,16 @@ export type ConversationSummary = {
 
 /** One persisted turn from ``GET /api/conversations/{id}/messages``. */
 export type StoredMessage = {
-  id?: number | null;
+  id?: string | null;
   role: "user" | "assistant" | string;
   content: string;
+  status?: string | null;
+  metadata?: {
+    rewrite?: string;
+    citations?: Array<Record<string, unknown>>;
+    follow_up_questions?: string[];
+    model?: string;
+  } | null;
   created_at?: string | null;
 };
 
@@ -81,15 +88,40 @@ export function conversationLabel(
   return fallback;
 }
 
+/** UUID from a client id like ``db-<uuid>``. */
+export function dbMessageIdFromClientId(clientId: string): string | null {
+  if (clientId.startsWith("db-")) {
+    const raw = clientId.slice(3).trim();
+    return raw || null;
+  }
+  return null;
+}
+
 /** Map API messages to in-memory chat turns (client ids for React keys). */
 export function storedMessagesToChatTurns(
   messages: StoredMessage[],
-): Array<{ id: string; role: "user" | "assistant"; content: string }> {
+): Array<{
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  db_message_id?: string;
+  model?: string;
+}> {
   return messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && m.content.trim())
-    .map((m, i) => ({
-      id: m.id != null ? `db-${m.id}` : `hist-${i}-${m.role}`,
-      role: m.role as "user" | "assistant",
-      content: m.content.trim(),
-    }));
+    .map((m, i) => {
+      const dbId =
+        typeof m.id === "string" && m.id.trim()
+          ? m.id.trim()
+          : typeof m.id === "number"
+            ? String(m.id)
+            : null;
+      return {
+        id: dbId ? `db-${dbId}` : `hist-${i}-${m.role}`,
+        role: m.role as "user" | "assistant",
+        content: m.content.trim(),
+        ...(dbId ? { db_message_id: dbId } : {}),
+        ...(m.metadata?.model ? { model: m.metadata.model } : {}),
+      };
+    });
 }

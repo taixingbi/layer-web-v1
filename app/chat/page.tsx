@@ -17,6 +17,7 @@ import {
   type ConversationListResponse,
   type ConversationMessagesResponse,
   type ConversationSummary,
+  dbMessageIdFromClientId,
   getActiveConversationId,
   setActiveConversationId as persistActiveConversationId,
   storedMessagesToChatTurns,
@@ -31,6 +32,9 @@ type Message = {
   rewrite?: string;
   run_id?: string;
   request_id?: string;
+  db_message_id?: string;
+  model?: string;
+  route?: string;
   citations?: Citation[];
   follow_up_questions?: string[];
 };
@@ -285,28 +289,100 @@ export default function ChatPage() {
     [messages]
   );
 
-  const handleThumbsUp = useCallback(async (message: Message) => {
-    if (!message.run_id) return;
-    try {
-      await authFetch("/api/feedback", {
+  const applyDbMessageIdToAssistant = useCallback((dbId: string, preferMessageId?: string) => {
+    setMessages((prev) => {
+      let targetIdx = -1;
+      if (preferMessageId) {
+        targetIdx = prev.findIndex((m) => m.id === preferMessageId);
+      }
+      if (targetIdx < 0) {
+        for (let i = prev.length - 1; i >= 0; i -= 1) {
+          if (prev[i]?.role === "assistant") {
+            targetIdx = i;
+            break;
+          }
+        }
+      }
+      if (targetIdx < 0) return prev;
+      return prev.map((m, i) =>
+        i === targetIdx ? { ...m, db_message_id: dbId, id: `db-${dbId}` } : m,
+      );
+    });
+  }, []);
+
+  const submitMessageFeedback = useCallback(
+    async (
+      message: Message,
+      opts: {
+        rating: "thumbs_up" | "thumbs_down";
+        reason?: string;
+        comment?: string;
+        question?: string;
+      },
+    ) => {
+      const conversationId =
+        activeConversationIdRef.current ?? getActiveConversationId();
+      const messageId = message.db_message_id ?? dbMessageIdFromClientId(message.id);
+      if (!conversationId || !messageId) {
+        throw new Error("Feedback unavailable until this reply is saved to your conversation.");
+      }
+      const res = await authFetch("/api/feedback", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...optionalLayerBearerHeaders() },
+        headers: {
+          "Content-Type": "application/json",
+          ...optionalLayerBearerHeaders(),
+          "X-Conversation-Id": conversationId,
+        },
         body: JSON.stringify({
+          message_id: messageId,
+          conversation_id: conversationId,
+          rating: opts.rating,
           run_id: message.run_id,
           request_id: message.request_id,
-          feedback_type: "thumbs_up",
+          ...(opts.reason ? { reason: opts.reason } : {}),
+          ...(opts.comment ? { comment: opts.comment } : {}),
+          ...(opts.question ? { question: opts.question } : {}),
+          ...(message.model ? { model: message.model } : {}),
+          ...(message.route ? { route: message.route } : {}),
         }),
       });
+      if (!res.ok) {
+        let detail = `Feedback failed (${res.status})`;
+        try {
+          const j = (await res.json()) as { error?: string; detail?: string };
+          detail = typeof j.detail === "string" ? j.detail : typeof j.error === "string" ? j.error : detail;
+        } catch {
+          /* keep generic */
+        }
+        throw new Error(detail);
+      }
+      return true;
+    },
+    [],
+  );
+
+  const feedbackReady = useCallback((message: Message) => {
+    const conversationId =
+      activeConversationIdRef.current ?? getActiveConversationId();
+    const messageId = message.db_message_id ?? dbMessageIdFromClientId(message.id);
+    return Boolean(conversationId && messageId);
+  }, []);
+
+  const handleThumbsUp = useCallback(async (message: Message) => {
+    if (!feedbackReady(message)) return;
+    try {
+      await submitMessageFeedback(message, { rating: "thumbs_up" });
       setThumbsUp((prev) => new Set(prev).add(message.id));
       setThumbsDown((prev) => {
         const next = new Set(prev);
         next.delete(message.id);
         return next;
       });
-    } catch {
-      // ignore
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Feedback failed";
+      setStatus(msg);
     }
-  }, []);
+  }, [feedbackReady, submitMessageFeedback]);
 
   const handleThumbsDown = useCallback((message: Message) => {
     const idx = messages.findIndex((m) => m.id === message.id);
@@ -317,20 +393,15 @@ export default function ChatPage() {
 
   const handleFeedbackReason = useCallback(
     async (reason: string) => {
-      if (!feedbackModal?.runId) return;
+      const msg = messages.find((m) => m.id === feedbackModal?.messageId);
+      if (!msg) return;
       const comment = feedbackComment.trim() || undefined;
       try {
-        await authFetch("/api/feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...optionalLayerBearerHeaders() },
-          body: JSON.stringify({
-            run_id: feedbackModal.runId,
-            request_id: messages.find((m) => m.id === feedbackModal.messageId)?.request_id,
-            feedback_type: "thumbs_down",
-            reason,
-            question: feedbackModal.question,
-            ...(comment && { comment }),
-          }),
+        await submitMessageFeedback(msg, {
+          rating: "thumbs_down",
+          reason,
+          comment,
+          question: feedbackModal?.question,
         });
         setThumbsDown((prev) => new Set(prev).add(feedbackModal.messageId));
         setThumbsUp((prev) => {
@@ -345,7 +416,7 @@ export default function ChatPage() {
         setFeedbackComment("");
       }
     },
-    [feedbackModal, feedbackComment, messages]
+    [feedbackModal, feedbackComment, messages, submitMessageFeedback]
   );
 
   const handleCopy = useCallback(async (text: string) => {
@@ -393,6 +464,17 @@ export default function ChatPage() {
   }, [clearStreamingAssistant]);
 
   const handleSSEEvent = useCallback((event: string, data: unknown) => {
+    if (event === "assistant_message_id") {
+      const obj =
+        typeof data === "object" && data !== null
+          ? (data as { assistant_message_id?: string })
+          : {};
+      const dbId =
+        typeof obj.assistant_message_id === "string" ? obj.assistant_message_id.trim() : "";
+      if (!dbId) return;
+      applyDbMessageIdToAssistant(dbId, streamingAssistantIdRef.current ?? undefined);
+      return;
+    }
     if (event === "status") {
       setStatus(data as Status);
       return;
@@ -467,12 +549,20 @@ export default function ChatPage() {
               request_id?: string;
               trace_id?: string;
               conversation_id?: string;
+              assistant_message_id?: string;
               citations?: Citation[];
               follow_up_questions?: string[];
             })
           : {};
       if (typeof obj.conversation_id === "string") {
         applyConversationId(obj.conversation_id);
+      }
+      const streamDbId =
+        typeof obj.assistant_message_id === "string"
+          ? obj.assistant_message_id.trim()
+          : "";
+      if (streamDbId) {
+        applyDbMessageIdToAssistant(streamDbId, streamingAssistantIdRef.current ?? undefined);
       }
       const answer = typeof obj.response === "string" ? obj.response : "";
       const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
@@ -502,12 +592,13 @@ export default function ChatPage() {
         setMessages((prev) => [
           ...prev,
           {
-            id: nextId(),
+            id: streamDbId ? `db-${streamDbId}` : nextId(),
             role: "assistant",
             content: answer,
             ...(rewrite ? { rewrite } : {}),
             run_id: obj.run_id || obj.trace_id,
             request_id: obj.request_id,
+            ...(streamDbId ? { db_message_id: streamDbId } : {}),
             citations: cites,
             follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
           },
@@ -537,7 +628,7 @@ export default function ChatPage() {
       setStatus(null);
       setLoading(false);
     }
-  }, [beginStreamingAssistant, clearStreamingAssistant, applyConversationId]);
+  }, [applyDbMessageIdToAssistant, beginStreamingAssistant, clearStreamingAssistant, applyConversationId]);
 
   const sendUserMessage = useCallback(async (
     userMessage: string,
@@ -646,6 +737,7 @@ export default function ChatPage() {
         const json = (await res.json()) as {
           response?: string;
           conversation_id?: string;
+          assistant_message_id?: string;
           citations?: Citation[];
           follow_up_questions?: string[];
           request_id?: string;
@@ -654,18 +746,22 @@ export default function ChatPage() {
         if (typeof json.conversation_id === "string") {
           applyConversationId(json.conversation_id);
         }
+        const jsonAssistantId =
+          typeof json.assistant_message_id === "string" ? json.assistant_message_id.trim() : "";
         const followUps = Array.isArray(json.follow_up_questions)
           ? json.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
           : undefined;
         if (json.response != null) {
+          const assistantId = jsonAssistantId ? `db-${jsonAssistantId}` : nextId();
           setMessages((prev) => [
             ...prev,
             {
-              id: nextId(),
+              id: assistantId,
               role: "assistant",
               content: json.response!,
               run_id: json.trace_id,
               request_id: json.request_id,
+              ...(jsonAssistantId ? { db_message_id: jsonAssistantId } : {}),
               citations: json.citations,
               follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
             },
@@ -1056,11 +1152,17 @@ export default function ChatPage() {
                   <div className="flex items-center gap-0.5 mt-3 -ml-1">
                       <button
                         type="button"
+                        disabled={!feedbackReady(msg)}
                         onClick={() => handleThumbsUp(msg)}
-                        className={`chat-action-btn p-2 rounded-lg transition-colors ${
+                        className={`chat-action-btn p-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                           thumbsUp.has(msg.id) ? "text-[#10a37f]" : ""
                         }`}
                         aria-label="Good response"
+                        title={
+                          feedbackReady(msg)
+                            ? "Good response"
+                            : "Feedback is available after this reply is saved"
+                        }
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill={thumbsUp.has(msg.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                           <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
@@ -1068,11 +1170,17 @@ export default function ChatPage() {
                       </button>
                       <button
                         type="button"
+                        disabled={!feedbackReady(msg)}
                         onClick={() => handleThumbsDown(msg)}
-                        className={`chat-action-btn p-2 rounded-lg transition-colors ${
+                        className={`chat-action-btn p-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                           thumbsDown.has(msg.id) ? "text-gray-600" : ""
                         }`}
                         aria-label="Bad response"
+                        title={
+                          feedbackReady(msg)
+                            ? "Bad response"
+                            : "Feedback is available after this reply is saved"
+                        }
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill={thumbsDown.has(msg.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                           <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
