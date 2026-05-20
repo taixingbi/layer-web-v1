@@ -12,6 +12,7 @@ import {
   parseSseBlock,
   rewriteTextFromGatewayData,
   tokenDeltaFromGatewayData,
+  type GatewayMeta,
 } from "@/lib/gateway-chat";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
@@ -84,12 +85,7 @@ async function pumpGatewayUpstreamToClientEvents(
   let rewrite: string | null = null;
   let lastCitations: unknown[] = [];
   let lastFollowUps: string[] = [];
-  const meta: {
-    request_id?: string;
-    trace_id?: string;
-    session_id?: string;
-    conversation_id?: string;
-  } = {};
+  const meta: GatewayMeta = {};
 
   const handleBlock = (block: string) => {
     if (!block.trim()) return;

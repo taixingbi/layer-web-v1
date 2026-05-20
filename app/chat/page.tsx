@@ -133,6 +133,7 @@ export default function ChatPage() {
   const [thumbsDown, setThumbsDown] = useState<Set<string>>(new Set());
   const [feedbackModal, setFeedbackModal] = useState<{ messageId: string; runId?: string; question?: string } | null>(null);
   const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const streamingAssistantIdRef = useRef<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -372,6 +373,7 @@ export default function ChatPage() {
     if (!feedbackReady(message)) return;
     try {
       await submitMessageFeedback(message, { rating: "thumbs_up" });
+      setFeedbackError(null);
       setThumbsUp((prev) => new Set(prev).add(message.id));
       setThumbsDown((prev) => {
         const next = new Set(prev);
@@ -380,7 +382,7 @@ export default function ChatPage() {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Feedback failed";
-      setStatus(msg);
+      setFeedbackError(msg);
     }
   }, [feedbackReady, submitMessageFeedback]);
 
@@ -393,24 +395,28 @@ export default function ChatPage() {
 
   const handleFeedbackReason = useCallback(
     async (reason: string) => {
-      const msg = messages.find((m) => m.id === feedbackModal?.messageId);
-      if (!msg) return;
+      const modal = feedbackModal;
+      if (!modal) return;
+      const target = messages.find((m) => m.id === modal.messageId);
+      if (!target) return;
       const comment = feedbackComment.trim() || undefined;
       try {
-        await submitMessageFeedback(msg, {
+        await submitMessageFeedback(target, {
           rating: "thumbs_down",
           reason,
           comment,
-          question: feedbackModal?.question,
+          question: modal.question,
         });
-        setThumbsDown((prev) => new Set(prev).add(feedbackModal.messageId));
+        setFeedbackError(null);
+        setThumbsDown((prev) => new Set(prev).add(modal.messageId));
         setThumbsUp((prev) => {
           const next = new Set(prev);
-          next.delete(feedbackModal.messageId);
+          next.delete(modal.messageId);
           return next;
         });
-      } catch {
-        // ignore
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Feedback failed";
+        setFeedbackError(msg);
       } finally {
         setFeedbackModal(null);
         setFeedbackComment("");
@@ -1236,6 +1242,11 @@ export default function ChatPage() {
         </div>
       </div>
 
+      {feedbackError && (
+        <p className="px-4 pb-2 text-sm text-red-600 dark:text-red-400" role="alert">
+          {feedbackError}
+        </p>
+      )}
       <ChatPrompt
         mode="sticky"
         value={input}
