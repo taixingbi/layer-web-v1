@@ -130,6 +130,7 @@ export function storedMessagesToChatTurns(
         content: m.content.trim(),
         ...(dbId ? { db_message_id: dbId } : {}),
         ...(m.metadata?.model ? { model: m.metadata.model } : {}),
+        ...(m.metadata?.route ? { route: m.metadata.route as string } : {}),
         ...(rewrite ? { rewrite } : {}),
         ...(citations && citations.length > 0 ? { citations } : {}),
         ...(followUps && followUps.length > 0 ? { follow_up_questions: followUps } : {}),
