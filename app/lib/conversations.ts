@@ -106,6 +106,9 @@ export function storedMessagesToChatTurns(
   content: string;
   db_message_id?: string;
   model?: string;
+  rewrite?: string;
+  citations?: Array<Record<string, unknown>>;
+  follow_up_questions?: string[];
 }> {
   return messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && m.content.trim())
@@ -116,12 +119,20 @@ export function storedMessagesToChatTurns(
           : typeof m.id === "number"
             ? String(m.id)
             : null;
+      const rewrite = m.metadata?.rewrite?.trim();
+      const citations = m.metadata?.citations?.filter((c) => c && typeof c === "object");
+      const followUps = m.metadata?.follow_up_questions?.filter(
+        (q) => typeof q === "string" && q.trim().length > 0,
+      );
       return {
         id: dbId ? `db-${dbId}` : `hist-${i}-${m.role}`,
         role: m.role as "user" | "assistant",
         content: m.content.trim(),
         ...(dbId ? { db_message_id: dbId } : {}),
         ...(m.metadata?.model ? { model: m.metadata.model } : {}),
+        ...(rewrite ? { rewrite } : {}),
+        ...(citations && citations.length > 0 ? { citations } : {}),
+        ...(followUps && followUps.length > 0 ? { follow_up_questions: followUps } : {}),
       };
     });
 }

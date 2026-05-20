@@ -291,6 +291,7 @@ export default function ChatPage() {
   );
 
   const applyDbMessageIdToAssistant = useCallback((dbId: string, preferMessageId?: string) => {
+    const newId = `db-${dbId}`;
     setMessages((prev) => {
       let targetIdx = -1;
       if (preferMessageId) {
@@ -305,8 +306,13 @@ export default function ChatPage() {
         }
       }
       if (targetIdx < 0) return prev;
+      const oldId = prev[targetIdx]?.id;
+      if (oldId && streamingAssistantIdRef.current === oldId) {
+        streamingAssistantIdRef.current = newId;
+        setStreamingAssistantId(newId);
+      }
       return prev.map((m, i) =>
-        i === targetIdx ? { ...m, db_message_id: dbId, id: `db-${dbId}` } : m,
+        i === targetIdx ? { ...m, db_message_id: dbId, id: newId } : m,
       );
     });
   }, []);
@@ -572,9 +578,6 @@ export default function ChatPage() {
         typeof obj.assistant_message_id === "string"
           ? obj.assistant_message_id.trim()
           : "";
-      if (streamDbId) {
-        applyDbMessageIdToAssistant(streamDbId, streamingAssistantIdRef.current ?? undefined);
-      }
       const answer = typeof obj.response === "string" ? obj.response : "";
       const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
@@ -614,6 +617,9 @@ export default function ChatPage() {
             follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
           },
         ]);
+      }
+      if (streamDbId) {
+        applyDbMessageIdToAssistant(streamDbId, streamingAssistantIdRef.current ?? undefined);
       }
       clearStreamingAssistant();
       setStatus(null);
