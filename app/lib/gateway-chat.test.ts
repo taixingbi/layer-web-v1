@@ -32,6 +32,8 @@ describe("donePayloadFromGatewayData", () => {
       citations: [{ cite_id: 1, source: "profile" }],
       follow_up_questions: ["Q1?", "Q2?"],
       assistant_message_id: null,
+      model: null,
+      route: null,
     });
   });
 
@@ -80,5 +82,11 @@ describe("metaFromGatewayData", () => {
     expect(metaFromGatewayData(raw).assistant_message_id).toBe(
       "37118ca8-8289-480c-9083-23d6d6e564c2",
     );
+  });
+
+  it("includes model and route from gateway meta event", () => {
+    const raw = JSON.stringify({ model: "qwen2.5-7b", route: "rag" });
+    expect(metaFromGatewayData(raw).model).toBe("qwen2.5-7b");
+    expect(metaFromGatewayData(raw).route).toBe("rag");
   });
 });

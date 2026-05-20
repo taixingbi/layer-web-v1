@@ -567,6 +567,8 @@ export default function ChatPage() {
               trace_id?: string;
               conversation_id?: string;
               assistant_message_id?: string;
+              model?: string;
+              route?: string;
               citations?: Citation[];
               follow_up_questions?: string[];
             })
@@ -595,6 +597,12 @@ export default function ChatPage() {
                   rewrite: rewrite ?? m.rewrite,
                   run_id: obj.run_id || obj.trace_id || m.run_id,
                   request_id: obj.request_id || m.request_id,
+                  ...(typeof obj.model === "string" && obj.model.trim()
+                    ? { model: obj.model.trim() }
+                    : {}),
+                  ...(typeof obj.route === "string" && obj.route.trim()
+                    ? { route: obj.route.trim() }
+                    : {}),
                   citations: cites && cites.length > 0 ? cites : m.citations,
                   follow_up_questions:
                     followUps && followUps.length > 0 ? followUps : m.follow_up_questions,
@@ -613,6 +621,12 @@ export default function ChatPage() {
             run_id: obj.run_id || obj.trace_id,
             request_id: obj.request_id,
             ...(streamDbId ? { db_message_id: streamDbId } : {}),
+            ...(typeof obj.model === "string" && obj.model.trim()
+              ? { model: obj.model.trim() }
+              : {}),
+            ...(typeof obj.route === "string" && obj.route.trim()
+              ? { route: obj.route.trim() }
+              : {}),
             citations: cites,
             follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
           },

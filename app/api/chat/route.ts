@@ -137,6 +137,12 @@ async function pumpGatewayUpstreamToClientEvents(
       if (done.assistant_message_id) {
         meta.assistant_message_id = done.assistant_message_id;
       }
+      if (done.model) {
+        meta.model = done.model;
+      }
+      if (done.route) {
+        meta.route = done.route;
+      }
       if (logFields) {
         logWebEvent("stream_end", "INFO", {
           ...logFields,
@@ -181,6 +187,8 @@ async function pumpGatewayUpstreamToClientEvents(
         ...(meta.assistant_message_id
           ? { assistant_message_id: meta.assistant_message_id }
           : {}),
+        ...(meta.model ? { model: meta.model } : {}),
+        ...(meta.route ? { route: meta.route } : {}),
         citations: done.citations,
         follow_up_questions: done.follow_up_questions,
       });

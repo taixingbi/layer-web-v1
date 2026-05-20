@@ -10,6 +10,8 @@ export type GatewayMeta = {
   session_id?: string;
   conversation_id?: string;
   assistant_message_id?: string;
+  model?: string;
+  route?: string;
 };
 
 /** Parse one SSE block (``event:`` + ``data:`` lines) from gateway upstream. */
@@ -64,6 +66,8 @@ export function metaFromGatewayData(dataRaw: string): GatewayMeta {
         typeof obj.conversation_id === "string" ? obj.conversation_id : undefined,
       assistant_message_id:
         typeof obj.assistant_message_id === "string" ? obj.assistant_message_id : undefined,
+      model: typeof obj.model === "string" && obj.model.trim() ? obj.model.trim() : undefined,
+      route: typeof obj.route === "string" && obj.route.trim() ? obj.route.trim() : undefined,
     };
   } catch {
     return {};
@@ -90,6 +94,8 @@ export function donePayloadFromGatewayData(dataRaw: string): {
   citations: unknown[];
   follow_up_questions: string[];
   assistant_message_id: string | null;
+  model: string | null;
+  route: string | null;
 } {
   try {
     const obj = JSON.parse(dataRaw) as Record<string, unknown>;
@@ -102,8 +108,19 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       typeof obj.assistant_message_id === "string" && obj.assistant_message_id.trim()
         ? obj.assistant_message_id.trim()
         : null;
-    return { rewrite, citations, follow_up_questions, assistant_message_id };
+    const model =
+      typeof obj.model === "string" && obj.model.trim() ? obj.model.trim() : null;
+    const route =
+      typeof obj.route === "string" && obj.route.trim() ? obj.route.trim() : null;
+    return { rewrite, citations, follow_up_questions, assistant_message_id, model, route };
   } catch {
-    return { rewrite: null, citations: [], follow_up_questions: [], assistant_message_id: null };
+    return {
+      rewrite: null,
+      citations: [],
+      follow_up_questions: [],
+      assistant_message_id: null,
+      model: null,
+      route: null,
+    };
   }
 }
