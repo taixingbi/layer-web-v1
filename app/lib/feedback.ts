@@ -2,7 +2,7 @@
  * Build gateway ``POST /api/feedback`` bodies from UI thumbs / annotation fields.
  */
 
-const REASON_TO_FEEDBACK_TYPE: Record<string, string> = {
+const REASON_TO_FEEDBACK_REASON: Record<string, string> = {
   not_factually_correct: "not_factual",
   didnt_follow_instructions: "incomplete_instructions",
   offensive_unsafe: "unsafe",
@@ -47,9 +47,8 @@ export function buildGatewayFeedbackBody(body: FeedbackClientBody): Record<strin
   if (body.request_id?.trim()) {
     out.request_id = body.request_id.trim();
   }
-  // Orchestrator accepts not_factual, unsafe, etc. — not thumbs_up. Supabase gets feedback_type from rating via gateway.
   if (body.rating === "thumbs_down" && body.reason) {
-    out.feedback_type = REASON_TO_FEEDBACK_TYPE[body.reason] ?? body.reason;
+    out.feedback_reason = REASON_TO_FEEDBACK_REASON[body.reason] ?? body.reason;
   }
   if (body.comment?.trim()) {
     out.comment = body.comment.trim();
