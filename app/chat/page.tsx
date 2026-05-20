@@ -464,16 +464,21 @@ export default function ChatPage() {
   }, [clearStreamingAssistant]);
 
   const handleSSEEvent = useCallback((event: string, data: unknown) => {
-    if (event === "assistant_message_id") {
+    if (event === "assistant_message_id" || event === "conversation_id") {
       const obj =
         typeof data === "object" && data !== null
-          ? (data as { assistant_message_id?: string })
+          ? (data as { assistant_message_id?: string; conversation_id?: string })
           : {};
+      if (typeof obj.conversation_id === "string" && obj.conversation_id.trim()) {
+        applyConversationId(obj.conversation_id);
+      }
       const dbId =
         typeof obj.assistant_message_id === "string" ? obj.assistant_message_id.trim() : "";
-      if (!dbId) return;
-      applyDbMessageIdToAssistant(dbId, streamingAssistantIdRef.current ?? undefined);
-      return;
+      if (dbId) {
+        applyDbMessageIdToAssistant(dbId, streamingAssistantIdRef.current ?? undefined);
+      }
+      if (event === "conversation_id") return;
+      if (dbId) return;
     }
     if (event === "status") {
       setStatus(data as Status);

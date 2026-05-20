@@ -100,7 +100,13 @@ async function pumpGatewayUpstreamToClientEvents(
       const chunkMeta = metaFromGatewayData(parsed.dataRaw);
       Object.assign(meta, chunkMeta);
       if (chunkMeta.assistant_message_id) {
-        send("assistant_message_id", { assistant_message_id: chunkMeta.assistant_message_id });
+        send("assistant_message_id", {
+          assistant_message_id: chunkMeta.assistant_message_id,
+          ...(chunkMeta.conversation_id ? { conversation_id: chunkMeta.conversation_id } : {}),
+        });
+      }
+      if (chunkMeta.conversation_id && !chunkMeta.assistant_message_id) {
+        send("conversation_id", { conversation_id: chunkMeta.conversation_id });
       }
       if (!chunkMeta.assistant_message_id) {
         send("status", "thinking");
