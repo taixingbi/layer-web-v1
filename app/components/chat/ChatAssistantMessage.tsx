@@ -4,6 +4,7 @@ import { memo } from "react";
 import { ChatLatencyDetails } from "@/components/ChatLatencyDetails";
 import { CitationList } from "@/components/chat/CitationList";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
+import { AssistantMessageContent } from "@/components/chat/AssistantMessageContent";
 import { StreamingCursor } from "@/components/chat/StreamingCursor";
 import { isLatencyObject } from "@/lib/chat-latency";
 import type { ChatMessage } from "@/lib/chat-types";
@@ -56,7 +57,7 @@ function ChatAssistantMessageInner({
           {showThinking ? <ChatLoadingDots label={statusLabel} /> : null}
           {showAnswer ? (
             <p>
-              {msg.content}
+              <AssistantMessageContent content={msg.content} />
               {isStreaming ? <StreamingCursor /> : null}
             </p>
           ) : null}

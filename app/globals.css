@@ -153,6 +153,15 @@ body {
 .chat-rewrite-meta-query {
   color: #9ca3af;
 }
+.chat-cite-marker {
+  font-size: 0.65em;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: super;
+  color: #10a37f;
+  margin-left: 0.05em;
+}
+
 .chat-stream-cursor {
   display: inline;
   margin-left: 1px;
@@ -255,6 +264,9 @@ body {
   }
   .chat-rewrite-meta-query {
     color: #9ca3af;
+  }
+  .chat-cite-marker {
+    color: #34d399;
   }
   .chat-follow-up-chip {
     border-color: #565656;
