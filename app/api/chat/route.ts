@@ -180,14 +180,22 @@ async function pumpGatewayUpstreamToClientEvents(
           }),
         });
       }
+      if (done.citations.length > 0) {
+        send("citations", { citations: done.citations });
+      }
+      if (done.follow_up_questions.length > 0) {
+        send("follow_up_questions", { follow_up_questions: done.follow_up_questions });
+      }
       const latency_ms = bffTiming
         ? mergeGatewayLatencyWithBff(done.latency_ms, {
             routeMs: msSince(bffTiming.routeT0),
             upstreamPumpMs: msSince(bffTiming.pumpT0),
           })
         : undefined;
+      if (latency_ms) {
+        send("latency_ms", { latency_ms });
+      }
       send("stream_end", {
-        response: accumulated,
         ...(effectiveRewrite ? { rewrite: effectiveRewrite } : {}),
         run_id: meta.trace_id ?? "",
         request_id: meta.request_id ?? "",
@@ -199,9 +207,6 @@ async function pumpGatewayUpstreamToClientEvents(
           : {}),
         ...(meta.model ? { model: meta.model } : {}),
         ...(meta.route ? { route: meta.route } : {}),
-        citations: done.citations,
-        follow_up_questions: done.follow_up_questions,
-        ...(latency_ms ? { latency_ms } : {}),
       });
     }
   };

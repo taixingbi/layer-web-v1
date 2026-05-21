@@ -24,6 +24,7 @@ import {
   optionalLayerBearerHeaders,
 } from "@/lib/chat-client";
 import { mergeBffLatencyWithClient } from "@/lib/chat-latency";
+import { patchStreamingMessage } from "@/lib/chat-stream-patch";
 import { eventFromSseBlock, splitSseBuffer } from "@/lib/chat-sse-client";
 import type { ChatMessage, ChatStreamStatus } from "@/lib/chat-types";
 import {
@@ -378,6 +379,13 @@ export default function ChatPage() {
     }
   }, [clearStreamingAssistant]);
 
+  const ensureStreamingAssistant = useCallback(() => {
+    if (!streamingAssistantIdRef.current) {
+      beginStreamingAssistant();
+    }
+    return streamingAssistantIdRef.current;
+  }, [beginStreamingAssistant]);
+
   const handleSSEEvent = useCallback((event: string, data: unknown) => {
     if (event === "assistant_message_id" || event === "conversation_id") {
       const obj =
@@ -395,6 +403,7 @@ export default function ChatPage() {
       return;
     }
     if (event === "status") {
+      ensureStreamingAssistant();
       setStatus(data as ChatStreamStatus);
       return;
     }
@@ -402,10 +411,10 @@ export default function ChatPage() {
       const obj = typeof data === "object" && data !== null ? (data as { text?: string }) : {};
       const text = typeof obj.text === "string" ? obj.text.trim() : "";
       if (!text) return;
-      const targetId = streamingAssistantIdRef.current;
+      const targetId = ensureStreamingAssistant();
       if (!targetId) return;
       setMessages((prev) =>
-        prev.map((m) => (m.id === targetId ? { ...m, rewrite: text } : m))
+        patchStreamingMessage(prev, targetId, { rewrite: text })
       );
       return;
     }
@@ -413,11 +422,51 @@ export default function ChatPage() {
       const obj = typeof data === "object" && data !== null ? (data as { delta?: string }) : {};
       const delta = typeof obj.delta === "string" ? obj.delta : "";
       if (!delta) return;
-      const targetId = streamingAssistantIdRef.current;
+      const targetId = ensureStreamingAssistant();
       if (!targetId) return;
       setMessages((prev) =>
-        prev.map((m) => (m.id === targetId ? { ...m, content: m.content + delta } : m))
+        patchStreamingMessage(prev, targetId, { content: (prev.find((m) => m.id === targetId)?.content ?? "") + delta })
       );
+      return;
+    }
+    if (event === "citations") {
+      const obj =
+        typeof data === "object" && data !== null
+          ? (data as { citations?: ChatMessage["citations"] })
+          : {};
+      const cites = Array.isArray(obj.citations) ? obj.citations : [];
+      if (cites.length === 0) return;
+      const targetId = ensureStreamingAssistant();
+      if (!targetId) return;
+      setMessages((prev) => patchStreamingMessage(prev, targetId, { citations: cites }));
+      return;
+    }
+    if (event === "follow_up_questions") {
+      const obj =
+        typeof data === "object" && data !== null
+          ? (data as { follow_up_questions?: string[] })
+          : {};
+      const followUps = Array.isArray(obj.follow_up_questions)
+        ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
+        : [];
+      if (followUps.length === 0) return;
+      const targetId = ensureStreamingAssistant();
+      if (!targetId) return;
+      setMessages((prev) =>
+        patchStreamingMessage(prev, targetId, { follow_up_questions: followUps })
+      );
+      return;
+    }
+    if (event === "latency_ms") {
+      const obj =
+        typeof data === "object" && data !== null
+          ? (data as { latency_ms?: Record<string, unknown> })
+          : {};
+      const latency_ms = mergeBffLatencyWithClient(obj.latency_ms, clientChatT0Ref.current);
+      if (!latency_ms) return;
+      const targetId = ensureStreamingAssistant();
+      if (!targetId) return;
+      setMessages((prev) => patchStreamingMessage(prev, targetId, { latency_ms }));
       return;
     }
     if (event === "result") {
@@ -479,7 +528,6 @@ export default function ChatPage() {
               latency_ms?: Record<string, unknown>;
             })
           : {};
-      const latency_ms = mergeBffLatencyWithClient(obj.latency_ms, clientChatT0Ref.current);
       if (typeof obj.conversation_id === "string") {
         applyConversationId(obj.conversation_id);
       }
@@ -487,8 +535,8 @@ export default function ChatPage() {
         (typeof obj.assistant_message_id === "string" ? obj.assistant_message_id.trim() : "") ||
         pendingAssistantDbIdRef.current ||
         "";
-      const answer = typeof obj.response === "string" ? obj.response : "";
       const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
+      const latencyFromEvent = mergeBffLatencyWithClient(obj.latency_ms, clientChatT0Ref.current);
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
       const followUps = Array.isArray(obj.follow_up_questions)
         ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
@@ -496,53 +544,29 @@ export default function ChatPage() {
       const targetId = streamingAssistantIdRef.current;
       if (targetId) {
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === targetId
-              ? {
-                  ...m,
-                  ...(streamDbId
-                    ? { db_message_id: streamDbId, id: `db-${streamDbId}` }
-                    : {}),
-                  content: answer || m.content,
-                  rewrite: rewrite ?? m.rewrite,
-                  run_id: obj.run_id || obj.trace_id || m.run_id,
-                  request_id: obj.request_id || m.request_id,
-                  ...(typeof obj.model === "string" && obj.model.trim()
-                    ? { model: obj.model.trim() }
-                    : {}),
-                  ...(typeof obj.route === "string" && obj.route.trim()
-                    ? { route: obj.route.trim() }
-                    : {}),
-                  citations: cites && cites.length > 0 ? cites : m.citations,
-                  follow_up_questions:
-                    followUps && followUps.length > 0 ? followUps : m.follow_up_questions,
-                  ...(latency_ms ? { latency_ms } : {}),
-                }
-              : m
-          )
+          prev.map((m) => {
+            if (m.id !== targetId) return m;
+            const latency_ms = latencyFromEvent ?? m.latency_ms;
+            return {
+              ...m,
+              ...(streamDbId ? { db_message_id: streamDbId, id: `db-${streamDbId}` } : {}),
+              rewrite: rewrite ?? m.rewrite,
+              run_id: obj.run_id || obj.trace_id || m.run_id,
+              request_id: obj.request_id || m.request_id,
+              ...(typeof obj.model === "string" && obj.model.trim()
+                ? { model: obj.model.trim() }
+                : {}),
+              ...(typeof obj.route === "string" && obj.route.trim()
+                ? { route: obj.route.trim() }
+                : {}),
+              ...(cites && cites.length > 0 ? { citations: cites } : {}),
+              ...(followUps && followUps.length > 0
+                ? { follow_up_questions: followUps }
+                : {}),
+              ...(latency_ms ? { latency_ms } : {}),
+            };
+          })
         );
-      } else if (answer || rewrite || cites?.length || followUps?.length || latency_ms) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: streamDbId ? `db-${streamDbId}` : nextChatMessageId(),
-            role: "assistant",
-            content: answer,
-            ...(rewrite ? { rewrite } : {}),
-            run_id: obj.run_id || obj.trace_id,
-            request_id: obj.request_id,
-            ...(streamDbId ? { db_message_id: streamDbId } : {}),
-            ...(typeof obj.model === "string" && obj.model.trim()
-              ? { model: obj.model.trim() }
-              : {}),
-            ...(typeof obj.route === "string" && obj.route.trim()
-              ? { route: obj.route.trim() }
-              : {}),
-            citations: cites,
-            follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
-            ...(latency_ms ? { latency_ms } : {}),
-          },
-        ]);
       }
       clearStreamingAssistant();
       setStatus(null);
@@ -568,7 +592,7 @@ export default function ChatPage() {
       setStatus(null);
       setLoading(false);
     }
-  }, [beginStreamingAssistant, clearStreamingAssistant, applyConversationId]);
+  }, [beginStreamingAssistant, clearStreamingAssistant, applyConversationId, ensureStreamingAssistant]);
 
   const sendUserMessage = useCallback(async (
     userMessage: string,
@@ -916,7 +940,7 @@ export default function ChatPage() {
       ) : (
         <>
       <div className="flex-1 overflow-y-auto min-h-0" role="log" aria-live="polite" aria-relevant="additions text">
-        <div className="chat-thread chat-container px-4 py-6 space-y-6">
+        <div className="chat-thread chat-container px-4 py-6 space-y-4">
           {threadLoading && messages.length === 0 ? (
             <div className="flex justify-center pt-16 text-sm text-gray-500 dark:text-gray-400">
               Loading conversation…

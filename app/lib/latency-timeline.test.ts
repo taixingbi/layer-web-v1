@@ -3,7 +3,13 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { buildLatencyTimelineView, formatTimelineLine, formatTimelineSeconds } from "./latency-timeline";
+import {
+  buildLatencyTimelineView,
+  formatLatencyShort,
+  formatTimelineLine,
+  formatTimelineSeconds,
+  shortSlowestLabel,
+} from "./latency-timeline";
 import { mergeClientLatency, mergeGatewayLatencyWithBff } from "./chat-latency";
 
 const gatewayBody = {
@@ -70,5 +76,13 @@ describe("formatTimelineLine", () => {
 describe("formatTimelineSeconds", () => {
   it("formats milliseconds as seconds", () => {
     expect(formatTimelineSeconds(4844)).toBe("4.84s");
+    expect(formatLatencyShort(5310)).toBe("5.3s");
+  });
+});
+
+describe("shortSlowestLabel", () => {
+  it("shortens labels for compact summary", () => {
+    expect(shortSlowestLabel("Follow-up Chat")).toBe("Follow-up");
+    expect(shortSlowestLabel("Router")).toBe("Router");
   });
 });

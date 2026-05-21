@@ -259,6 +259,19 @@ export function formatTimelineSeconds(totalMs: number): string {
   return `${(totalMs / 1000).toFixed(2)}s`;
 }
 
+/** Short label for metadata row (e.g. ``5.3s``). */
+export function formatLatencyShort(totalMs: number): string {
+  return `${(totalMs / 1000).toFixed(1)}s`;
+}
+
+/** Compact slowest-op label for inline summaries. */
+export function shortSlowestLabel(label: string): string {
+  if (label === "Follow-up Chat") return "Follow-up";
+  if (label === "User Message Write") return "User write";
+  if (label === "Assistant Message Write") return "Assistant write";
+  return label;
+}
+
 /** Build timeline tree + slowest operations for UI rendering. */
 export function buildLatencyTimelineView(latency: LatencyObject): LatencyTimelineView | null {
   const totalMs = latencyDisplayTotalMs(latency);

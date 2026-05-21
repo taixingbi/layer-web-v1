@@ -1,5 +1,7 @@
 "use client";
 
+import { normalizeCitationSpacing } from "@/lib/citation-content";
+
 /** Inline citation markers from the model, e.g. ``[1]``, ``[2]``. */
 const CITE_MARKER_RE = /(\[\d+\])/g;
 
@@ -8,7 +10,8 @@ type Props = {
 };
 
 export function AssistantMessageContent({ content }: Props) {
-  const parts = content.split(CITE_MARKER_RE);
+  const normalized = normalizeCitationSpacing(content);
+  const parts = normalized.split(CITE_MARKER_RE);
   return (
     <>
       {parts.map((part, i) =>
