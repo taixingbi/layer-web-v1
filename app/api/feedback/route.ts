@@ -9,6 +9,7 @@ import { buildGatewayFeedbackBody, type FeedbackClientBody } from "@/lib/feedbac
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
 import { logWebEvent } from "@/lib/server-log";
+import { msSince } from "@/lib/timing";
 import {
   feedbackClientRequestForLog,
   feedbackGatewayRequestForLog,
@@ -26,10 +27,6 @@ const THUMBS_DOWN_REASONS = new Set([
   "wrong_language",
   "other",
 ]);
-
-function msSince(start: number): number {
-  return Math.round((performance.now() - start) * 1000) / 1000;
-}
 
 /**
  * Submit message feedback.

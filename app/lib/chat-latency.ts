@@ -2,6 +2,8 @@
  * Merge gateway ``latency_ms`` with web BFF and browser client timings for chat UI.
  */
 
+import { msSince } from "@/lib/timing";
+
 export type LatencyObject = Record<string, unknown>;
 
 function roundMs(value: number): number {
@@ -95,6 +97,16 @@ export function mergeClientLatency(
   base.web = web;
   base.total = clientTotal;
   return base;
+}
+
+/** Merge BFF ``latency_ms`` envelope with browser E2E timing when ``clientT0`` is set. */
+export function mergeBffLatencyWithClient(
+  raw: unknown,
+  clientT0: number | null,
+): LatencyObject | undefined {
+  if (!isLatencyObject(raw)) return undefined;
+  if (clientT0 == null) return raw;
+  return mergeClientLatency(raw, msSince(clientT0)) ?? undefined;
 }
 
 /** Top-level display total (ms). */

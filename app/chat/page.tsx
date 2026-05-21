@@ -6,15 +6,26 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { ChatAssistantMessage } from "@/components/chat/ChatAssistantMessage";
+import { ChatFeedbackModal } from "@/components/chat/ChatFeedbackModal";
+import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
+import { ChatUserMessage } from "@/components/chat/ChatUserMessage";
 import { ChatBrand } from "@/components/ChatBrand";
 import { ChatEmptyState } from "@/components/ChatEmptyState";
-import { ChatLatencyDetails } from "@/components/ChatLatencyDetails";
 import { ChatPrompt } from "@/components/ChatPrompt";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatUserMenu } from "@/components/ChatUserMenu";
+import { errorMessageFromJsonBody } from "@/lib/api-error";
 import { authFetch } from "@/lib/auth-fetch";
 import { buildHistory, truncateBeforeMessageId } from "@/lib/chat-history";
-import { isLatencyObject, mergeClientLatency } from "@/lib/chat-latency";
+import {
+  correlationUuid,
+  nextChatMessageId,
+  optionalLayerBearerHeaders,
+} from "@/lib/chat-client";
+import { mergeBffLatencyWithClient } from "@/lib/chat-latency";
+import { eventFromSseBlock, splitSseBuffer } from "@/lib/chat-sse-client";
+import type { ChatMessage, ChatStreamStatus } from "@/lib/chat-types";
 import {
   type ConversationListResponse,
   type ConversationMessagesResponse,
@@ -25,126 +36,18 @@ import {
   storedMessagesToChatTurns,
 } from "@/lib/conversations";
 
-type Citation = Record<string, unknown>;
-
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  rewrite?: string;
-  run_id?: string;
-  request_id?: string;
-  db_message_id?: string;
-  model?: string;
-  route?: string;
-  citations?: Citation[];
-  follow_up_questions?: string[];
-  latency_ms?: Record<string, unknown>;
-};
-type Status = "thinking" | "searching_sql" | "cached" | "error" | null;
-
-function clientMsSince(start: number): number {
-  return Math.round((performance.now() - start) * 1000) / 1000;
-}
-
-function mergeBffLatencyWithClient(
-  raw: unknown,
-  clientT0: number | null,
-): Record<string, unknown> | undefined {
-  if (!isLatencyObject(raw)) return undefined;
-  if (clientT0 == null) return raw;
-  return mergeClientLatency(raw, clientMsSince(clientT0)) ?? undefined;
-}
-
-const FEEDBACK_REASONS = [
-  { id: "not_factually_correct", label: "Not factually correct" },
-  { id: "didnt_follow_instructions", label: "Didn't follow instructions" },
-  { id: "offensive_unsafe", label: "Offensive / Unsafe" },
-  { id: "wrong_language", label: "Wrong language" },
-  { id: "other", label: "Other" },
-] as const;
-
-function nextId() {
-  return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function StreamingCursor() {
-  return (
-    <span className="chat-stream-cursor" aria-hidden>
-      ▋
-    </span>
-  );
-}
-
-function citationTitle(c: Citation, index: number): string {
-  if (typeof c.title === "string" && c.title.trim()) return c.title;
-  if (typeof c.source === "string" && c.source.trim()) return c.source;
-  if (typeof c.cite_id === "number") return `Source [${c.cite_id}]`;
-  return `Source ${index + 1}`;
-}
-
-function citationHref(c: Citation): string | null {
-  if (typeof c.url === "string" && c.url.trim()) return c.url;
-  if (typeof c.source_url === "string" && c.source_url.trim()) return c.source_url;
-  return null;
-}
-
-function citationExcerpt(c: Citation): string | null {
-  if (typeof c.text === "string" && c.text.trim()) {
-    const t = c.text.trim();
-    return t.length > 280 ? `${t.slice(0, 280)}…` : t;
-  }
-  return null;
-}
-
-/** UUID for correlation; fallback when globalThis.crypto.randomUUID is missing (non-secure HTTP). */
-function correlationUuid(): string {
-  const c = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
-  if (c && typeof c.randomUUID === "function") {
-    try {
-      return c.randomUUID();
-    } catch {
-      /* continue */
-    }
-  }
-  if (c && typeof c.getRandomValues === "function") {
-    try {
-      const b = new Uint8Array(16);
-      c.getRandomValues(b);
-      b[6] = (b[6]! & 0x0f) | 0x40;
-      b[8] = (b[8]! & 0x3f) | 0x80;
-      const h = [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-      return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-    } catch {
-      /* fall through */
-    }
-  }
-  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 11)}${Math.random().toString(36).slice(2, 7)}`;
-}
-
-/** Optional access token for gateway JWT mode; dev: `sessionStorage.setItem("layer_bearer_token", "<jwt>")`. */
-function optionalLayerBearerHeaders(): Record<string, string> {
-  try {
-    const t = sessionStorage.getItem("layer_bearer_token")?.trim();
-    if (t) return { Authorization: `Bearer ${t}` };
-  } catch {
-    /* storage blocked */
-  }
-  return {};
-}
-
 /** Authenticated chat page; proxies messages through ``POST /api/chat``. */
 export default function ChatPage() {
   const router = useRouter();
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [authUi, setAuthUi] = useState<{
     loading: boolean;
     hasCookie: boolean;
     hasStorage: boolean;
   }>({ loading: true, hasCookie: false, hasStorage: false });
-  const [status, setStatus] = useState<Status>(null);
+  const [status, setStatus] = useState<ChatStreamStatus>(null);
   const [thumbsUp, setThumbsUp] = useState<Set<string>>(new Set());
   const [thumbsDown, setThumbsDown] = useState<Set<string>>(new Set());
   const [feedbackModal, setFeedbackModal] = useState<{ messageId: string; runId?: string; question?: string } | null>(null);
@@ -166,6 +69,11 @@ export default function ChatPage() {
   const chatAbortRef = useRef<AbortController | null>(null);
   /** Browser fetch start for ``mergeClientLatency`` on stream_end / JSON. */
   const clientChatT0Ref = useRef<number | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
@@ -310,36 +218,9 @@ export default function ChatPage() {
     [messages]
   );
 
-  const applyDbMessageIdToAssistant = useCallback((dbId: string, preferMessageId?: string) => {
-    const newId = `db-${dbId}`;
-    setMessages((prev) => {
-      let targetIdx = -1;
-      if (preferMessageId) {
-        targetIdx = prev.findIndex((m) => m.id === preferMessageId);
-      }
-      if (targetIdx < 0) {
-        for (let i = prev.length - 1; i >= 0; i -= 1) {
-          if (prev[i]?.role === "assistant") {
-            targetIdx = i;
-            break;
-          }
-        }
-      }
-      if (targetIdx < 0) return prev;
-      const oldId = prev[targetIdx]?.id;
-      if (oldId && streamingAssistantIdRef.current === oldId) {
-        streamingAssistantIdRef.current = newId;
-        setStreamingAssistantId(newId);
-      }
-      return prev.map((m, i) =>
-        i === targetIdx ? { ...m, db_message_id: dbId, id: newId } : m,
-      );
-    });
-  }, []);
-
   const submitMessageFeedback = useCallback(
     async (
-      message: Message,
+      message: ChatMessage,
       opts: {
         rating: "thumbs_up" | "thumbs_down";
         reason?: string;
@@ -388,14 +269,14 @@ export default function ChatPage() {
     [],
   );
 
-  const feedbackReady = useCallback((message: Message) => {
+  const feedbackReady = useCallback((message: ChatMessage) => {
     const conversationId =
       activeConversationIdRef.current ?? getActiveConversationId();
     const messageId = message.db_message_id ?? dbMessageIdFromClientId(message.id);
     return Boolean(conversationId && messageId);
   }, []);
 
-  const handleThumbsUp = useCallback(async (message: Message) => {
+  const handleThumbsUp = useCallback(async (message: ChatMessage) => {
     if (!feedbackReady(message)) return;
     try {
       await submitMessageFeedback(message, { rating: "thumbs_up" });
@@ -412,7 +293,7 @@ export default function ChatPage() {
     }
   }, [feedbackReady, submitMessageFeedback]);
 
-  const handleThumbsDown = useCallback((message: Message) => {
+  const handleThumbsDown = useCallback((message: ChatMessage) => {
     const idx = messages.findIndex((m) => m.id === message.id);
     const question = idx > 0 && messages[idx - 1]?.role === "user" ? messages[idx - 1].content : undefined;
     setFeedbackComment("");
@@ -461,7 +342,7 @@ export default function ChatPage() {
 
   const beginStreamingAssistant = useCallback(() => {
     pendingAssistantDbIdRef.current = null;
-    const id = nextId();
+    const id = nextChatMessageId();
     streamingAssistantIdRef.current = id;
     setStreamingAssistantId(id);
     setMessages((prev) => [...prev, { id, role: "assistant", content: "" }]);
@@ -514,7 +395,7 @@ export default function ChatPage() {
       return;
     }
     if (event === "status") {
-      setStatus(data as Status);
+      setStatus(data as ChatStreamStatus);
       return;
     }
     if (event === "rewrite") {
@@ -547,7 +428,7 @@ export default function ChatPage() {
               response?: unknown;
               run_id?: string;
               request_id?: string;
-              citations?: Citation[];
+              citations?: ChatMessage["citations"];
               follow_up_questions?: string[];
               latency_ms?: Record<string, unknown>;
             })
@@ -593,7 +474,7 @@ export default function ChatPage() {
               assistant_message_id?: string;
               model?: string;
               route?: string;
-              citations?: Citation[];
+              citations?: ChatMessage["citations"];
               follow_up_questions?: string[];
               latency_ms?: Record<string, unknown>;
             })
@@ -644,7 +525,7 @@ export default function ChatPage() {
         setMessages((prev) => [
           ...prev,
           {
-            id: streamDbId ? `db-${streamDbId}` : nextId(),
+            id: streamDbId ? `db-${streamDbId}` : nextChatMessageId(),
             role: "assistant",
             content: answer,
             ...(rewrite ? { rewrite } : {}),
@@ -680,7 +561,7 @@ export default function ChatPage() {
       } else {
         setMessages((prev) => [
           ...prev,
-          { id: nextId(), role: "assistant", content: `Error: ${errText}` },
+          { id: nextChatMessageId(), role: "assistant", content: `Error: ${errText}` },
         ]);
       }
       clearStreamingAssistant();
@@ -691,7 +572,7 @@ export default function ChatPage() {
 
   const sendUserMessage = useCallback(async (
     userMessage: string,
-    options?: { priorMessages?: Message[]; skipAppend?: boolean }
+    options?: { priorMessages?: ChatMessage[]; skipAppend?: boolean }
   ) => {
     const text = userMessage.trim();
     if (!text || loading) return;
@@ -699,9 +580,9 @@ export default function ChatPage() {
       router.push("/login?next=/chat");
       return;
     }
-    const historySource = options?.priorMessages ?? messages;
+    const historySource = options?.priorMessages ?? messagesRef.current;
     if (!options?.skipAppend) {
-      setMessages((prev) => [...prev, { id: nextId(), role: "user", content: text }]);
+      setMessages((prev) => [...prev, { id: nextChatMessageId(), role: "user", content: text }]);
     }
     setLoading(true);
     setStatus(null);
@@ -775,9 +656,7 @@ export default function ChatPage() {
               detail?: string | unknown;
               message?: string;
             };
-            if (j.error && typeof j.error.message === "string") msg = j.error.message;
-            else if (typeof j.detail === "string") msg = j.detail;
-            else if (typeof j.message === "string") msg = j.message;
+            msg = errorMessageFromJsonBody(j, msg);
           } catch {
             /* keep generic */
           }
@@ -798,7 +677,7 @@ export default function ChatPage() {
           response?: string;
           conversation_id?: string;
           assistant_message_id?: string;
-          citations?: Citation[];
+          citations?: ChatMessage["citations"];
           follow_up_questions?: string[];
           request_id?: string;
           trace_id?: string;
@@ -814,7 +693,7 @@ export default function ChatPage() {
           : undefined;
         const latency_ms = mergeBffLatencyWithClient(json.latency_ms, clientChatT0Ref.current);
         if (json.response != null) {
-          const assistantId = jsonAssistantId ? `db-${jsonAssistantId}` : nextId();
+          const assistantId = jsonAssistantId ? `db-${jsonAssistantId}` : nextChatMessageId();
           setMessages((prev) => [
             ...prev,
             {
@@ -847,31 +726,18 @@ export default function ChatPage() {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
+        const split = splitSseBuffer(buffer);
+        buffer = split.remainder;
 
-        for (const block of parts) {
-          const eventMatch = block.match(/^event: (\w+)/m);
-          const dataMatch = block.match(/^data: (.+)$/m);
-          if (!eventMatch || !dataMatch) continue;
-          try {
-            handleSSEEvent(eventMatch[1], JSON.parse(dataMatch[1]));
-          } catch {
-            // skip parse errors
-          }
+        for (const block of split.blocks) {
+          const ev = eventFromSseBlock(block);
+          if (ev) handleSSEEvent(ev.event, ev.data);
         }
       }
 
-      if (buffer) {
-        const eventMatch = buffer.match(/^event: (\w+)/m);
-        const dataMatch = buffer.match(/^data: (.+)$/m);
-        if (eventMatch && dataMatch) {
-          try {
-            handleSSEEvent(eventMatch[1], JSON.parse(dataMatch[1]));
-          } catch {
-            // skip
-          }
-        }
+      if (buffer.trim()) {
+        const ev = eventFromSseBlock(buffer);
+        if (ev) handleSSEEvent(ev.event, ev.data);
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -886,20 +752,21 @@ export default function ChatPage() {
       } else {
         setMessages((prev) => [
           ...prev,
-          { id: nextId(), role: "assistant", content: `Error: ${errText}` },
+          { id: nextChatMessageId(), role: "assistant", content: `Error: ${errText}` },
         ]);
       }
     } finally {
       clientChatT0Ref.current = null;
       chatAbortRef.current = null;
-      clearStreamingAssistant();
-      setLoading(false);
-      setStatus(null);
+      if (streamingAssistantIdRef.current) {
+        clearStreamingAssistant();
+        setLoading(false);
+        setStatus(null);
+      }
     }
   }, [
     loading,
     handleSSEEvent,
-    messages,
     beginStreamingAssistant,
     clearStreamingAssistant,
     authUi.hasCookie,
@@ -915,7 +782,7 @@ export default function ChatPage() {
   }, []);
 
   const startEdit = useCallback(
-    (msg: Message) => {
+    (msg: ChatMessage) => {
       if (msg.role !== "user" || loading || !msg.content.trim()) return;
       setEditingMessageId(msg.id);
       setEditDraft(msg.content);
@@ -935,7 +802,7 @@ export default function ChatPage() {
   }, [editingMessageId, editDraft, loading, messages, cancelEdit, sendUserMessage]);
 
   const handleRegenerate = useCallback(
-    (msg: Message) => {
+    (msg: ChatMessage) => {
       if (msg.id !== lastAssistantId) return;
       const idx = messages.findIndex((m) => m.id === msg.id);
       const prevUser = messages[idx - 1];
@@ -1057,242 +924,42 @@ export default function ChatPage() {
           ) : null}
           {messages.map((msg) =>
             msg.role === "user" ? (
-              <div key={msg.id} className="flex w-full justify-end group">
-                <div className="flex flex-col items-end max-w-[min(85%,32rem)] w-full">
-                  {editingMessageId === msg.id ? (
-                    <div className="chat-user-edit-wrap w-full">
-                      <textarea
-                        value={editDraft}
-                        onChange={(e) => setEditDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            e.preventDefault();
-                            cancelEdit();
-                          }
-                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                            e.preventDefault();
-                            submitEdit();
-                          }
-                        }}
-                        rows={Math.min(12, Math.max(2, editDraft.split("\n").length))}
-                        className="chat-user-edit-textarea"
-                        autoFocus
-                        aria-label="Edit message"
-                      />
-                      <div className="chat-user-edit-actions">
-                        <button type="button" onClick={cancelEdit} className="chat-user-edit-cancel">
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={submitEdit}
-                          disabled={
-                            !editDraft.trim() ||
-                            editDraft.trim() === editOriginalRef.current.trim()
-                          }
-                          className="chat-user-edit-send"
-                        >
-                          Send
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="chat-user-bubble rounded-3xl rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                        {msg.content}
-                      </div>
-                      {!loading && msg.content.trim() ? (
-                        <div className="flex justify-end mt-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(msg)}
-                            className="chat-action-btn p-1.5 rounded-lg transition-colors"
-                            aria-label="Edit message"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              aria-hidden
-                            >
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                          </button>
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              </div>
+              <ChatUserMessage
+                key={msg.id}
+                msg={msg}
+                loading={loading}
+                isEditing={editingMessageId === msg.id}
+                editDraft={editDraft}
+                editOriginal={editOriginalRef.current}
+                onEditDraftChange={setEditDraft}
+                onCancelEdit={cancelEdit}
+                onSubmitEdit={submitEdit}
+                onStartEdit={() => startEdit(msg)}
+              />
             ) : (
-            <div key={msg.id} className="flex w-full justify-start">
-              <div className="chat-assistant-block w-full text-[15px] leading-relaxed">
-                <div className="whitespace-pre-wrap break-words">
-                  {msg.rewrite && (
-                    <p className="chat-rewrite-meta">
-                      <span className="chat-rewrite-meta-label">Rewrite: </span>
-                      <span className="chat-rewrite-meta-query">&ldquo;{msg.rewrite}&rdquo;</span>
-                      {streamingAssistantId === msg.id && !msg.content.trim() ? <StreamingCursor /> : null}
-                    </p>
-                  )}
-                  {!msg.content.trim() && streamingAssistantId === msg.id ? (
-                    !msg.rewrite ? (
-                      <div className="flex items-center gap-2 py-1 text-gray-500 dark:text-gray-400">
-                        <span className="flex gap-1">
-                          <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:0ms]" />
-                          <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:150ms]" />
-                          <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:300ms]" />
-                        </span>
-                        <span>{statusLabel}</span>
-                      </div>
-                    ) : null
-                  ) : (
-                    <p>
-                      {msg.content}
-                      {streamingAssistantId === msg.id ? <StreamingCursor /> : null}
-                    </p>
-                  )}
-                </div>
-                {msg.citations && msg.citations.length > 0 && (
-                    <details className="mt-2.5 text-sm group">
-                      <summary className="cursor-pointer text-gray-500 dark:text-gray-400 select-none list-none flex items-center gap-1">
-                        <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
-                        Sources ({msg.citations.length})
-                      </summary>
-                      <ul className="mt-1.5 space-y-2 pl-1 border-l border-gray-200 dark:border-gray-700">
-                        {msg.citations.map((c, i) => {
-                          const title = citationTitle(c, i);
-                          const href = citationHref(c);
-                          const excerpt = citationExcerpt(c);
-                          return (
-                            <li key={i} className="pl-3 text-gray-600 dark:text-gray-300">
-                              <div className="font-medium text-gray-800 dark:text-gray-200">
-                                {href ? (
-                                  <a href={href} className="underline hover:text-[#10a37f]" target="_blank" rel="noreferrer">
-                                    {title}
-                                  </a>
-                                ) : (
-                                  title
-                                )}
-                              </div>
-                              {excerpt && (
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{excerpt}</p>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </details>
-                  )}
-                {msg.follow_up_questions && msg.follow_up_questions.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Follow-up questions</p>
-                      <div className="flex flex-wrap gap-2">
-                        {msg.follow_up_questions.map((q) => (
-                          <button
-                            key={q}
-                            type="button"
-                            disabled={loading}
-                            onClick={() => handleFollowUpClick(q)}
-                            className="chat-follow-up-chip text-left text-sm rounded-xl px-3 py-1.5 disabled:opacity-50 transition-colors"
-                          >
-                            {q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                {streamingAssistantId !== msg.id &&
-                  msg.latency_ms &&
-                  isLatencyObject(msg.latency_ms) && (
-                    <ChatLatencyDetails latency_ms={msg.latency_ms} />
-                  )}
-                {streamingAssistantId !== msg.id && msg.content.trim() && (
-                  <div className="flex items-center gap-0.5 mt-3 -ml-1">
-                      <button
-                        type="button"
-                        disabled={!feedbackReady(msg)}
-                        onClick={() => handleThumbsUp(msg)}
-                        className={`chat-action-btn p-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                          thumbsUp.has(msg.id) ? "text-[#10a37f]" : ""
-                        }`}
-                        aria-label="Good response"
-                        title={
-                          feedbackReady(msg)
-                            ? "Good response"
-                            : "Feedback is available after this reply is saved"
-                        }
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={thumbsUp.has(msg.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!feedbackReady(msg)}
-                        onClick={() => handleThumbsDown(msg)}
-                        className={`chat-action-btn p-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                          thumbsDown.has(msg.id) ? "text-gray-600" : ""
-                        }`}
-                        aria-label="Bad response"
-                        title={
-                          feedbackReady(msg)
-                            ? "Bad response"
-                            : "Feedback is available after this reply is saved"
-                        }
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill={thumbsDown.has(msg.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
-                        </svg>
-                      </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(msg.content)}
-                      className="chat-action-btn p-2 rounded-lg transition-colors"
-                      aria-label="Copy"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                    </button>
-                    {msg.id === lastAssistantId && (
-                      <button
-                        type="button"
-                        onClick={() => handleRegenerate(msg)}
-                        className="chat-action-btn p-2 rounded-lg transition-colors"
-                        aria-label="Regenerate"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <path d="M1 4v6h6" />
-                          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            )
+              <ChatAssistantMessage
+                key={msg.id}
+                msg={msg}
+                isStreaming={streamingAssistantId === msg.id}
+                statusLabel={statusLabel}
+                loading={loading}
+                thumbsUp={thumbsUp.has(msg.id)}
+                thumbsDown={thumbsDown.has(msg.id)}
+                feedbackReady={feedbackReady(msg)}
+                isLastAssistant={msg.id === lastAssistantId}
+                onFollowUp={handleFollowUpClick}
+                onThumbsUp={() => void handleThumbsUp(msg)}
+                onThumbsDown={() => handleThumbsDown(msg)}
+                onCopy={() => void handleCopy(msg.content)}
+                onRegenerate={() => handleRegenerate(msg)}
+              />
+            ),
           )}
-          {showStandaloneLoading && (
-            <div className="flex justify-start w-full">
-              <div className="flex items-center gap-2 py-1 text-[15px] text-gray-500 dark:text-gray-400">
-                <span className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:0ms]" />
-                  <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:150ms]" />
-                  <span className="w-2 h-2 rounded-full bg-current opacity-60 animate-bounce [animation-delay:300ms]" />
-                </span>
-                <span>{statusLabel}</span>
-              </div>
+          {showStandaloneLoading ? (
+            <div className="flex justify-start w-full text-[15px]">
+              <ChatLoadingDots label={statusLabel} />
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -1312,53 +979,17 @@ export default function ChatPage() {
         </>
       )}
 
-      {feedbackModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setFeedbackModal(null); setFeedbackComment(""); }}>
-          <div
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-md w-full mx-4 p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">What went wrong?</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your feedback helps make things better for everyone.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setFeedbackModal(null); setFeedbackComment(""); }}
-                className="p-1 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                aria-label="Close"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-3">
-              {FEEDBACK_REASONS.map(({ id, label }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => handleFeedbackReason(id)}
-                  className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  {label}
-                </button>
-              ))}
-              <label className="block">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Additional details (optional)</span>
-                <textarea
-                  value={feedbackComment}
-                  onChange={(e) => setFeedbackComment(e.target.value)}
-                  placeholder="e.g. Only returned 3 titles"
-                  rows={2}
-                  className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 text-sm resize-none"
-                />
-              </label>
-            </div>
-          </div>
-        </div>
-      )}
+      {feedbackModal ? (
+        <ChatFeedbackModal
+          comment={feedbackComment}
+          onCommentChange={setFeedbackComment}
+          onClose={() => {
+            setFeedbackModal(null);
+            setFeedbackComment("");
+          }}
+          onReason={(id) => void handleFeedbackReason(id)}
+        />
+      ) : null}
       </div>
     </div>
   );

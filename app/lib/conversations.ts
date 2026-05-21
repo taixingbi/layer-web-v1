@@ -38,8 +38,7 @@ export type ConversationMessagesResponse = {
   messages: StoredMessage[];
 };
 
-/** sessionStorage key for the active thread (UUID from gateway). */
-export const ACTIVE_CONVERSATION_KEY = "layer_active_conversation_id";
+const ACTIVE_CONVERSATION_KEY = "layer_active_conversation_id";
 
 /** Read active conversation id from session storage. */
 export function getActiveConversationId(): string | null {

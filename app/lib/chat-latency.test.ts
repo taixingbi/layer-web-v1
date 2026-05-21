@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import {
   gatewayTotalMs,
+  mergeBffLatencyWithClient,
   mergeClientLatency,
   mergeGatewayLatencyWithBff,
   normalizeLatencyForDisplay,
@@ -73,6 +74,23 @@ describe("normalizeLatencyForDisplay", () => {
     const merged = mergeGatewayLatencyWithBff(gatewaySample, { routeMs: 100 })!;
     const norm = normalizeLatencyForDisplay(merged);
     expect(norm!.web).toEqual(merged.web);
+  });
+});
+
+describe("mergeBffLatencyWithClient", () => {
+  it("merges client timing when t0 is set", () => {
+    const partial = mergeGatewayLatencyWithBff(gatewaySample, { routeMs: 5120 })!;
+    const t0 = performance.now() - 100;
+    const full = mergeBffLatencyWithClient(partial, t0);
+    expect(full!.web).toMatchObject({
+      bff: { route: 5120 },
+      client: { total: expect.any(Number) },
+    });
+  });
+
+  it("returns envelope unchanged when client t0 is null", () => {
+    const partial = mergeGatewayLatencyWithBff(gatewaySample, { routeMs: 100 })!;
+    expect(mergeBffLatencyWithClient(partial, null)).toEqual(partial);
   });
 });
 

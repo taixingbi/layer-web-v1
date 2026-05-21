@@ -6,6 +6,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { mergeGatewayLatencyWithBff } from "@/lib/chat-latency";
+import { msSince } from "@/lib/timing";
 import {
   donePayloadFromGatewayData,
   errorMessageFromGatewayData,
@@ -37,10 +38,6 @@ const SSE_HEADERS = {
   "Cache-Control": "no-cache",
   Connection: "keep-alive",
 } as const;
-
-function msSince(start: number): number {
-  return Math.round((performance.now() - start) * 1000) / 1000;
-}
 
 function inboundCorrelation(req: NextRequest): {
   sessionId: string;

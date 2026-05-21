@@ -6,7 +6,7 @@
 
 import { ChatBrand } from "@/components/ChatBrand";
 
-export const STARTER_PROMPTS = [
+const STARTER_PROMPTS = [
   "What is Taixing Bi's visa status?"
 ] as const;
 
