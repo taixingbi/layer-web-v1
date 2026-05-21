@@ -8,11 +8,13 @@ import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { ChatBrand } from "@/components/ChatBrand";
 import { ChatEmptyState } from "@/components/ChatEmptyState";
+import { ChatLatencyDetails } from "@/components/ChatLatencyDetails";
 import { ChatPrompt } from "@/components/ChatPrompt";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatUserMenu } from "@/components/ChatUserMenu";
 import { authFetch } from "@/lib/auth-fetch";
 import { buildHistory, truncateBeforeMessageId } from "@/lib/chat-history";
+import { isLatencyObject, mergeClientLatency } from "@/lib/chat-latency";
 import {
   type ConversationListResponse,
   type ConversationMessagesResponse,
@@ -37,8 +39,22 @@ type Message = {
   route?: string;
   citations?: Citation[];
   follow_up_questions?: string[];
+  latency_ms?: Record<string, unknown>;
 };
 type Status = "thinking" | "searching_sql" | "cached" | "error" | null;
+
+function clientMsSince(start: number): number {
+  return Math.round((performance.now() - start) * 1000) / 1000;
+}
+
+function mergeBffLatencyWithClient(
+  raw: unknown,
+  clientT0: number | null,
+): Record<string, unknown> | undefined {
+  if (!isLatencyObject(raw)) return undefined;
+  if (clientT0 == null) return raw;
+  return mergeClientLatency(raw, clientMsSince(clientT0)) ?? undefined;
+}
 
 const FEEDBACK_REASONS = [
   { id: "not_factually_correct", label: "Not factually correct" },
@@ -136,6 +152,8 @@ export default function ChatPage() {
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [streamingAssistantId, setStreamingAssistantId] = useState<string | null>(null);
   const streamingAssistantIdRef = useRef<string | null>(null);
+  /** DB assistant id from early SSE meta; applied with citations on ``stream_end``. */
+  const pendingAssistantDbIdRef = useRef<string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const editOriginalRef = useRef("");
@@ -146,6 +164,8 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const activeConversationIdRef = useRef<string | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
+  /** Browser fetch start for ``mergeClientLatency`` on stream_end / JSON. */
+  const clientChatT0Ref = useRef<number | null>(null);
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
@@ -440,6 +460,7 @@ export default function ChatPage() {
   }, []);
 
   const beginStreamingAssistant = useCallback(() => {
+    pendingAssistantDbIdRef.current = null;
     const id = nextId();
     streamingAssistantIdRef.current = id;
     setStreamingAssistantId(id);
@@ -449,6 +470,7 @@ export default function ChatPage() {
 
   const clearStreamingAssistant = useCallback(() => {
     streamingAssistantIdRef.current = null;
+    pendingAssistantDbIdRef.current = null;
     setStreamingAssistantId(null);
   }, []);
 
@@ -487,10 +509,9 @@ export default function ChatPage() {
       const dbId =
         typeof obj.assistant_message_id === "string" ? obj.assistant_message_id.trim() : "";
       if (dbId) {
-        applyDbMessageIdToAssistant(dbId, streamingAssistantIdRef.current ?? undefined);
+        pendingAssistantDbIdRef.current = dbId;
       }
-      if (event === "conversation_id") return;
-      if (dbId) return;
+      return;
     }
     if (event === "status") {
       setStatus(data as Status);
@@ -528,6 +549,7 @@ export default function ChatPage() {
               request_id?: string;
               citations?: Citation[];
               follow_up_questions?: string[];
+              latency_ms?: Record<string, unknown>;
             })
           : { response: data };
       const answer = typeof obj.response === "string" ? obj.response : JSON.stringify(obj.response ?? data);
@@ -535,6 +557,7 @@ export default function ChatPage() {
       const followUps = Array.isArray(obj.follow_up_questions)
         ? obj.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
         : undefined;
+      const latency_ms = mergeBffLatencyWithClient(obj.latency_ms, clientChatT0Ref.current);
       const targetId = streamingAssistantIdRef.current ?? beginStreamingAssistant();
       setMessages((prev) =>
         prev.map((m) =>
@@ -547,6 +570,7 @@ export default function ChatPage() {
                 request_id: obj.request_id,
                 citations: Array.isArray(obj.citations) ? obj.citations : undefined,
                 follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
+                ...(latency_ms ? { latency_ms } : {}),
               }
             : m
         )
@@ -571,15 +595,17 @@ export default function ChatPage() {
               route?: string;
               citations?: Citation[];
               follow_up_questions?: string[];
+              latency_ms?: Record<string, unknown>;
             })
           : {};
+      const latency_ms = mergeBffLatencyWithClient(obj.latency_ms, clientChatT0Ref.current);
       if (typeof obj.conversation_id === "string") {
         applyConversationId(obj.conversation_id);
       }
       const streamDbId =
-        typeof obj.assistant_message_id === "string"
-          ? obj.assistant_message_id.trim()
-          : "";
+        (typeof obj.assistant_message_id === "string" ? obj.assistant_message_id.trim() : "") ||
+        pendingAssistantDbIdRef.current ||
+        "";
       const answer = typeof obj.response === "string" ? obj.response : "";
       const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
@@ -593,6 +619,9 @@ export default function ChatPage() {
             m.id === targetId
               ? {
                   ...m,
+                  ...(streamDbId
+                    ? { db_message_id: streamDbId, id: `db-${streamDbId}` }
+                    : {}),
                   content: answer || m.content,
                   rewrite: rewrite ?? m.rewrite,
                   run_id: obj.run_id || obj.trace_id || m.run_id,
@@ -606,11 +635,12 @@ export default function ChatPage() {
                   citations: cites && cites.length > 0 ? cites : m.citations,
                   follow_up_questions:
                     followUps && followUps.length > 0 ? followUps : m.follow_up_questions,
+                  ...(latency_ms ? { latency_ms } : {}),
                 }
               : m
           )
         );
-      } else if (answer || rewrite) {
+      } else if (answer || rewrite || cites?.length || followUps?.length || latency_ms) {
         setMessages((prev) => [
           ...prev,
           {
@@ -629,11 +659,9 @@ export default function ChatPage() {
               : {}),
             citations: cites,
             follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
+            ...(latency_ms ? { latency_ms } : {}),
           },
         ]);
-      }
-      if (streamDbId) {
-        applyDbMessageIdToAssistant(streamDbId, streamingAssistantIdRef.current ?? undefined);
       }
       clearStreamingAssistant();
       setStatus(null);
@@ -659,7 +687,7 @@ export default function ChatPage() {
       setStatus(null);
       setLoading(false);
     }
-  }, [applyDbMessageIdToAssistant, beginStreamingAssistant, clearStreamingAssistant, applyConversationId]);
+  }, [beginStreamingAssistant, clearStreamingAssistant, applyConversationId]);
 
   const sendUserMessage = useCallback(async (
     userMessage: string,
@@ -685,6 +713,7 @@ export default function ChatPage() {
       chatAbortRef.current?.abort();
       chatAbortRef.current = new AbortController();
       const signal = chatAbortRef.current.signal;
+      clientChatT0Ref.current = performance.now();
 
       const doFetch = () => {
         let sessionId: string | null = null;
@@ -773,6 +802,7 @@ export default function ChatPage() {
           follow_up_questions?: string[];
           request_id?: string;
           trace_id?: string;
+          latency_ms?: Record<string, unknown>;
         };
         if (typeof json.conversation_id === "string") {
           applyConversationId(json.conversation_id);
@@ -782,6 +812,7 @@ export default function ChatPage() {
         const followUps = Array.isArray(json.follow_up_questions)
           ? json.follow_up_questions.filter((q): q is string => typeof q === "string" && q.trim().length > 0)
           : undefined;
+        const latency_ms = mergeBffLatencyWithClient(json.latency_ms, clientChatT0Ref.current);
         if (json.response != null) {
           const assistantId = jsonAssistantId ? `db-${jsonAssistantId}` : nextId();
           setMessages((prev) => [
@@ -795,6 +826,7 @@ export default function ChatPage() {
               ...(jsonAssistantId ? { db_message_id: jsonAssistantId } : {}),
               citations: json.citations,
               follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
+              ...(latency_ms ? { latency_ms } : {}),
             },
           ]);
         }
@@ -858,6 +890,7 @@ export default function ChatPage() {
         ]);
       }
     } finally {
+      clientChatT0Ref.current = null;
       chatAbortRef.current = null;
       clearStreamingAssistant();
       setLoading(false);
@@ -1126,9 +1159,7 @@ export default function ChatPage() {
                     </p>
                   )}
                 </div>
-                {msg.citations &&
-                  msg.citations.length > 0 &&
-                  streamingAssistantId !== msg.id && (
+                {msg.citations && msg.citations.length > 0 && (
                     <details className="mt-2.5 text-sm group">
                       <summary className="cursor-pointer text-gray-500 dark:text-gray-400 select-none list-none flex items-center gap-1">
                         <span className="text-[10px] transition-transform group-open:rotate-90">▶</span>
@@ -1159,9 +1190,7 @@ export default function ChatPage() {
                       </ul>
                     </details>
                   )}
-                {msg.follow_up_questions &&
-                  msg.follow_up_questions.length > 0 &&
-                  streamingAssistantId !== msg.id && (
+                {msg.follow_up_questions && msg.follow_up_questions.length > 0 && (
                     <div className="mt-3">
                       <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Follow-up questions</p>
                       <div className="flex flex-wrap gap-2">
@@ -1178,6 +1207,11 @@ export default function ChatPage() {
                         ))}
                       </div>
                     </div>
+                  )}
+                {streamingAssistantId !== msg.id &&
+                  msg.latency_ms &&
+                  isLatencyObject(msg.latency_ms) && (
+                    <ChatLatencyDetails latency_ms={msg.latency_ms} />
                   )}
                 {streamingAssistantId !== msg.id && msg.content.trim() && (
                   <div className="flex items-center gap-0.5 mt-3 -ml-1">

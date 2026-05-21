@@ -5,6 +5,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
+import { mergeGatewayLatencyWithBff } from "@/lib/chat-latency";
 import {
   donePayloadFromGatewayData,
   errorMessageFromGatewayData,
@@ -73,10 +74,16 @@ type StreamPumpResult = {
   follow_up_questions: string[];
 };
 
+type BffStreamTiming = {
+  routeT0: number;
+  pumpT0: number;
+};
+
 async function pumpGatewayUpstreamToClientEvents(
   upstreamBody: ReadableStream<Uint8Array>,
   send: (event: string, data: unknown) => void,
-  logFields?: Record<string, unknown>
+  logFields?: Record<string, unknown>,
+  bffTiming?: BffStreamTiming,
 ): Promise<StreamPumpResult> {
   const reader = upstreamBody.getReader();
   const decoder = new TextDecoder();
@@ -176,6 +183,12 @@ async function pumpGatewayUpstreamToClientEvents(
           }),
         });
       }
+      const latency_ms = bffTiming
+        ? mergeGatewayLatencyWithBff(done.latency_ms, {
+            routeMs: msSince(bffTiming.routeT0),
+            upstreamPumpMs: msSince(bffTiming.pumpT0),
+          })
+        : undefined;
       send("stream_end", {
         response: accumulated,
         ...(effectiveRewrite ? { rewrite: effectiveRewrite } : {}),
@@ -191,6 +204,7 @@ async function pumpGatewayUpstreamToClientEvents(
         ...(meta.route ? { route: meta.route } : {}),
         citations: done.citations,
         follow_up_questions: done.follow_up_questions,
+        ...(latency_ms ? { latency_ms } : {}),
       });
     }
   };
@@ -388,6 +402,7 @@ export async function POST(req: NextRequest) {
   if (contentType.includes("application/json")) {
     const json = (await upstream.json()) as Record<string, unknown>;
     const answer = typeof json.answer === "string" ? json.answer : "";
+    const latency_ms = mergeGatewayLatencyWithBff(json.latency_ms, { routeMs: msSince(t0) });
     const clientResponse = {
       response: answer,
       session_id: json.session_id,
@@ -402,6 +417,7 @@ export async function POST(req: NextRequest) {
       rewrite: typeof json.rewrite === "string" ? json.rewrite : null,
       citations: json.citations,
       follow_up_questions: json.follow_up_questions,
+      ...(latency_ms ? { latency_ms } : {}),
     };
     logWebEvent("gateway_api_response", "INFO", {
       ...baseLog,
@@ -454,7 +470,10 @@ export async function POST(req: NextRequest) {
       let level: "INFO" | "ERROR" = "INFO";
       try {
         send("status", "thinking");
-        await pumpGatewayUpstreamToClientEvents(upstream.body!, send, baseLog);
+        await pumpGatewayUpstreamToClientEvents(upstream.body!, send, baseLog, {
+          routeT0: t0,
+          pumpT0: tPump,
+        });
       } catch (err) {
         terminalStatus = 502;
         level = "ERROR";

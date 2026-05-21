@@ -96,6 +96,7 @@ export function donePayloadFromGatewayData(dataRaw: string): {
   assistant_message_id: string | null;
   model: string | null;
   route: string | null;
+  latency_ms: Record<string, unknown> | null;
 } {
   try {
     const obj = JSON.parse(dataRaw) as Record<string, unknown>;
@@ -112,7 +113,19 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       typeof obj.model === "string" && obj.model.trim() ? obj.model.trim() : null;
     const route =
       typeof obj.route === "string" && obj.route.trim() ? obj.route.trim() : null;
-    return { rewrite, citations, follow_up_questions, assistant_message_id, model, route };
+    const latency_ms =
+      typeof obj.latency_ms === "object" && obj.latency_ms !== null && !Array.isArray(obj.latency_ms)
+        ? (obj.latency_ms as Record<string, unknown>)
+        : null;
+    return {
+      rewrite,
+      citations,
+      follow_up_questions,
+      assistant_message_id,
+      model,
+      route,
+      latency_ms,
+    };
   } catch {
     return {
       rewrite: null,
@@ -121,6 +134,7 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       assistant_message_id: null,
       model: null,
       route: null,
+      latency_ms: null,
     };
   }
 }

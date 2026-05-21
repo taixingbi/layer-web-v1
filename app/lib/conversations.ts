@@ -2,6 +2,8 @@
  * Types and helpers for gateway conversation history (list + load).
  */
 
+import { normalizeLatencyForDisplay } from "@/lib/chat-latency";
+
 /** One thread in ``GET /api/conversations``. */
 export type ConversationSummary = {
   id: string;
@@ -22,6 +24,7 @@ export type StoredMessage = {
     follow_up_questions?: string[];
     model?: string;
     route?: string;
+    latency_ms?: Record<string, unknown>;
   } | null;
   created_at?: string | null;
 };
@@ -110,6 +113,7 @@ export function storedMessagesToChatTurns(
   rewrite?: string;
   citations?: Array<Record<string, unknown>>;
   follow_up_questions?: string[];
+  latency_ms?: Record<string, unknown>;
 }> {
   return messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && m.content.trim())
@@ -125,6 +129,7 @@ export function storedMessagesToChatTurns(
       const followUps = m.metadata?.follow_up_questions?.filter(
         (q) => typeof q === "string" && q.trim().length > 0,
       );
+      const latency_ms = normalizeLatencyForDisplay(m.metadata?.latency_ms);
       return {
         id: dbId ? `db-${dbId}` : `hist-${i}-${m.role}`,
         role: m.role as "user" | "assistant",
@@ -135,6 +140,7 @@ export function storedMessagesToChatTurns(
         ...(rewrite ? { rewrite } : {}),
         ...(citations && citations.length > 0 ? { citations } : {}),
         ...(followUps && followUps.length > 0 ? { follow_up_questions: followUps } : {}),
+        ...(latency_ms ? { latency_ms } : {}),
       };
     });
 }

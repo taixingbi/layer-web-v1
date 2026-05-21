@@ -34,6 +34,7 @@ describe("donePayloadFromGatewayData", () => {
       assistant_message_id: null,
       model: null,
       route: null,
+      latency_ms: null,
     });
   });
 
@@ -64,6 +65,17 @@ describe("donePayloadFromGatewayData", () => {
       follow_up_questions: ["ok", 42, null, "also ok"],
     });
     expect(donePayloadFromGatewayData(raw).follow_up_questions).toEqual(["ok", "also ok"]);
+  });
+
+  it("extracts latency_ms from gateway done JSON", () => {
+    const latency = { total: 100, auth: 5, orchestrator: { proxy_total: 90, workflow: {} } };
+    const raw = JSON.stringify({
+      status: "success",
+      latency_ms: latency,
+      citations: [],
+      follow_up_questions: [],
+    });
+    expect(donePayloadFromGatewayData(raw).latency_ms).toEqual(latency);
   });
 });
 
