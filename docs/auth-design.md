@@ -1,6 +1,6 @@
 # HuntAI Web — Auth design
 
-How the browser, Next.js BFF, and **layer-gateway-api-v1** agree on identity for `/api/chat` and `/api/feedback`. Gateway token verification and claim mapping live in the gateway repo; this document covers the **web + BFF** contract only.
+How the browser, Next.js BFF, and **layer-gateway-api-v1** agree on identity for `/api/v1/chat` and `/api/v1/feedback`. Gateway token verification and claim mapping live in the gateway repo; this document covers the **web + BFF** contract only.
 
 Related: [design.md](design.md) (architecture), sibling [layer-gateway-api-v1 `docs/schema.md`](../../layer-gateway-api-v1/docs/schema.md), [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-test.md).
 
@@ -8,9 +8,9 @@ Related: [design.md](design.md) (architecture), sibling [layer-gateway-api-v1 `d
 
 ## Production model: Supabase session per user
 
-Run the gateway with **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`**. Each user signs in at **`/login`** (email/password → gateway `POST /v1/auth/login` → Supabase). The BFF stores **`access_token`** and **`refresh_token`** in httpOnly cookies and forwards **`Authorization: Bearer <access_token>`** on `/api/chat` and `/api/feedback`.
+Run the gateway with **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`**. Each user signs in at **`/login`** (email/password → gateway `POST /v1/auth/login` → Supabase). The BFF stores **`access_token`** and **`refresh_token`** in httpOnly cookies and forwards **`Authorization: Bearer <access_token>`** on `/api/v1/chat` and `/api/v1/feedback`.
 
-- **Browser login:** **`POST /api/auth/login`** or **`POST /api/auth/signup`** proxy to the gateway and set cookies via [`app/lib/auth-session.ts`](../app/lib/auth-session.ts) (`layer_access_token`, `layer_refresh_token`).
+- **Browser login:** **`POST /api/v1/auth/login`** or **`POST /api/v1/auth/signup`** proxy to the gateway and set cookies via [`app/lib/auth-session.ts`](../app/lib/auth-session.ts) (`layer_access_token`, `layer_refresh_token`).
 - **Optional dev override:** `sessionStorage.layer_bearer_token` in [`app/chat/page.tsx`](../app/chat/page.tsx) adds `Authorization: Bearer …` and **overrides** the session cookie when set.
 - **No shared server bearer:** the BFF does not fall back to a global env token; unsigned requests get **401** before calling the gateway.
 
@@ -30,9 +30,9 @@ Run the gateway with **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`**. Each user s
 
 | File | Role |
 |------|------|
-| [`app/api/auth/login/route.ts`](../app/api/auth/login/route.ts) | Email/password → gateway → session cookies |
-| [`app/api/auth/signup/route.ts`](../app/api/auth/signup/route.ts) | Registration → session cookies when tokens returned |
-| [`app/api/auth/logout/route.ts`](../app/api/auth/logout/route.ts) | Clears session cookies |
+| [`app/api/v1/auth/login/route.ts`](../app/api/v1/auth/login/route.ts) | Email/password → gateway → session cookies |
+| [`app/api/v1/auth/signup/route.ts`](../app/api/v1/auth/signup/route.ts) | Registration → session cookies when tokens returned |
+| [`app/api/v1/auth/logout/route.ts`](../app/api/v1/auth/logout/route.ts) | Clears session cookies |
 | [`app/lib/gateway-proxy.ts`](../app/lib/gateway-proxy.ts) | Server-side gateway JSON calls |
 | [`app/lib/gateway-auth.ts`](../app/lib/gateway-auth.ts) | Bearer for upstream chat/feedback |
 

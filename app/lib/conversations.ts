@@ -4,7 +4,7 @@
 
 import { normalizeLatencyForDisplay } from "@/lib/chat-latency";
 
-/** One thread in ``GET /api/conversations``. */
+/** One thread in ``GET /api/v1/conversations``. */
 export type ConversationSummary = {
   id: string;
   title: string | null;
@@ -12,7 +12,7 @@ export type ConversationSummary = {
   updated_at: string | null;
 };
 
-/** One persisted turn from ``GET /api/conversations/{id}/messages``. */
+/** One persisted turn from ``GET /api/v1/conversations/{id}/messages``. */
 export type StoredMessage = {
   id?: string | null;
   role: "user" | "assistant" | string;

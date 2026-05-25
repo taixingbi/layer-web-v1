@@ -9,6 +9,7 @@ import { buildGatewayFeedbackBody, type FeedbackClientBody } from "@/lib/feedbac
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
 import { gatewayPaths } from "@/lib/gateway-paths";
+import { webApiPaths } from "@/lib/web-api-paths";
 import { logWebEvent } from "@/lib/server-log";
 import { msSince } from "@/lib/timing";
 import {
@@ -36,7 +37,7 @@ const THUMBS_DOWN_REASONS = new Set([
 export async function POST(req: NextRequest) {
   const t0 = performance.now();
   const baseLog: Record<string, unknown> = {
-    path: "/api/feedback",
+    path: webApiPaths.feedback,
     method: "POST",
     backend: "gateway",
   };

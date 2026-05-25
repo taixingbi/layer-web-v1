@@ -5,7 +5,7 @@ Next.js UI + BFF that talks **only** to **layer-gateway-api-v1** (see that repo�
 ## 1. System overview
 
 - **Next.js 15** (App Router): `app/chat/page.tsx` and `app/api/*` routes.
-- **BFF:** `/api/chat` → gateway `POST /v1/chat`; `/api/feedback` → gateway `POST /v1/feedback` with bearer auth.
+- **BFF:** `/api/v1/chat` → gateway `POST /v1/chat`; `/api/v1/feedback` → gateway `POST /v1/feedback` with bearer auth.
 - **Gateway** validates auth, normalizes contracts, proxies to the orchestrator.
 
 ## 2. Diagram
@@ -25,7 +25,7 @@ flowchart LR
 
 ## 3. Chat flow
 
-1. Browser `POST /api/chat` with `{ message }`, optional correlation headers (`X-Session-Id`, `X-Request-Id`, `X-Trace-Id`).
+1. Browser `POST /api/v1/chat` with `{ message }`, optional correlation headers (`X-Session-Id`, `X-Request-Id`, `X-Trace-Id`).
 2. BFF forwards to gateway with `Authorization`, `Accept: text/event-stream`, `stream: true`.
 3. BFF translates gateway SSE to the legacy client event stream (`result_chunk`, `stream_end`, etc.).
 

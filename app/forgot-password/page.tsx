@@ -9,11 +9,12 @@ import { useEffect, useState } from "react";
 
 import { ChatBrand } from "@/components/ChatBrand";
 import { authFetch } from "@/lib/auth-fetch";
+import { webApiPaths } from "@/lib/web-api-paths";
 
 const SUCCESS_MESSAGE =
   "If an account exists for this email, a password reset link has been sent.";
 
-/** Dev-only Supabase dashboard hints from ``GET /api/auth/config``. */
+/** Dev-only Supabase dashboard hints from ``GET /api/v1/auth/config``. */
 type AuthConfig = {
   resetPasswordRedirectUrl?: string;
   supabaseSetup?: { siteUrl?: string; redirectUrls?: string[]; note?: string };
@@ -31,7 +32,7 @@ export default function ForgotPasswordPage() {
 
   useEffect(() => {
     if (!isDev) return;
-    void authFetch("/api/auth/config")
+    void authFetch(webApiPaths.auth.config)
       .then((r) => r.json() as Promise<AuthConfig>)
       .then((data) => {
         setDevSetup(data);
@@ -50,7 +51,7 @@ export default function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await authFetch("/api/auth/forgot-password", {
+      const res = await authFetch(webApiPaths.auth.forgotPassword, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),

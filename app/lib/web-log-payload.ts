@@ -36,7 +36,7 @@ export function webMeta(parts: Record<string, unknown>): { web_meta?: Record<str
   return Object.keys(meta).length > 0 ? { web_meta: meta } : {};
 }
 
-/** Shape inbound ``POST /api/chat`` body for ``web_meta.web_api_request``. */
+/** Shape inbound ``POST /api/v1/chat`` body for ``web_meta.web_api_request``. */
 export function chatClientRequestForLog(body: {
   message?: string;
   conversation_id?: string;
@@ -96,7 +96,7 @@ export function chatClientResponseForLog(parts: {
   };
 }
 
-/** Shape inbound ``POST /api/feedback`` body for logs. */
+/** Shape inbound ``POST /api/v1/feedback`` body for logs. */
 export function feedbackClientRequestForLog(body: Record<string, unknown>): Record<string, unknown> {
   return {
     has_message_id: typeof body.message_id === "string" && body.message_id.trim().length > 0,

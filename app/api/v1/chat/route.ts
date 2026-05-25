@@ -1,5 +1,5 @@
 /**
- * BFF chat route: proxies streaming SSE (or JSON) to layer-gateway-api-v1 with structured logs.
+ * BFF chat route (`POST /api/v1/chat`): proxies streaming SSE (or JSON) to layer-gateway-api-v1.
  */
 
 import type { NextRequest } from "next/server";
@@ -19,6 +19,7 @@ import {
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
 import { gatewayPaths } from "@/lib/gateway-paths";
+import { webApiPaths } from "@/lib/web-api-paths";
 import { logWebEvent } from "@/lib/server-log";
 import {
   chatClientRequestForLog,
@@ -250,7 +251,7 @@ export async function POST(req: NextRequest) {
   const t0 = performance.now();
   const { sessionId, requestId, traceId, log: corr } = inboundCorrelation(req);
   const baseLog: Record<string, unknown> = {
-    path: "/api/chat",
+    path: webApiPaths.chat,
     method: "POST",
     backend: "gateway",
     ...corr,

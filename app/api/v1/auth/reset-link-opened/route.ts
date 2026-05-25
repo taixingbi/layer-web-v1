@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { logWebEvent } from "@/lib/server-log";
+import { webApiPaths } from "@/lib/web-api-paths";
 
 const JWT_LIKE = /eyJ[A-Za-z0-9_-]{20,}/;
 
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   logWebEvent("password_reset_link_opened", "INFO", {
     phase: "auth",
-    path: "/api/auth/reset-link-opened",
+    path: webApiPaths.auth.resetLinkOpened,
     method: "POST",
     landing_url_masked,
     ...(kind ? { kind } : {}),

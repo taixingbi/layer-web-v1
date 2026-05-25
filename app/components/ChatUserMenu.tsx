@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
+import { webApiPaths } from "@/lib/web-api-paths";
 
 type ProfileSnippet = {
   display_name?: string | null;
@@ -43,7 +44,7 @@ export function ChatUserMenu({ onSignOut }: ChatUserMenuProps) {
 
   useEffect(() => {
     let alive = true;
-    void authFetch("/api/profile")
+    void authFetch(webApiPaths.profile)
       .then((r) => (r.ok ? (r.json() as Promise<ProfileSnippet>) : null))
       .then((data) => {
         if (alive && data) setProfile(data);

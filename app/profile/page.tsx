@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ProfileRoleBadges } from "@/components/ProfileRoleBadges";
 import { authFetch } from "@/lib/auth-fetch";
+import { webApiPaths } from "@/lib/web-api-paths";
 import type { Profile } from "@/lib/profile";
 import {
   formatJoinedMonthYear,
@@ -45,14 +46,14 @@ export default function ProfilePage() {
 
   const loadProfile = useCallback(async () => {
     setError(null);
-    const me = await authFetch("/api/auth/me");
+    const me = await authFetch(webApiPaths.auth.me);
     const meJson = (await me.json()) as { signedIn?: boolean };
     if (!me.ok || !meJson.signedIn) {
       router.replace("/login?next=/profile");
       return null;
     }
 
-    const res = await authFetch("/api/profile");
+    const res = await authFetch(webApiPaths.profile);
     const data = (await res.json()) as Profile & { detail?: string; error?: string };
     if (!res.ok) {
       if (res.status === 401) {
@@ -90,7 +91,7 @@ export default function ProfilePage() {
     setMessage(null);
     setSaving(true);
     try {
-      const res = await authFetch("/api/profile", {
+      const res = await authFetch(webApiPaths.profile, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -120,7 +121,7 @@ export default function ProfilePage() {
 
   async function onSignOut() {
     try {
-      await authFetch("/api/auth/logout", { method: "POST" });
+      await authFetch(webApiPaths.auth.logout, { method: "POST" });
     } catch {
       /* ignore */
     }

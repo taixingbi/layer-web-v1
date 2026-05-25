@@ -5,10 +5,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { gatewayJsonWithAuthLog, logAuthGatewayError, maskIdentifier } from "@/lib/auth-route-log";
 import { applySessionCookies } from "@/lib/auth-session";
 import { gatewayPaths } from "@/lib/gateway-paths";
+import { webApiPaths } from "@/lib/web-api-paths";
 
 /** POST body: ``{ identifier, password }`` (or legacy ``email``). */
 export async function POST(req: NextRequest) {
-  const apiPath = "/api/auth/login";
+  const apiPath = webApiPaths.auth.login;
   const gateway_path = gatewayPaths.auth.login;
   let body: { email?: string; identifier?: string; password?: string };
   try {

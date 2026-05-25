@@ -13,8 +13,8 @@ Full technical design: **[docs/design.md](docs/design.md)**. Auth — **producti
 flowchart LR
   browser[Browser]
   chatPage[ChatPage]
-  nextChat[POST /api/chat]
-  nextFb[POST /api/feedback]
+  nextChat[POST /api/v1/chat]
+  nextFb[POST /api/v1/feedback]
   gateway[Gateway_API]
   orch[Orchestrator]
   browser --> chatPage
@@ -30,8 +30,8 @@ flowchart LR
 | Component | Purpose |
 |-----------|---------|
 | `app/chat/page.tsx` | Chat UI; `sessionStorage` session id; `X-Request-Id` / `X-Trace-Id`; optional citations |
-| `app/api/chat/route.ts` | Proxies to gateway `/v1/chat`; SSE translation for the client |
-| `app/api/feedback/route.ts` | Proxies to gateway `/v1/feedback` (`trace_id` ← UI `run_id`) |
+| `app/api/v1/chat/route.ts` | Proxies to gateway `/v1/chat`; SSE translation for the client |
+| `app/api/v1/feedback/route.ts` | Proxies to gateway `/v1/feedback` (`trace_id` ← UI `run_id`) |
 | `app/lib/config.ts` | `GATEWAY_BASE_URL`, `GATEWAY_BEARER_TOKEN`, `WEB_SERVICE_NAME` (server-only) |
 | `app/lib/gateway-auth.ts` | Resolves bearer for upstream: **client `Authorization` first**, then `GATEWAY_BEARER_TOKEN` |
 | `app/lib/server-log.ts` | Gateway-style one-line JSON logs from BFF routes (`service` defaults to `huntai-web`) |
@@ -68,10 +68,10 @@ The **example** gateway implementation is **layer-gateway-api-v1** (sibling repo
 
 ## Workflow (in-app)
 
-1. User sends a message → browser `POST /api/chat` with `{ message, conversation_id? }` and optional `X-Session-Id`, `X-Request-Id`, `X-Trace-Id`.
+1. User sends a message → browser `POST /api/v1/chat` with `{ message, conversation_id? }` and optional `X-Session-Id`, `X-Request-Id`, `X-Trace-Id`.
 2. BFF → `POST {GATEWAY_BASE_URL}/v1/chat` with `Accept: text/event-stream`, `stream: true`, and gateway auth.
 3. When the BFF returns **SSE** (`text/event-stream`), the chat page **stream-renders**: it consumes translated events (`status`, `rewrite`, `result_chunk`, `stream_end`, `error`) and appends each `result_chunk` delta to the assistant bubble in real time. If the BFF returns **JSON** instead (non-streaming upstream path), the assistant message is shown in one shot after the body is read.
-4. Feedback → `POST /api/feedback` on this app → gateway `/v1/feedback` with `trace_id` / `request_id` from the chat run.
+4. Feedback → `POST /api/v1/feedback` on this app → gateway `/v1/feedback` with `trace_id` / `request_id` from the chat run.
 
 ## End-to-end local run (example gateway)
 

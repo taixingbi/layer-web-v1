@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { authFetch } from "@/lib/auth-fetch";
+import { webApiPaths } from "@/lib/web-api-paths";
 
 /** Props for {@link EmailPasswordAuthForm}. */
 type Props = {
@@ -29,7 +30,7 @@ export function EmailPasswordAuthForm({ mode, redirectAfterAuth = "/chat" }: Pro
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
+  const endpoint = mode === "login" ? webApiPaths.auth.login : webApiPaths.auth.signup;
   const submitLabel = mode === "login" ? "Sign in" : "Create account";
 
   async function onSubmit(e: React.FormEvent) {

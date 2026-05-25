@@ -1,5 +1,5 @@
 /**
- * Build and truncate conversation history sent to ``POST /api/chat``.
+ * Build and truncate conversation history sent to ``POST /api/v1/chat``.
  */
 
 /** Single turn in gateway chat history (role + content only). */

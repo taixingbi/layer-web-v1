@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { authFetch } from "@/lib/auth-fetch";
+import { webApiPaths } from "@/lib/web-api-paths";
 import { reportResetLinkOpened } from "@/lib/report-reset-link-opened";
 import { hashErrorMessage, parseSupabaseAuthHash } from "@/lib/supabase-auth-hash";
 
@@ -63,7 +64,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await authFetch("/api/auth/reset-password", {
+      const res = await authFetch(webApiPaths.auth.resetPassword, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -36,7 +36,7 @@ describe("server-log", () => {
     });
 
     logWebEvent("request_received", "INFO", {
-      path: "/api/chat",
+      path: "/api/v1/chat",
       method: "POST",
       request_id: "req_1",
       trace_id: "tr_1",
@@ -66,7 +66,7 @@ describe("server-log", () => {
     });
 
     logWebEvent("request_complete", "INFO", {
-      path: "/api/chat",
+      path: "/api/v1/chat",
       method: "POST",
       backend: "gateway",
       status: 200,

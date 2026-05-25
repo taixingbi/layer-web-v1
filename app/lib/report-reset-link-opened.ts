@@ -3,12 +3,13 @@
  */
 
 import { authFetch } from "@/lib/auth-fetch";
+import { webApiPaths } from "@/lib/web-api-paths";
 import { maskPasswordResetLandingUrl, parseSupabaseAuthHash } from "@/lib/supabase-auth-hash";
 
 let reported = false;
 
 /**
- * POST ``/api/auth/reset-link-opened`` for structured logs; never blocks UI on failure.
+ * POST ``/api/v1/auth/reset-link-opened`` for structured logs; never blocks UI on failure.
  */
 export async function reportResetLinkOpened(hash: string, pageUrl: string): Promise<void> {
   if (reported || typeof window === "undefined") return;
@@ -19,7 +20,7 @@ export async function reportResetLinkOpened(hash: string, pageUrl: string): Prom
 
   const landing_url_masked = maskPasswordResetLandingUrl(pageUrl, hash);
   try {
-    await authFetch("/api/auth/reset-link-opened", {
+    await authFetch(webApiPaths.auth.resetLinkOpened, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

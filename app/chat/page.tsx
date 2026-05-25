@@ -36,8 +36,9 @@ import {
   setActiveConversationId as persistActiveConversationId,
   storedMessagesToChatTurns,
 } from "@/lib/conversations";
+import { webApiPaths } from "@/lib/web-api-paths";
 
-/** Authenticated chat page; proxies messages through ``POST /api/chat``. */
+/** Authenticated chat page; proxies messages through ``POST /api/v1/chat``. */
 export default function ChatPage() {
   const router = useRouter();
   const [input, setInput] = useState("");
@@ -96,7 +97,7 @@ export default function ChatPage() {
     } catch {
       /* storage blocked */
     }
-    void authFetch("/api/auth/me")
+    void authFetch(webApiPaths.auth.me)
       .then((r) => r.json() as Promise<{ signedIn?: boolean }>)
       .then((j) => {
         if (!alive) return;
@@ -117,7 +118,7 @@ export default function ChatPage() {
     if (!isAuthenticated) return;
     setConversationsLoading(true);
     try {
-      const res = await authFetch("/api/conversations", {
+      const res = await authFetch(webApiPaths.conversations, {
         headers: { ...optionalLayerBearerHeaders() },
       });
       if (!res.ok) return;
@@ -149,8 +150,7 @@ export default function ChatPage() {
       persistActiveConversationId(id);
       setSidebarOpen(false);
       try {
-        const res = await authFetch(
-          `/api/conversations/${encodeURIComponent(id)}/messages`,
+        const res = await authFetch(webApiPaths.conversationMessages(id),
           { headers: { ...optionalLayerBearerHeaders() } },
         );
         if (!res.ok) {
@@ -202,7 +202,7 @@ export default function ChatPage() {
 
   const handleSignOut = useCallback(async () => {
     try {
-      await authFetch("/api/auth/logout", { method: "POST" });
+      await authFetch(webApiPaths.auth.logout, { method: "POST" });
     } catch {
       /* ignore */
     }
@@ -235,7 +235,7 @@ export default function ChatPage() {
       if (!conversationId || !messageId) {
         throw new Error("Feedback unavailable until this reply is saved to your conversation.");
       }
-      const res = await authFetch("/api/feedback", {
+      const res = await authFetch(webApiPaths.feedback, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -634,7 +634,7 @@ export default function ChatPage() {
         const clientRequestId = correlationUuid();
         const clientTraceId = correlationUuid();
         const convId = activeConversationIdRef.current;
-        return authFetch("/api/chat", {
+        return authFetch(webApiPaths.chat, {
           method: "POST",
           signal,
           headers: {

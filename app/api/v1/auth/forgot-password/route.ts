@@ -10,11 +10,12 @@ import {
 } from "@/lib/auth-route-log";
 import { passwordResetRedirectUrl } from "@/lib/app-url";
 import { gatewayPaths } from "@/lib/gateway-paths";
+import { webApiPaths } from "@/lib/web-api-paths";
 import { gatewayJson } from "@/lib/gateway-proxy";
 
 /** POST body: ``{ email }`` → gateway ``/v1/auth/forgot-password`` with ``redirect_to``. */
 export async function POST(req: NextRequest) {
-  const apiPath = "/api/auth/forgot-password";
+  const apiPath = webApiPaths.auth.forgotPassword;
   let body: { email?: string };
   try {
     body = (await req.json()) as { email?: string };

@@ -4,6 +4,7 @@
  */
 
 import { gatewayJson, type GatewayJsonResult } from "@/lib/gateway-proxy";
+import { webApiPaths } from "@/lib/web-api-paths";
 import { logWebEvent, type WebLogLevel } from "@/lib/server-log";
 
 /**
@@ -40,7 +41,7 @@ export function logPasswordResetSendLink(fields: {
   const { email, reset_link_target, step, level = "INFO", error } = fields;
   logWebEvent("password_reset_send_link", level, {
     phase: "auth",
-    path: "/api/auth/forgot-password",
+    path: webApiPaths.auth.forgotPassword,
     method: "POST",
     email,
     ...(reset_link_target ? { reset_link_target } : {}),

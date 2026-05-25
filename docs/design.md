@@ -15,10 +15,10 @@ flowchart TD
     ProfilePage[app/profile/page.tsx]
   end
   subgraph nextjs [Next.js server]
-    BFFChat[POST /api/chat]
-    BFFConv[GET /api/conversations]
-    BFFFb[POST /api/feedback]
-    BFFProfile[GET PATCH /api/profile]
+    BFFChat[POST /api/v1/chat]
+    BFFConv[GET /api/v1/conversations]
+    BFFFb[POST /api/v1/feedback]
+    BFFProfile[GET PATCH /api/v1/profile]
   end
   GW[layer-gateway-api-v1]
   ORCH[Orchestrator]
@@ -46,15 +46,15 @@ flowchart TD
 - **ChatGPT-style sidebar** ([`app/components/ChatSidebar.tsx`](../app/components/ChatSidebar.tsx)): lists persisted threads after sign-in; **New chat** starts a fresh thread; selecting a thread loads messages from the gateway.
 - **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; **`layer_active_conversation_id`** for the current thread UUID (from gateway); optional **`layer_bearer_token`** → `Authorization` (overrides cookie). **Auth:** **`/login`** and **`/signup`** set an httpOnly **`layer_access_token`** cookie (see [auth-design.md](auth-design.md)).
 - Sends `conversation_id` / `X-Conversation-Id` on each message when a thread is active; stores gateway-returned `conversation_id` from JSON or `stream_end`.
-- Generates `X-Request-Id` and `X-Trace-Id` per outbound `/api/chat` request.
+- Generates `X-Request-Id` and `X-Trace-Id` per outbound `/api/v1/chat` request.
 - Consumes the **BFF event stream**, not raw gateway SSE: `status`, `result_chunk`, `rewrite`, `stream_end`, `error`.
 
 ### BFF — conversation history
 
-- **`GET /api/conversations`** — proxies gateway list (newest `updated_at` first).
-- **`GET /api/conversations/[conversationId]/messages`** — loads one thread for the sidebar selection.
+- **`GET /api/v1/conversations`** — proxies gateway list (newest `updated_at` first).
+- **`GET /api/v1/conversations/[conversationId]/messages`** — loads one thread for the sidebar selection.
 
-### BFF — `POST /api/chat` (`app/api/chat/route.ts`)
+### BFF — `POST /api/v1/chat` (`app/api/v1/chat/route.ts`)
 
 - Validates body (`message`, optional `conversation_id`, `history`).
 - Resolves upstream bearer via [`app/lib/gateway-auth.ts`](../app/lib/gateway-auth.ts): **inbound `Authorization` first**, then `GATEWAY_BEARER_TOKEN`.
@@ -62,12 +62,12 @@ flowchart TD
 - **Translates** gateway SSE (`meta`, `token`, `rewrite`, `done`, `error`) into the client-facing SSE/event shape used by `page.tsx`.
 - Structured JSON logs: [`app/lib/server-log.ts`](../app/lib/server-log.ts); request/response summaries under `web_meta` in [`app/lib/web-log-payload.ts`](../app/lib/web-log-payload.ts).
 
-### BFF — `POST /api/feedback` (`app/api/feedback/route.ts`)
+### BFF — `POST /api/v1/feedback` (`app/api/v1/feedback/route.ts`)
 
 - Maps UI fields to gateway feedback JSON (`run_id` → `trace_id`, etc.).
 - Same bearer resolution as chat.
 
-### BFF — `GET` / `PATCH` `/api/profile` (`app/api/profile/route.ts`)
+### BFF — `GET` / `PATCH` `/api/v1/profile` (`app/api/v1/profile/route.ts`)
 
 - Proxies to gateway `GET /profile` and `PATCH /profile` with bearer from httpOnly session cookie ([`resolveGatewayBearer`](../app/lib/gateway-auth.ts)).
 - PATCH whitelists user-editable fields only: `username`, `display_name`, `team`, `group` ([`app/lib/profile.ts`](../app/lib/profile.ts)).
@@ -107,13 +107,13 @@ Use **`curl -N`** so stdout is not buffered and you see events as they arrive.
 | Target | URL (example) | Event names on the wire |
 |--------|----------------|-------------------------|
 | **Gateway** (`layer-gateway-api-v1`) | `http://<gateway-host>:<port>/v1/chat` | `meta`, `rewrite`, `route`, `token`, `done`, `error` |
-| **Next.js BFF** (this app) | `http://<web-host>:<port>/api/chat` | `status`, `rewrite`, `result_chunk`, `stream_end`, `error` |
+| **Next.js BFF** (this app) | `http://<web-host>:<port>/api/v1/chat` | `status`, `rewrite`, `result_chunk`, `stream_end`, `error` |
 
 - **Gateway smoke curls** (full request shape, correlation headers): sibling repo [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-test.md).
 - **Next BFF** expects a **smaller JSON body** from the browser: `message`, optional `conversation_id`, optional `history` (the BFF adds `stream: true` and gateway metadata when calling upstream). Example against local web:
 
 ```bash
-curl -N -sS -X POST "http://localhost:3000/api/chat" \
+curl -N -sS -X POST "http://localhost:3000/api/v1/chat" \
   -H "Authorization: Bearer demo-token" \
   -H "Content-Type: application/json" \
   -H "X-Session-Id: curl-web-sess-1" \
@@ -172,13 +172,12 @@ Implemented in [`app/lib/config.ts`](../app/lib/config.ts). Copy [`.env.example`
 | `app/signup/page.tsx` | Sign-up UI (`/signup`); optional `AUTH_SIGNUP_URL` |
 | `app/components/AccessTokenSessionForm.tsx` | Shared access token → session cookie |
 | `app/components/DemoEnvLoginForm.tsx` | Shared demo email/password → `/api/auth/demo` |
-| `app/api/auth/config/route.ts` | `GET` exposes `demoLogin`, `signupUrl` |
-| `app/api/auth/session/route.ts` | `POST` sets `layer_access_token` cookie |
-| `app/api/auth/logout/route.ts` | `POST` clears session cookie |
+| `app/api/v1/auth/config/route.ts` | `GET` exposes `demoLogin`, `signupUrl` |
+| `app/api/v1/auth/logout/route.ts` | `POST` clears session cookie |
 | `app/lib/auth-cookie.ts` | Cookie name + read helper for BFF |
 | `app/chat/page.tsx` | Chat UI, streaming, edit/regenerate, feedback triggers |
-| `app/api/chat/route.ts` | Chat BFF, SSE pump, upstream fetch |
-| `app/api/feedback/route.ts` | Feedback BFF |
+| `app/api/v1/chat/route.ts` | Chat BFF, SSE pump, upstream fetch |
+| `app/api/v1/feedback/route.ts` | Feedback BFF |
 | `app/lib/gateway-auth.ts` | Bearer resolution for upstream |
 | `app/lib/gateway-chat.ts` | Parse gateway SSE blocks, token/done payloads |
 | `app/lib/chat-history.ts` | Client-side history + truncation for edit/regenerate |

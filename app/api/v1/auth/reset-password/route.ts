@@ -4,11 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { gatewayJsonWithAuthLog } from "@/lib/auth-route-log";
 import { gatewayPaths } from "@/lib/gateway-paths";
+import { webApiPaths } from "@/lib/web-api-paths";
 import { applySessionCookies } from "@/lib/auth-session";
 
 /** POST body: ``{ access_token, password, refresh_token? }`` (tokens from URL hash). */
 export async function POST(req: NextRequest) {
-  const apiPath = "/api/auth/reset-password";
+  const apiPath = webApiPaths.auth.resetPassword;
   const gateway_path = gatewayPaths.auth.resetPassword;
   let body: { access_token?: string; refresh_token?: string; password?: string };
   try {
