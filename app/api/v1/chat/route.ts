@@ -205,6 +205,7 @@ async function pumpGatewayUpstreamToClientEvents(
         send("latency_ms", { latency_ms });
       }
       send("stream_end", {
+        ...(accumulated ? { response: accumulated } : {}),
         ...(effectiveRewrite ? { rewrite: effectiveRewrite } : {}),
         run_id: meta.trace_id ?? "",
         request_id: meta.request_id ?? "",

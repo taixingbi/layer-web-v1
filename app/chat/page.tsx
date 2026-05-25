@@ -536,6 +536,8 @@ export default function ChatPage() {
         pendingAssistantDbIdRef.current ||
         "";
       const rewrite = typeof obj.rewrite === "string" ? obj.rewrite.trim() : undefined;
+      const responseText =
+        typeof obj.response === "string" && obj.response.trim() ? obj.response.trim() : undefined;
       const latencyFromEvent = mergeBffLatencyWithClient(obj.latency_ms, clientChatT0Ref.current);
       const cites = Array.isArray(obj.citations) ? obj.citations : undefined;
       const followUps = Array.isArray(obj.follow_up_questions)
@@ -550,6 +552,7 @@ export default function ChatPage() {
             return {
               ...m,
               ...(streamDbId ? { db_message_id: streamDbId, id: `db-${streamDbId}` } : {}),
+              content: responseText && !m.content.trim() ? responseText : m.content,
               rewrite: rewrite ?? m.rewrite,
               run_id: obj.run_id || obj.trace_id || m.run_id,
               request_id: obj.request_id || m.request_id,
