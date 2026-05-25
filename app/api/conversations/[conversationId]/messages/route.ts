@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 
 import { gatewayJsonAuthed } from "@/lib/gateway-proxy";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
+import { gatewayPaths } from "@/lib/gateway-paths";
 
 export const runtime = "nodejs";
 
@@ -28,10 +29,8 @@ export async function GET(
     return NextResponse.json({ error: "Missing conversation id" }, { status: 400 });
   }
 
-  const upstream = await gatewayJsonAuthed(
-    `/api/conversations/${encodeURIComponent(id)}/messages`,
-    token,
-    { method: "GET" },
-  );
+  const upstream = await gatewayJsonAuthed(gatewayPaths.conversationMessages(id), token, {
+    method: "GET",
+  });
   return NextResponse.json(upstream.data, { status: upstream.status });
 }

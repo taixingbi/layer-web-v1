@@ -8,7 +8,7 @@ Related: [design.md](design.md) (architecture), sibling [layer-gateway-api-v1 `d
 
 ## Production model: Supabase session per user
 
-Run the gateway with **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`**. Each user signs in at **`/login`** (email/password → gateway `POST /auth/login` → Supabase). The BFF stores **`access_token`** and **`refresh_token`** in httpOnly cookies and forwards **`Authorization: Bearer <access_token>`** on `/api/chat` and `/api/feedback`.
+Run the gateway with **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`**. Each user signs in at **`/login`** (email/password → gateway `POST /v1/auth/login` → Supabase). The BFF stores **`access_token`** and **`refresh_token`** in httpOnly cookies and forwards **`Authorization: Bearer <access_token>`** on `/api/chat` and `/api/feedback`.
 
 - **Browser login:** **`POST /api/auth/login`** or **`POST /api/auth/signup`** proxy to the gateway and set cookies via [`app/lib/auth-session.ts`](../app/lib/auth-session.ts) (`layer_access_token`, `layer_refresh_token`).
 - **Optional dev override:** `sessionStorage.layer_bearer_token` in [`app/chat/page.tsx`](../app/chat/page.tsx) adds `Authorization: Bearer …` and **overrides** the session cookie when set.

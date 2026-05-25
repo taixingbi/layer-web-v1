@@ -1,5 +1,5 @@
 /**
- * Build gateway ``POST /api/feedback`` bodies from UI thumbs / annotation fields.
+ * Build gateway ``POST /v1/feedback`` bodies from UI thumbs / annotation fields.
  */
 
 const REASON_TO_FEEDBACK_REASON: Record<string, string> = {

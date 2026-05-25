@@ -18,6 +18,7 @@ import {
 } from "@/lib/gateway-chat";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
+import { gatewayPaths } from "@/lib/gateway-paths";
 import { logWebEvent } from "@/lib/server-log";
 import {
   chatClientRequestForLog,
@@ -116,6 +117,13 @@ async function pumpGatewayUpstreamToClientEvents(
       if (text) {
         rewrite = text;
         send("rewrite", { text });
+      }
+    } else if (ev === "route") {
+      try {
+        const routePayload = JSON.parse(parsed.dataRaw) as Record<string, unknown>;
+        send("route", routePayload);
+      } catch {
+        /* ignore malformed route frames */
       }
     } else if (ev === "token") {
       const delta = tokenDeltaFromGatewayData(parsed.dataRaw);
@@ -336,7 +344,7 @@ export async function POST(req: NextRequest) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${config.gatewayBaseUrl}/api/chat`, {
+    upstream = await fetch(`${config.gatewayBaseUrl}${gatewayPaths.chat}`, {
       method: "POST",
       headers,
       body: JSON.stringify(gatewayRequestBody),

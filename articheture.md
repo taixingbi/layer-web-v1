@@ -5,7 +5,7 @@ Next.js UI + BFF that talks **only** to **layer-gateway-api-v1** (see that repo�
 ## 1. System overview
 
 - **Next.js 15** (App Router): `app/chat/page.tsx` and `app/api/*` routes.
-- **BFF:** `/api/chat` → gateway `POST /api/chat`; `/api/feedback` → gateway `POST /api/feedback` with bearer auth.
+- **BFF:** `/api/chat` → gateway `POST /v1/chat`; `/api/feedback` → gateway `POST /v1/feedback` with bearer auth.
 - **Gateway** validates auth, normalizes contracts, proxies to the orchestrator.
 
 ## 2. Diagram

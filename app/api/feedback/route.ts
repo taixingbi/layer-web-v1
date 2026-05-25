@@ -8,6 +8,7 @@ import { config } from "@/lib/config";
 import { buildGatewayFeedbackBody, type FeedbackClientBody } from "@/lib/feedback";
 import { gatewayResponseLogFields } from "@/lib/gateway-upstream-log";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
+import { gatewayPaths } from "@/lib/gateway-paths";
 import { logWebEvent } from "@/lib/server-log";
 import { msSince } from "@/lib/timing";
 import {
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    const res = await fetch(`${config.gatewayBaseUrl}/api/feedback`, {
+    const res = await fetch(`${config.gatewayBaseUrl}${gatewayPaths.feedback}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

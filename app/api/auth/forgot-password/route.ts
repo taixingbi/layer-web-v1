@@ -9,9 +9,10 @@ import {
   logPasswordResetSendLink,
 } from "@/lib/auth-route-log";
 import { passwordResetRedirectUrl } from "@/lib/app-url";
+import { gatewayPaths } from "@/lib/gateway-paths";
 import { gatewayJson } from "@/lib/gateway-proxy";
 
-/** POST body: ``{ email }`` → gateway ``/auth/forgot-password`` with ``redirect_to``. */
+/** POST body: ``{ email }`` → gateway ``/v1/auth/forgot-password`` with ``redirect_to``. */
 export async function POST(req: NextRequest) {
   const apiPath = "/api/auth/forgot-password";
   let body: { email?: string };
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     step: "ready_to_send",
   });
 
-  const gateway_path = "/auth/forgot-password";
+  const gateway_path = gatewayPaths.auth.forgotPassword;
   const gateway_payload = { email, redirect_to };
 
   logAuthGatewayRequest(apiPath, gateway_path, gateway_payload);

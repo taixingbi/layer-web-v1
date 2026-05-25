@@ -58,7 +58,7 @@ flowchart TD
 
 - Validates body (`message`, optional `conversation_id`, `history`).
 - Resolves upstream bearer via [`app/lib/gateway-auth.ts`](../app/lib/gateway-auth.ts): **inbound `Authorization` first**, then `GATEWAY_BEARER_TOKEN`.
-- Forwards to `POST {GATEWAY_BASE_URL}/api/chat` with `Accept: text/event-stream`, `stream: true`, correlation headers, and JSON shaped per gateway contract.
+- Forwards to `POST {GATEWAY_BASE_URL}/v1/chat` with `Accept: text/event-stream`, `stream: true`, correlation headers, and JSON shaped per gateway contract.
 - **Translates** gateway SSE (`meta`, `token`, `rewrite`, `done`, `error`) into the client-facing SSE/event shape used by `page.tsx`.
 - Structured JSON logs: [`app/lib/server-log.ts`](../app/lib/server-log.ts); request/response summaries under `web_meta` in [`app/lib/web-log-payload.ts`](../app/lib/web-log-payload.ts).
 
@@ -106,7 +106,7 @@ Use **`curl -N`** so stdout is not buffered and you see events as they arrive.
 
 | Target | URL (example) | Event names on the wire |
 |--------|----------------|-------------------------|
-| **Gateway** (`layer-gateway-api-v1`) | `http://<gateway-host>:<port>/api/chat` | `meta`, `rewrite`, `token`, `done`, `error` |
+| **Gateway** (`layer-gateway-api-v1`) | `http://<gateway-host>:<port>/v1/chat` | `meta`, `rewrite`, `route`, `token`, `done`, `error` |
 | **Next.js BFF** (this app) | `http://<web-host>:<port>/api/chat` | `status`, `rewrite`, `result_chunk`, `stream_end`, `error` |
 
 - **Gateway smoke curls** (full request shape, correlation headers): sibling repo [`docs/smoke-test.md`](../../layer-gateway-api-v1/docs/smoke-test.md).

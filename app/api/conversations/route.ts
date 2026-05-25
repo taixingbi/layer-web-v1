@@ -1,5 +1,5 @@
 /**
- * BFF: list conversations from gateway ``GET /api/conversations``.
+ * BFF: list conversations from gateway ``GET /v1/conversations``.
  */
 
 import type { NextRequest } from "next/server";
@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 
 import { gatewayJsonAuthed } from "@/lib/gateway-proxy";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
+import { gatewayPaths } from "@/lib/gateway-paths";
 
 export const runtime = "nodejs";
 
@@ -22,8 +23,8 @@ export async function GET(req: NextRequest) {
   const limit = req.nextUrl.searchParams.get("limit");
   const path =
     limit && /^\d+$/.test(limit)
-      ? `/api/conversations?limit=${encodeURIComponent(limit)}`
-      : "/api/conversations";
+      ? `${gatewayPaths.conversations}?limit=${encodeURIComponent(limit)}`
+      : gatewayPaths.conversations;
 
   const upstream = await gatewayJsonAuthed(path, token, { method: "GET" });
   return NextResponse.json(upstream.data, { status: upstream.status });
