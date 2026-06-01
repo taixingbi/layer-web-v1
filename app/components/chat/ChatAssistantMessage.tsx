@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useId } from "react";
+import { memo } from "react";
 import { AssistantMessageContent } from "@/components/chat/AssistantMessageContent";
 import { AssistantMessageMeta } from "@/components/chat/AssistantMessageMeta";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
@@ -38,13 +38,14 @@ function ChatAssistantMessageInner({
   onCopy,
   onRegenerate,
 }: Props) {
-  const followUpSelectId = useId();
-  const rewriteSelectId = useId();
   const showThinking = isStreaming && !msg.content.trim() && !msg.rewrite;
   const showAnswer = !isStreaming || Boolean(msg.content.trim());
   const citeCount = msg.citations?.length ?? 0;
+  const hasRewrite = Boolean(msg.rewrite?.trim());
   const hasFollowUps = Boolean(msg.follow_up_questions?.length);
   const showLatency = !isStreaming && Boolean(msg.latency_ms);
+  const showDetails =
+    hasRewrite || hasFollowUps || citeCount > 0 || showLatency;
 
   return (
     <div className="flex w-full justify-start">
@@ -60,59 +61,15 @@ function ChatAssistantMessageInner({
             ) : null}
           </div>
 
-          {citeCount > 0 || showLatency ? (
+          {showDetails ? (
             <AssistantMessageMeta
+              rewrite={hasRewrite ? msg.rewrite : undefined}
+              follow_up_questions={hasFollowUps ? msg.follow_up_questions : undefined}
               citations={citeCount > 0 ? msg.citations : undefined}
               latency_ms={showLatency ? msg.latency_ms : undefined}
+              loading={loading}
+              onFollowUp={onFollowUp}
             />
-          ) : null}
-
-          {msg.rewrite ? (
-            <div className="chat-follow-up-section">
-              <label htmlFor={rewriteSelectId} className="chat-follow-up-label">
-                Rewrite
-              </label>
-              <select
-                id={rewriteSelectId}
-                key={msg.rewrite}
-                className="chat-follow-up-select"
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  View rewritten query…
-                </option>
-                <option value={msg.rewrite}>{msg.rewrite}</option>
-              </select>
-            </div>
-          ) : null}
-
-          {hasFollowUps ? (
-            <div className="chat-follow-up-section">
-              <label htmlFor={followUpSelectId} className="chat-follow-up-label">
-                Follow-up
-              </label>
-              <select
-                id={followUpSelectId}
-                className="chat-follow-up-select"
-                disabled={loading}
-                defaultValue=""
-                onChange={(e) => {
-                  const q = e.target.value;
-                  if (!q) return;
-                  onFollowUp(q);
-                  e.target.value = "";
-                }}
-              >
-                <option value="" disabled>
-                  Choose a follow-up question…
-                </option>
-                {msg.follow_up_questions!.map((q) => (
-                  <option key={q} value={q}>
-                    {q}
-                  </option>
-                ))}
-              </select>
-            </div>
           ) : null}
 
           {!isStreaming && msg.content.trim() ? (

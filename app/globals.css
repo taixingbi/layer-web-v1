@@ -275,6 +275,13 @@ body {
   outline: 2px solid #10a37f;
   outline-offset: 1px;
 }
+.chat-details-rewrite {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #374151;
+  white-space: pre-wrap;
+}
 .chat-message-actions {
   display: flex;
   align-items: center;
@@ -407,6 +414,9 @@ body {
   .chat-follow-up-select:hover:not(:disabled) {
     background-color: #333;
     border-color: #525252;
+  }
+  .chat-details-rewrite {
+    color: #d1d5db;
   }
   .chat-input-wrap {
     background: #2f2f2f;
