@@ -34,6 +34,9 @@ describe("donePayloadFromGatewayData", () => {
       assistant_message_id: null,
       model: null,
       route: null,
+      route_detail: null,
+      route_source: null,
+      usage: null,
       latency_ms: null,
     });
   });

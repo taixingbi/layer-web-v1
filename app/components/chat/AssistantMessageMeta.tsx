@@ -91,13 +91,15 @@ export function AssistantMessageMeta({
     hasTrace,
   );
 
-  const tabs: Array<{ id: DebugTab; label: string; show: boolean }> = [
+  const allTabs = [
     { id: "sources", label: "Sources", show: hasSources },
     { id: "trace", label: "Trace", show: hasTrace },
     { id: "route", label: "Route", show: hasRoute },
     { id: "timeline", label: "Timeline", show: Boolean(hasLatency) },
     { id: "rewrite", label: "Rewrite", show: hasRewrite },
-  ].filter((t) => t.show);
+  ] satisfies Array<{ id: DebugTab; label: string; show: boolean }>;
+
+  const tabs = allTabs.filter((t) => t.show);
 
   const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0]?.id;
 

@@ -57,7 +57,7 @@ describe("firstRepoLinkNodeIds", () => {
     expect(linkIds.has("client")).toBe(true);
     expect(linkIds.has("gateway")).toBe(true);
     expect(linkIds.has("rag")).toBe(true);
-    expect(linkIds.has("rag-retrieval-embed")).toBe(false);
+    expect(linkIds.has("rag-retrieval-embed")).toBe(true);
     expect(linkIds.has("intent-router")).toBe(false);
   });
 });
