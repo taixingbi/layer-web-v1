@@ -52,12 +52,7 @@ function ChatAssistantMessageInner({
   );
   const hasRoute = Boolean(msg.route || msg.route_detail);
   const showDetails =
-    hasRewrite ||
-    hasFollowUps ||
-    citeCount > 0 ||
-    showLatency ||
-    hasTrace ||
-    hasRoute;
+    hasRewrite || hasFollowUps || citeCount > 0 || showLatency || hasTrace || hasRoute;
 
   const debugMsg: ChatMessage = {
     ...msg,

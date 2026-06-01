@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { AssistantAnswerSummary } from "@/components/chat/AssistantAnswerSummary";
 import { CitationSourceList } from "@/components/chat/CitationSourceList";
 import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
@@ -57,6 +57,7 @@ export function AssistantMessageMeta({
   onFollowUp,
   showAnswerSummary = false,
 }: Props) {
+  const followUpSelectId = useId();
   const citeCount = msg.citations?.length ?? 0;
   const followUpCount = msg.follow_up_questions?.length ?? 0;
   const rewriteText = msg.rewrite?.trim() ?? "";
@@ -72,8 +73,8 @@ export function AssistantMessageMeta({
     msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.conversation_id || msg.usage,
   );
   const hasRoute = Boolean(msg.route || msg.route_detail);
-  const hasMeta =
-    hasRewrite || hasFollowUps || hasSources || hasLatency || hasTrace || hasRoute;
+  const hasMeta = hasRewrite || hasFollowUps || hasSources || hasLatency || hasTrace || hasRoute;
+  const hasDebugTabs = hasSources || hasLatency || hasTrace || hasRoute || hasRewrite;
 
   const initialTab = useMemo(
     () => defaultTab(msg, hasSources, Boolean(hasLatency)),
@@ -115,7 +116,37 @@ export function AssistantMessageMeta({
           {summary}
         </summary>
         <div className="chat-assistant-meta-body chat-debug-panel-body">
-          {tabs.length > 1 ? (
+          {hasFollowUps ? (
+            <div className="chat-follow-up-section">
+              <label htmlFor={followUpSelectId} className="chat-follow-up-label">
+                Follow-up
+              </label>
+              <select
+                id={followUpSelectId}
+                className="chat-follow-up-select"
+                defaultValue=""
+                onChange={(e) => {
+                  const q = e.target.value;
+                  if (!q) return;
+                  if (loading) {
+                    e.target.value = "";
+                    return;
+                  }
+                  onFollowUp(q);
+                  e.target.value = "";
+                }}
+              >
+                <option value="">Choose a follow-up question…</option>
+                {msg.follow_up_questions!.map((q) => (
+                  <option key={q} value={q}>
+                    {q}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {hasDebugTabs && tabs.length > 1 ? (
             <div className="chat-debug-tabs" role="tablist" aria-label="Debug sections">
               {tabs.map((t) => (
                 <button
@@ -132,48 +163,30 @@ export function AssistantMessageMeta({
             </div>
           ) : null}
 
-          <div className="chat-debug-tab-panel" role="tabpanel">
-            {activeTab === "sources" && hasSources ? (
-              <CitationSourceList citations={msg.citations!} />
-            ) : null}
-            {activeTab === "trace" && hasTrace ? <DebugTracePanel msg={msg} /> : null}
-            {activeTab === "route" && hasRoute ? (
-              <DebugRoutePanel
-                route={msg.route}
-                route_detail={msg.route_detail}
-                route_source={msg.route_source}
-                model={msg.model}
-              />
-            ) : null}
-            {activeTab === "timeline" && hasLatency ? (
-              <LatencyTimelinePanel latency_ms={msg.latency_ms as LatencyObject} />
-            ) : null}
-            {activeTab === "rewrite" && hasRewrite ? (
-              <p className="chat-details-rewrite">{rewriteText}</p>
-            ) : null}
-          </div>
+          {hasDebugTabs ? (
+            <div className="chat-debug-tab-panel" role="tabpanel">
+              {activeTab === "sources" && hasSources ? (
+                <CitationSourceList citations={msg.citations!} />
+              ) : null}
+              {activeTab === "trace" && hasTrace ? <DebugTracePanel msg={msg} /> : null}
+              {activeTab === "route" && hasRoute ? (
+                <DebugRoutePanel
+                  route={msg.route}
+                  route_detail={msg.route_detail}
+                  route_source={msg.route_source}
+                  model={msg.model}
+                />
+              ) : null}
+              {activeTab === "timeline" && hasLatency ? (
+                <LatencyTimelinePanel latency_ms={msg.latency_ms as LatencyObject} />
+              ) : null}
+              {activeTab === "rewrite" && hasRewrite ? (
+                <p className="chat-details-rewrite">{rewriteText}</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </details>
-
-      {hasFollowUps ? (
-        <section className="chat-related-questions">
-          <p className="chat-details-section-label">Related questions</p>
-          <ul className="chat-details-follow-up-list">
-            {msg.follow_up_questions!.map((q) => (
-              <li key={q}>
-                <button
-                  type="button"
-                  disabled={loading}
-                  className="chat-details-follow-up-btn"
-                  onClick={() => onFollowUp(q)}
-                >
-                  {q}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </div>
   );
 }

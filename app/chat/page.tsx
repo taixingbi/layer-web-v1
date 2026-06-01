@@ -923,7 +923,7 @@ export default function ChatPage() {
     (question: string) => {
       void sendUserMessage(question);
     },
-    [sendUserMessage]
+    [sendUserMessage],
   );
 
   const statusLabel =
