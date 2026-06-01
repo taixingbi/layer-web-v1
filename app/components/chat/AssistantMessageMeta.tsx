@@ -10,7 +10,7 @@ import { buildLatencyTimelineView, formatLatencyShort } from "@/lib/latency-time
 import { isLatencyObject, latencyDisplayTotalMs, type LatencyObject } from "@/lib/chat-latency";
 import type { ChatMessage } from "@/lib/chat-types";
 
-type DebugTab = "sources" | "trace" | "route" | "timeline" | "rewrite";
+type DebugTab = "sources" | "followup" | "trace" | "route" | "timeline" | "rewrite";
 
 type Props = {
   msg: ChatMessage;
@@ -44,6 +44,7 @@ function buildDetailsSummary(
 
 function defaultTab(msg: ChatMessage, hasSources: boolean, hasLatency: boolean): DebugTab {
   if (hasSources) return "sources";
+  if (msg.follow_up_questions?.length) return "followup";
   if (msg.trace_id || msg.run_id || msg.usage) return "trace";
   if (msg.route || msg.route_detail) return "route";
   if (hasLatency) return "timeline";
@@ -74,7 +75,6 @@ export function AssistantMessageMeta({
   );
   const hasRoute = Boolean(msg.route || msg.route_detail);
   const hasMeta = hasRewrite || hasFollowUps || hasSources || hasLatency || hasTrace || hasRoute;
-  const hasDebugTabs = hasSources || hasLatency || hasTrace || hasRoute || hasRewrite;
 
   const initialTab = useMemo(
     () => defaultTab(msg, hasSources, Boolean(hasLatency)),
@@ -94,6 +94,7 @@ export function AssistantMessageMeta({
 
   const allTabs = [
     { id: "sources", label: "Sources", show: hasSources },
+    { id: "followup", label: "Follow-up", show: hasFollowUps },
     { id: "trace", label: "Trace", show: hasTrace },
     { id: "route", label: "Route", show: hasRoute },
     { id: "timeline", label: "Timeline", show: Boolean(hasLatency) },
@@ -116,37 +117,7 @@ export function AssistantMessageMeta({
           {summary}
         </summary>
         <div className="chat-assistant-meta-body chat-debug-panel-body">
-          {hasFollowUps ? (
-            <div className="chat-follow-up-section">
-              <label htmlFor={followUpSelectId} className="chat-follow-up-label">
-                Follow-up
-              </label>
-              <select
-                id={followUpSelectId}
-                className="chat-follow-up-select"
-                defaultValue=""
-                onChange={(e) => {
-                  const q = e.target.value;
-                  if (!q) return;
-                  if (loading) {
-                    e.target.value = "";
-                    return;
-                  }
-                  onFollowUp(q);
-                  e.target.value = "";
-                }}
-              >
-                <option value="">Choose a follow-up question…</option>
-                {msg.follow_up_questions!.map((q) => (
-                  <option key={q} value={q}>
-                    {q}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
-
-          {hasDebugTabs && tabs.length > 1 ? (
+          {tabs.length > 1 ? (
             <div className="chat-debug-tabs" role="tablist" aria-label="Debug sections">
               {tabs.map((t) => (
                 <button
@@ -163,8 +134,37 @@ export function AssistantMessageMeta({
             </div>
           ) : null}
 
-          {hasDebugTabs ? (
+          {tabs.length > 0 ? (
             <div className="chat-debug-tab-panel" role="tabpanel">
+              {activeTab === "followup" && hasFollowUps ? (
+                <div className="chat-follow-up-section">
+                  <label htmlFor={followUpSelectId} className="chat-follow-up-label">
+                    Follow-up
+                  </label>
+                  <select
+                    id={followUpSelectId}
+                    className="chat-follow-up-select"
+                    defaultValue=""
+                    onChange={(e) => {
+                      const q = e.target.value;
+                      if (!q) return;
+                      if (loading) {
+                        e.target.value = "";
+                        return;
+                      }
+                      onFollowUp(q);
+                      e.target.value = "";
+                    }}
+                  >
+                    <option value="">Choose a follow-up question…</option>
+                    {msg.follow_up_questions!.map((q) => (
+                      <option key={q} value={q}>
+                        {q}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               {activeTab === "sources" && hasSources ? (
                 <CitationSourceList citations={msg.citations!} />
               ) : null}
