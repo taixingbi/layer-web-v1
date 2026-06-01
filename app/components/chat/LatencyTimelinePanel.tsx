@@ -3,7 +3,6 @@
 import {
   buildLatencyTimelineView,
   formatTimelineLine,
-  shortSlowestLabel,
   type LatencyTimelineNode,
   type LatencyTimelineView,
 } from "@/lib/latency-timeline";
@@ -37,33 +36,6 @@ function renderTreeNodes(
   return lines;
 }
 
-function TopLatencySummary({ slowest }: { slowest: LatencyTimelineView["slowest"] }) {
-  if (slowest.length === 0) return null;
-  const line = slowest
-    .slice(0, 3)
-    .map((op) => `${shortSlowestLabel(op.label)} ${op.percent}%`)
-    .join(" · ");
-  return (
-    <div className="chat-latency-top">
-      <p className="chat-latency-top-label">Top latency</p>
-      <p className="chat-latency-top-line">{line}</p>
-    </div>
-  );
-}
-
-function SlowestRanked({ slowest }: { slowest: LatencyTimelineView["slowest"] }) {
-  if (slowest.length === 0) return null;
-  return (
-    <ul className="chat-latency-ranked">
-      {slowest.map((op) => (
-        <li key={op.rank}>
-          #{op.rank} {op.label} {op.percent}%
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
   const lines = renderTreeNodes(view.tree, 0, []);
   return (
@@ -79,8 +51,6 @@ export function LatencyTimelinePanel({ latency_ms }: Props) {
   if (!view) return null;
   return (
     <div className="chat-latency-panel">
-      <TopLatencySummary slowest={view.slowest} />
-      <SlowestRanked slowest={view.slowest} />
       <RequestTimelineTree view={view} />
     </div>
   );

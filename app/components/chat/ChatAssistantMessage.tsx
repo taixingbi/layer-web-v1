@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useId } from "react";
 import { AssistantMessageContent } from "@/components/chat/AssistantMessageContent";
 import { AssistantMessageMeta } from "@/components/chat/AssistantMessageMeta";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
@@ -38,6 +38,7 @@ function ChatAssistantMessageInner({
   onCopy,
   onRegenerate,
 }: Props) {
+  const followUpSelectId = useId();
   const showThinking = isStreaming && !msg.content.trim() && !msg.rewrite;
   const showAnswer = !isStreaming || Boolean(msg.content.trim());
   const citeCount = msg.citations?.length ?? 0;
@@ -74,20 +75,30 @@ function ChatAssistantMessageInner({
 
           {hasFollowUps ? (
             <div className="chat-follow-up-section">
-              <p className="chat-follow-up-label">Follow-up</p>
-              <div className="chat-follow-up-chips">
+              <label htmlFor={followUpSelectId} className="chat-follow-up-label">
+                Follow-up
+              </label>
+              <select
+                id={followUpSelectId}
+                className="chat-follow-up-select"
+                disabled={loading}
+                defaultValue=""
+                onChange={(e) => {
+                  const q = e.target.value;
+                  if (!q) return;
+                  onFollowUp(q);
+                  e.target.value = "";
+                }}
+              >
+                <option value="" disabled>
+                  Choose a follow-up question…
+                </option>
                 {msg.follow_up_questions!.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => onFollowUp(q)}
-                    className="chat-follow-up-chip"
-                  >
+                  <option key={q} value={q}>
                     {q}
-                  </button>
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
           ) : null}
 
