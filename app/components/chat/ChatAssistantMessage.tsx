@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-import { AssistantAnswerSummary } from "@/components/chat/AssistantAnswerSummary";
 import { AssistantMessageContent } from "@/components/chat/AssistantMessageContent";
 import { AssistantMessageMeta } from "@/components/chat/AssistantMessageMeta";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
@@ -72,10 +71,6 @@ function ChatAssistantMessageInner({
               </p>
             ) : null}
           </div>
-
-          {!isStreaming && showAnswer && msg.content.trim() ? (
-            <AssistantAnswerSummary msg={debugMsg} />
-          ) : null}
 
           {showDetails ? (
             <AssistantMessageMeta msg={debugMsg} loading={loading} onFollowUp={onFollowUp} />

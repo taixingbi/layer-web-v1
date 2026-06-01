@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import { AssistantAnswerSummary } from "@/components/chat/AssistantAnswerSummary";
 import { CitationSourceList } from "@/components/chat/CitationSourceList";
 import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
 import { DebugTracePanel } from "@/components/chat/DebugTracePanel";
@@ -16,8 +15,6 @@ type Props = {
   msg: ChatMessage;
   loading?: boolean;
   onFollowUp: (q: string) => void;
-  /** When false, hide the inline answer summary (parent may render it). */
-  showAnswerSummary?: boolean;
 };
 
 function buildDetailsSummary(
@@ -56,7 +53,6 @@ export function AssistantMessageMeta({
   msg,
   loading = false,
   onFollowUp,
-  showAnswerSummary = false,
 }: Props) {
   const followUpSelectId = useId();
   const citeCount = msg.citations?.length ?? 0;
@@ -107,8 +103,6 @@ export function AssistantMessageMeta({
 
   return (
     <div className="chat-debug-wrap">
-      {showAnswerSummary ? <AssistantAnswerSummary msg={msg} /> : null}
-
       <details className="chat-details-disclosure chat-assistant-meta group">
         <summary className="chat-details-trigger chat-assistant-meta-summary">
           <span className="chat-assistant-meta-chevron" aria-hidden>
