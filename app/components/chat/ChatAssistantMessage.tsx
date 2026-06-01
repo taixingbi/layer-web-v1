@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { AssistantAnswerSummary } from "@/components/chat/AssistantAnswerSummary";
 import { AssistantMessageContent } from "@/components/chat/AssistantMessageContent";
 import { AssistantMessageMeta } from "@/components/chat/AssistantMessageMeta";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
@@ -9,6 +10,7 @@ import type { ChatMessage } from "@/lib/chat-types";
 
 type Props = {
   msg: ChatMessage;
+  conversationId?: string | null;
   isStreaming: boolean;
   statusLabel: string;
   loading: boolean;
@@ -25,6 +27,7 @@ type Props = {
 
 function ChatAssistantMessageInner({
   msg,
+  conversationId,
   isStreaming,
   statusLabel,
   loading,
@@ -44,8 +47,22 @@ function ChatAssistantMessageInner({
   const hasRewrite = Boolean(msg.rewrite?.trim());
   const hasFollowUps = Boolean(msg.follow_up_questions?.length);
   const showLatency = !isStreaming && Boolean(msg.latency_ms);
+  const hasTrace = Boolean(
+    msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.usage,
+  );
+  const hasRoute = Boolean(msg.route || msg.route_detail);
   const showDetails =
-    hasRewrite || hasFollowUps || citeCount > 0 || showLatency;
+    hasRewrite ||
+    hasFollowUps ||
+    citeCount > 0 ||
+    showLatency ||
+    hasTrace ||
+    hasRoute;
+
+  const debugMsg: ChatMessage = {
+    ...msg,
+    conversation_id: msg.conversation_id ?? conversationId ?? undefined,
+  };
 
   return (
     <div className="flex w-full justify-start">
@@ -61,15 +78,12 @@ function ChatAssistantMessageInner({
             ) : null}
           </div>
 
+          {!isStreaming && showAnswer && msg.content.trim() ? (
+            <AssistantAnswerSummary msg={debugMsg} />
+          ) : null}
+
           {showDetails ? (
-            <AssistantMessageMeta
-              rewrite={hasRewrite ? msg.rewrite : undefined}
-              follow_up_questions={hasFollowUps ? msg.follow_up_questions : undefined}
-              citations={citeCount > 0 ? msg.citations : undefined}
-              latency_ms={showLatency ? msg.latency_ms : undefined}
-              loading={loading}
-              onFollowUp={onFollowUp}
-            />
+            <AssistantMessageMeta msg={debugMsg} loading={loading} onFollowUp={onFollowUp} />
           ) : null}
 
           {!isStreaming && msg.content.trim() ? (

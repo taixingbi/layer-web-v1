@@ -24,6 +24,16 @@ export type StoredMessage = {
     follow_up_questions?: string[];
     model?: string;
     route?: string;
+    route_detail?: {
+      type?: string;
+      name?: string;
+      confidence?: number;
+      reason?: string;
+    };
+    route_source?: string;
+    usage?: Record<string, unknown>;
+    trace_id?: string;
+    session_id?: string;
     latency_ms?: Record<string, unknown>;
   } | null;
   created_at?: string | null;
@@ -113,6 +123,16 @@ export function storedMessagesToChatTurns(
   citations?: Array<Record<string, unknown>>;
   follow_up_questions?: string[];
   latency_ms?: Record<string, unknown>;
+  trace_id?: string;
+  session_id?: string;
+  route_detail?: {
+    type?: string;
+    name?: string;
+    confidence?: number;
+    reason?: string;
+  };
+  route_source?: string;
+  usage?: Record<string, unknown>;
 }> {
   return messages
     .filter((m) => (m.role === "user" || m.role === "assistant") && m.content.trim())
@@ -136,6 +156,11 @@ export function storedMessagesToChatTurns(
         ...(dbId ? { db_message_id: dbId } : {}),
         ...(m.metadata?.model ? { model: m.metadata.model } : {}),
         ...(m.metadata?.route ? { route: m.metadata.route } : {}),
+        ...(m.metadata?.route_detail ? { route_detail: m.metadata.route_detail } : {}),
+        ...(m.metadata?.route_source ? { route_source: m.metadata.route_source } : {}),
+        ...(m.metadata?.usage ? { usage: m.metadata.usage } : {}),
+        ...(m.metadata?.trace_id ? { trace_id: m.metadata.trace_id } : {}),
+        ...(m.metadata?.session_id ? { session_id: m.metadata.session_id } : {}),
         ...(rewrite ? { rewrite } : {}),
         ...(citations && citations.length > 0 ? { citations } : {}),
         ...(followUps && followUps.length > 0 ? { follow_up_questions: followUps } : {}),

@@ -407,6 +407,30 @@ export default function ChatPage() {
       setStatus(data as ChatStreamStatus);
       return;
     }
+    if (event === "route") {
+      const obj =
+        typeof data === "object" && data !== null
+          ? (data as {
+              route?: string;
+              route_detail?: ChatMessage["route_detail"];
+              route_source?: string;
+            })
+          : {};
+      const targetId = ensureStreamingAssistant();
+      if (!targetId) return;
+      setMessages((prev) =>
+        patchStreamingMessage(prev, targetId, {
+          ...(typeof obj.route === "string" && obj.route.trim()
+            ? { route: obj.route.trim() }
+            : {}),
+          ...(obj.route_detail ? { route_detail: obj.route_detail } : {}),
+          ...(typeof obj.route_source === "string" && obj.route_source.trim()
+            ? { route_source: obj.route_source.trim() }
+            : {}),
+        }),
+      );
+      return;
+    }
     if (event === "rewrite") {
       const obj = typeof data === "object" && data !== null ? (data as { text?: string }) : {};
       const text = typeof obj.text === "string" ? obj.text.trim() : "";
@@ -519,10 +543,14 @@ export default function ChatPage() {
               run_id?: string;
               request_id?: string;
               trace_id?: string;
+              session_id?: string;
               conversation_id?: string;
               assistant_message_id?: string;
               model?: string;
               route?: string;
+              route_detail?: ChatMessage["route_detail"];
+              route_source?: string;
+              usage?: Record<string, unknown>;
               citations?: ChatMessage["citations"];
               follow_up_questions?: string[];
               latency_ms?: Record<string, unknown>;
@@ -555,13 +583,21 @@ export default function ChatPage() {
               content: responseText && !m.content.trim() ? responseText : m.content,
               rewrite: rewrite ?? m.rewrite,
               run_id: obj.run_id || obj.trace_id || m.run_id,
+              trace_id: obj.trace_id || obj.run_id || m.trace_id,
               request_id: obj.request_id || m.request_id,
+              session_id: obj.session_id || m.session_id,
+              conversation_id: obj.conversation_id || m.conversation_id,
               ...(typeof obj.model === "string" && obj.model.trim()
                 ? { model: obj.model.trim() }
                 : {}),
               ...(typeof obj.route === "string" && obj.route.trim()
                 ? { route: obj.route.trim() }
                 : {}),
+              ...(obj.route_detail ? { route_detail: obj.route_detail } : {}),
+              ...(typeof obj.route_source === "string" && obj.route_source.trim()
+                ? { route_source: obj.route_source.trim() }
+                : {}),
+              ...(obj.usage ? { usage: obj.usage } : {}),
               ...(cites && cites.length > 0 ? { citations: cites } : {}),
               ...(followUps && followUps.length > 0
                 ? { follow_up_questions: followUps }
@@ -708,6 +744,13 @@ export default function ChatPage() {
           follow_up_questions?: string[];
           request_id?: string;
           trace_id?: string;
+          session_id?: string;
+          model?: string;
+          route?: string;
+          route_detail?: ChatMessage["route_detail"];
+          route_source?: string;
+          usage?: Record<string, unknown>;
+          rewrite?: string;
           latency_ms?: Record<string, unknown>;
         };
         if (typeof json.conversation_id === "string") {
@@ -728,8 +771,25 @@ export default function ChatPage() {
               role: "assistant",
               content: json.response!,
               run_id: json.trace_id,
+              trace_id: json.trace_id,
               request_id: json.request_id,
+              session_id: json.session_id,
+              conversation_id: json.conversation_id,
               ...(jsonAssistantId ? { db_message_id: jsonAssistantId } : {}),
+              ...(typeof json.rewrite === "string" && json.rewrite.trim()
+                ? { rewrite: json.rewrite.trim() }
+                : {}),
+              ...(typeof json.model === "string" && json.model.trim()
+                ? { model: json.model.trim() }
+                : {}),
+              ...(typeof json.route === "string" && json.route.trim()
+                ? { route: json.route.trim() }
+                : {}),
+              ...(json.route_detail ? { route_detail: json.route_detail } : {}),
+              ...(typeof json.route_source === "string" && json.route_source.trim()
+                ? { route_source: json.route_source.trim() }
+                : {}),
+              ...(json.usage ? { usage: json.usage } : {}),
               citations: json.citations,
               follow_up_questions: followUps && followUps.length > 0 ? followUps : undefined,
               ...(latency_ms ? { latency_ms } : {}),
@@ -967,6 +1027,7 @@ export default function ChatPage() {
               <ChatAssistantMessage
                 key={msg.id}
                 msg={msg}
+                conversationId={activeConversationId}
                 isStreaming={streamingAssistantId === msg.id}
                 statusLabel={statusLabel}
                 loading={loading}

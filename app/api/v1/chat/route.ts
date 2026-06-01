@@ -156,6 +156,9 @@ async function pumpGatewayUpstreamToClientEvents(
       if (done.route) {
         meta.route = done.route;
       }
+      const routeDetail = done.route_detail;
+      const routeSource = done.route_source;
+      const usage = done.usage;
       if (logFields) {
         logWebEvent("stream_end", "INFO", {
           ...logFields,
@@ -220,6 +223,9 @@ async function pumpGatewayUpstreamToClientEvents(
           : {}),
         ...(meta.model ? { model: meta.model } : {}),
         ...(meta.route ? { route: meta.route } : {}),
+        ...(routeDetail ? { route_detail: routeDetail } : {}),
+        ...(routeSource ? { route_source: routeSource } : {}),
+        ...(usage ? { usage } : {}),
       });
     }
   };
@@ -432,6 +438,13 @@ export async function POST(req: NextRequest) {
       rewrite: typeof json.rewrite === "string" ? json.rewrite : null,
       citations: json.citations,
       follow_up_questions: json.follow_up_questions,
+      ...(typeof json.route === "string" ? { route: json.route } : {}),
+      ...(typeof json.route_detail === "object" && json.route_detail !== null
+        ? { route_detail: json.route_detail }
+        : {}),
+      ...(typeof json.route_source === "string" ? { route_source: json.route_source } : {}),
+      ...(typeof json.model === "string" ? { model: json.model } : {}),
+      ...(typeof json.usage === "object" && json.usage !== null ? { usage: json.usage } : {}),
       ...(latency_ms ? { latency_ms } : {}),
     };
     logWebEvent("gateway_api_response", "INFO", {

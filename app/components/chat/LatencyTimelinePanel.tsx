@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import {
   buildLatencyTimelineView,
+  formatLatencyShort,
   formatTimelineLine,
   type LatencyTimelineNode,
   type LatencyTimelineView,
@@ -17,6 +18,18 @@ import { type LatencyObject } from "@/lib/chat-latency";
 type Props = {
   latency_ms: LatencyObject;
 };
+
+function timelineMaxMs(nodes: LatencyTimelineNode[]): number {
+  let max = 1;
+  const walk = (list: LatencyTimelineNode[]) => {
+    for (const n of list) {
+      if (n.ms > max) max = n.ms;
+      walk(n.children);
+    }
+  };
+  walk(nodes);
+  return max;
+}
 
 function GitHubRepoLink({ nodeId }: { nodeId: string }) {
   const href = timelineNodeRepoUrl(nodeId);
@@ -61,6 +74,7 @@ function TimelineRow({
   index,
   siblingCount,
   repoLinkNodeIds,
+  maxMs,
 }: {
   node: LatencyTimelineNode;
   depth: number;
@@ -68,6 +82,7 @@ function TimelineRow({
   index: number;
   siblingCount: number;
   repoLinkNodeIds: Set<string>;
+  maxMs: number;
 }) {
   const isLast = index === siblingCount - 1;
   const prefix = depth === 0 ? "" : parentIsLast.map((last) => (last ? "   " : "│  ")).join("");
@@ -79,11 +94,22 @@ function TimelineRow({
   });
   const showRepoLink = repoLinkNodeIds.has(node.id);
 
+  const barWidth = Math.max(4, Math.round((node.ms / maxMs) * 100));
+
   return (
     <>
-      <div className="chat-latency-row">
-        <pre className="chat-latency-line">{line}</pre>
-        {showRepoLink ? <GitHubRepoLink nodeId={node.id} /> : null}
+      <div className="chat-latency-row-block">
+        <div className="chat-latency-row">
+          <pre className="chat-latency-line">{line}</pre>
+          {showRepoLink ? <GitHubRepoLink nodeId={node.id} /> : null}
+        </div>
+        <div className="chat-latency-bar-track" style={{ paddingLeft: `${prefix.length + connector.length}ch` }}>
+          <div
+            className="chat-latency-bar-fill"
+            style={{ width: `${barWidth}%` }}
+            title={`${formatLatencyShort(node.ms)} (${node.percent}%)`}
+          />
+        </div>
       </div>
       {node.children.length > 0
         ? node.children.map((child, childIndex) => (
@@ -95,6 +121,7 @@ function TimelineRow({
               index={childIndex}
               siblingCount={node.children.length}
               repoLinkNodeIds={repoLinkNodeIds}
+              maxMs={maxMs}
             />
           ))
         : null}
@@ -104,10 +131,11 @@ function TimelineRow({
 
 function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
   const repoLinkNodeIds = useMemo(() => firstRepoLinkNodeIds(view.tree), [view.tree]);
+  const maxMs = useMemo(() => timelineMaxMs(view.tree), [view.tree]);
 
   return (
     <div className="chat-latency-tree-wrap">
-      <p className="chat-latency-tree-label">Request timeline</p>
+      <p className="chat-latency-tree-label">Execution timeline</p>
       <div className="chat-latency-tree">
         {view.tree.map((node, index) => (
           <TimelineRow
@@ -118,6 +146,7 @@ function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
             index={index}
             siblingCount={view.tree.length}
             repoLinkNodeIds={repoLinkNodeIds}
+            maxMs={maxMs}
           />
         ))}
       </div>

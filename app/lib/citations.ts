@@ -13,6 +13,29 @@ export function citationHref(c: ChatCitation): string | null {
   return null;
 }
 
+export function citationScore(c: ChatCitation): number | null {
+  const score =
+    typeof c.rerank_score === "number"
+      ? c.rerank_score
+      : typeof c.score === "number"
+        ? c.score
+        : null;
+  if (score == null || !Number.isFinite(score)) return null;
+  return score;
+}
+
+export function citationRank(c: ChatCitation, index: number): number | null {
+  if (typeof c.rank === "number" && Number.isFinite(c.rank)) return c.rank;
+  if (typeof c.cite_id === "number" && Number.isFinite(c.cite_id)) return c.cite_id;
+  return index + 1;
+}
+
+export function citationChunkLabel(c: ChatCitation): string | null {
+  if (typeof c.chunk_id === "string" && c.chunk_id.trim()) return c.chunk_id.trim();
+  if (typeof c.chunk_id === "number") return `#${c.chunk_id}`;
+  return null;
+}
+
 export function citationExcerpt(c: ChatCitation): string | null {
   if (typeof c.text === "string" && c.text.trim()) {
     const t = c.text.trim();

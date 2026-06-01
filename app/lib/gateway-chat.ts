@@ -3,6 +3,8 @@
  * shapes expected by `app/chat/page.tsx` (`status`, `result_chunk`, `error`, `stream_end`).
  */
 
+import type { RouteDetail } from "@/lib/chat-types";
+
 /** Correlation ids from gateway SSE ``meta`` events. */
 export type GatewayMeta = {
   request_id?: string;
@@ -91,6 +93,40 @@ export function rewriteTextFromGatewayData(dataRaw: string): string | null {
   }
 }
 
+function parseRouteDetail(value: unknown): RouteDetail | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const o = value as Record<string, unknown>;
+  const detail: RouteDetail = {};
+  if (typeof o.type === "string" && o.type.trim()) detail.type = o.type.trim();
+  if (typeof o.name === "string" && o.name.trim()) detail.name = o.name.trim();
+  if (typeof o.confidence === "number" && Number.isFinite(o.confidence)) {
+    detail.confidence = o.confidence;
+  }
+  if (typeof o.reason === "string" && o.reason.trim()) detail.reason = o.reason.trim();
+  return Object.keys(detail).length > 0 ? detail : null;
+}
+
+/** Parse gateway ``route`` SSE event JSON. */
+export function routePayloadFromGatewayData(dataRaw: string): {
+  route: string | null;
+  route_detail: RouteDetail | null;
+  route_source: string | null;
+} {
+  try {
+    const obj = JSON.parse(dataRaw) as Record<string, unknown>;
+    const route =
+      typeof obj.route === "string" && obj.route.trim() ? obj.route.trim() : null;
+    const route_detail = parseRouteDetail(obj.route_detail);
+    const route_source =
+      typeof obj.route_source === "string" && obj.route_source.trim()
+        ? obj.route_source.trim()
+        : null;
+    return { route, route_detail, route_source };
+  } catch {
+    return { route: null, route_detail: null, route_source: null };
+  }
+}
+
 /** Parse final answer metadata from gateway ``done`` event JSON. */
 export function donePayloadFromGatewayData(dataRaw: string): {
   rewrite: string | null;
@@ -99,6 +135,9 @@ export function donePayloadFromGatewayData(dataRaw: string): {
   assistant_message_id: string | null;
   model: string | null;
   route: string | null;
+  route_detail: RouteDetail | null;
+  route_source: string | null;
+  usage: Record<string, unknown> | null;
   latency_ms: Record<string, unknown> | null;
 } {
   try {
@@ -116,6 +155,15 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       typeof obj.model === "string" && obj.model.trim() ? obj.model.trim() : null;
     const route =
       typeof obj.route === "string" && obj.route.trim() ? obj.route.trim() : null;
+    const route_detail = parseRouteDetail(obj.route_detail);
+    const route_source =
+      typeof obj.route_source === "string" && obj.route_source.trim()
+        ? obj.route_source.trim()
+        : null;
+    const usage =
+      typeof obj.usage === "object" && obj.usage !== null && !Array.isArray(obj.usage)
+        ? (obj.usage as Record<string, unknown>)
+        : null;
     const latency_ms =
       typeof obj.latency_ms === "object" && obj.latency_ms !== null && !Array.isArray(obj.latency_ms)
         ? (obj.latency_ms as Record<string, unknown>)
@@ -127,6 +175,9 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       assistant_message_id,
       model,
       route,
+      route_detail,
+      route_source,
+      usage,
       latency_ms,
     };
   } catch {
@@ -137,6 +188,9 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       assistant_message_id: null,
       model: null,
       route: null,
+      route_detail: null,
+      route_source: null,
+      usage: null,
       latency_ms: null,
     };
   }
