@@ -212,6 +212,9 @@ async function pumpGatewayUpstreamToClientEvents(
         trace_id: meta.trace_id ?? "",
         session_id: meta.session_id ?? "",
         ...(meta.conversation_id ? { conversation_id: meta.conversation_id } : {}),
+        ...(meta.is_new_conversation !== undefined
+          ? { is_new_conversation: meta.is_new_conversation }
+          : {}),
         ...(meta.assistant_message_id
           ? { assistant_message_id: meta.assistant_message_id }
           : {}),

@@ -9,6 +9,7 @@ export type GatewayMeta = {
   trace_id?: string;
   session_id?: string;
   conversation_id?: string;
+  is_new_conversation?: boolean;
   assistant_message_id?: string;
   model?: string;
   route?: string;
@@ -64,6 +65,8 @@ export function metaFromGatewayData(dataRaw: string): GatewayMeta {
       session_id: typeof obj.session_id === "string" ? obj.session_id : undefined,
       conversation_id:
         typeof obj.conversation_id === "string" ? obj.conversation_id : undefined,
+      is_new_conversation:
+        typeof obj.is_new_conversation === "boolean" ? obj.is_new_conversation : undefined,
       assistant_message_id:
         typeof obj.assistant_message_id === "string" ? obj.assistant_message_id : undefined,
       model: typeof obj.model === "string" && obj.model.trim() ? obj.model.trim() : undefined,
