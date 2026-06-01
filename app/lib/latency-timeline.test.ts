@@ -47,12 +47,38 @@ describe("buildLatencyTimelineView", () => {
     expect(client.label).toBe("Web Client");
     const gateway = client.children[0]?.children[0];
     expect(gateway?.label).toBe("Gateway");
-    const followUp = gateway?.children
-      .find((c) => c.label === "Orchestrator")
-      ?.children[0]
-      ?.children.find((c) => c.label === "RAG")
+    const orchestrator = gateway?.children.find((c) => c.label === "Orchestrator");
+    expect(orchestrator?.children.some((c) => c.label === "Workflow")).toBe(false);
+    expect(orchestrator?.children.some((c) => c.label === "RAG")).toBe(true);
+
+    const followUp = orchestrator?.children
+      .find((c) => c.label === "RAG")
       ?.children.find((c) => c.label === "Follow-up Chat");
     expect(followUp?.rank).toBe(1);
+  });
+
+  it("shows GitHub Search downstream instead of Workflow wrapper", () => {
+    const body = {
+      ...gatewayBody,
+      orchestrator: {
+        proxy_total: 5000,
+        workflow: {
+          total: 4800,
+          intent_router: { total: 1200 },
+          tool_github_search: {
+            total: 3500,
+            retrieve_rerank: 800,
+            chat: 2200,
+            follow_up_chat: 500,
+          },
+        },
+      },
+    };
+    const view = buildLatencyTimelineView({ gateway_api: body, total: 5000 });
+    const orch = view!.tree[0].children[0]?.children.find((c) => c.label === "Orchestrator");
+    expect(orch?.children.map((c) => c.label)).toEqual(["Router", "GitHub Search"]);
+    const github = orch?.children.find((c) => c.label === "GitHub Search");
+    expect(github?.children.some((c) => c.label === "Chat")).toBe(true);
   });
 
   it("supports gateway-only metadata from history", () => {

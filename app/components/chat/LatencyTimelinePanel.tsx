@@ -1,12 +1,17 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   buildLatencyTimelineView,
   formatTimelineLine,
   type LatencyTimelineNode,
   type LatencyTimelineView,
 } from "@/lib/latency-timeline";
-import { timelineNodeRepoName, timelineNodeRepoUrl } from "@/lib/latency-timeline-repos";
+import {
+  firstRepoLinkNodeIds,
+  timelineNodeRepoName,
+  timelineNodeRepoUrl,
+} from "@/lib/latency-timeline-repos";
 import { type LatencyObject } from "@/lib/chat-latency";
 
 type Props = {
@@ -55,12 +60,14 @@ function TimelineRow({
   parentIsLast,
   index,
   siblingCount,
+  repoLinkNodeIds,
 }: {
   node: LatencyTimelineNode;
   depth: number;
   parentIsLast: boolean[];
   index: number;
   siblingCount: number;
+  repoLinkNodeIds: Set<string>;
 }) {
   const isLast = index === siblingCount - 1;
   const prefix = depth === 0 ? "" : parentIsLast.map((last) => (last ? "   " : "│  ")).join("");
@@ -70,12 +77,13 @@ function TimelineRow({
     prefix,
     connector,
   });
+  const showRepoLink = repoLinkNodeIds.has(node.id);
 
   return (
     <>
       <div className="chat-latency-row">
         <pre className="chat-latency-line">{line}</pre>
-        <GitHubRepoLink nodeId={node.id} />
+        {showRepoLink ? <GitHubRepoLink nodeId={node.id} /> : null}
       </div>
       {node.children.length > 0
         ? node.children.map((child, childIndex) => (
@@ -86,6 +94,7 @@ function TimelineRow({
               parentIsLast={[...parentIsLast, isLast]}
               index={childIndex}
               siblingCount={node.children.length}
+              repoLinkNodeIds={repoLinkNodeIds}
             />
           ))
         : null}
@@ -94,6 +103,8 @@ function TimelineRow({
 }
 
 function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
+  const repoLinkNodeIds = useMemo(() => firstRepoLinkNodeIds(view.tree), [view.tree]);
+
   return (
     <div className="chat-latency-tree-wrap">
       <p className="chat-latency-tree-label">Request timeline</p>
@@ -106,6 +117,7 @@ function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
             parentIsLast={[]}
             index={index}
             siblingCount={view.tree.length}
+            repoLinkNodeIds={repoLinkNodeIds}
           />
         ))}
       </div>

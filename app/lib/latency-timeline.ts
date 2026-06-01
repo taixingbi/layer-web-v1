@@ -36,6 +36,20 @@ function readMs(value: unknown): number | null {
   return roundMs(value);
 }
 
+function readTimingTotal(value: unknown): number | null {
+  const direct = readMs(value);
+  if (direct != null) return direct;
+  if (isLatencyObject(value)) return readMs(value.total);
+  return null;
+}
+
+function toolSectionMs(tool: LatencyObject, childMs: number[]): number {
+  const total = readMs(tool.total);
+  if (total != null && total > 0) return total;
+  if (childMs.length > 0) return childMs.reduce((sum, ms) => sum + ms, 0);
+  return 0;
+}
+
 function pct(ms: number, rootMs: number): number {
   if (rootMs <= 0) return 0;
   return Math.round((ms / rootMs) * 100);
@@ -122,6 +136,108 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   return out;
 }
 
+function flatToolChildNodes(
+  tool: LatencyObject,
+  rootMs: number,
+  prefix: string,
+  pairs: Array<[string, string]>,
+): LatencyTimelineNode[] {
+  const out: LatencyTimelineNode[] = [];
+  for (const [key, label] of pairs) {
+    if (out.some((n) => n.label === label)) continue;
+    const ms = readMs(tool[key]);
+    if (ms != null && ms > 0) out.push(node(`${prefix}-${key}`, label, ms, rootMs));
+  }
+  return out;
+}
+
+function githubSearchChildNodes(
+  github: LatencyObject,
+  rootMs: number,
+  prefix: string,
+): LatencyTimelineNode[] {
+  return flatToolChildNodes(github, rootMs, prefix, [
+    ["github_readme", "README"],
+    ["github_search", "Search"],
+    ["retrieve_rerank", "Retrieve + Rerank"],
+    ["chat", "Chat"],
+    ["follow_up_chat", "Follow-up Chat"],
+  ]);
+}
+
+function tavilySearchChildNodes(
+  tavily: LatencyObject,
+  rootMs: number,
+  prefix: string,
+): LatencyTimelineNode[] {
+  return flatToolChildNodes(tavily, rootMs, prefix, [["web_search", "Web Search"]]);
+}
+
+function addDownstreamToolNode(
+  out: LatencyTimelineNode[],
+  workflow: LatencyObject,
+  rootMs: number,
+  workflowKey: string,
+  id: string,
+  label: string,
+  childBuilder: (tool: LatencyObject, rootMs: number, prefix: string) => LatencyTimelineNode[],
+): void {
+  if (out.some((n) => n.id === id)) return;
+  const raw = workflow[workflowKey];
+  if (!isLatencyObject(raw)) return;
+  const children = childBuilder(raw, rootMs, id);
+  const ms = toolSectionMs(raw, children.map((c) => c.ms));
+  if (ms <= 0 && children.length === 0) return;
+  out.push(node(id, label, ms > 0 ? ms : children.reduce((s, c) => s + c.ms, 0), rootMs, children));
+}
+
+/** Orchestrator downstream tools (RAG, GitHub search, …) — no ``Workflow`` wrapper. */
+function buildWorkflowDownstreamNodes(
+  workflow: LatencyObject,
+  rootMs: number,
+): LatencyTimelineNode[] {
+  const out: LatencyTimelineNode[] = [];
+
+  const router = readTimingTotal(workflow.intent_router);
+  if (router != null && router > 0) {
+    out.push(node("intent-router", "Router", router, rootMs));
+  }
+
+  addDownstreamToolNode(out, workflow, rootMs, "rag", "rag", "RAG", ragChildNodes);
+  addDownstreamToolNode(out, workflow, rootMs, "tool_rag", "rag", "RAG", ragChildNodes);
+
+  addDownstreamToolNode(
+    out,
+    workflow,
+    rootMs,
+    "tool_github_search",
+    "github-search",
+    "GitHub Search",
+    githubSearchChildNodes,
+  );
+  addDownstreamToolNode(
+    out,
+    workflow,
+    rootMs,
+    "github",
+    "github-search",
+    "GitHub Search",
+    githubSearchChildNodes,
+  );
+
+  addDownstreamToolNode(
+    out,
+    workflow,
+    rootMs,
+    "tool_tavily_search",
+    "tavily-search",
+    "Tavily Search",
+    tavilySearchChildNodes,
+  );
+
+  return out;
+}
+
 function buildGatewayBranch(gw: LatencyObject, rootMs: number): LatencyTimelineNode[] {
   const children: LatencyTimelineNode[] = [];
 
@@ -165,49 +281,16 @@ function buildGatewayBranch(gw: LatencyObject, rootMs: number): LatencyTimelineN
     const proxyTotal = readMs(orch.proxy_total);
     const workflow = orch.workflow;
     if (isLatencyObject(workflow)) {
-      const workflowTotal = readMs(workflow.total) ?? proxyTotal ?? 0;
-      const workflowChildren: LatencyTimelineNode[] = [];
-
-      const router = readMs(workflow.intent_router);
-      if (router != null && router > 0) {
-        workflowChildren.push(node("intent-router", "Router", router, rootMs));
-      }
-
-      const rag = workflow.rag;
-      if (isLatencyObject(rag)) {
-        const ragTotal = readMs(rag.total) ?? 0;
-        const ragChildren = ragChildNodes(rag, rootMs, "rag");
-        if (ragTotal > 0 || ragChildren.length > 0) {
-          workflowChildren.push(
-            node(
-              "rag",
-              "RAG",
-              ragTotal > 0 ? ragTotal : ragChildren.reduce((s, c) => s + c.ms, 0),
-              rootMs,
-              ragChildren,
-            ),
-          );
-        }
-      }
-
+      const downstream = buildWorkflowDownstreamNodes(workflow, rootMs);
+      const workflowTotal = readMs(workflow.total) ?? 0;
       const orchMs =
         proxyTotal != null && proxyTotal > 0
           ? proxyTotal
           : workflowTotal > 0
             ? workflowTotal
-            : workflowChildren.reduce((s, c) => s + c.ms, 0);
+            : downstream.reduce((s, c) => s + c.ms, 0);
 
-      children.push(
-        node("orchestrator", "Orchestrator", orchMs, rootMs, [
-          node(
-            "workflow",
-            "Workflow",
-            workflowTotal > 0 ? workflowTotal : workflowChildren.reduce((s, c) => s + c.ms, 0),
-            rootMs,
-            workflowChildren,
-          ),
-        ]),
-      );
+      children.push(node("orchestrator", "Orchestrator", orchMs, rootMs, downstream));
     } else if (proxyTotal != null && proxyTotal > 0) {
       children.push(node("orchestrator", "Orchestrator", proxyTotal, rootMs));
     }
@@ -221,8 +304,9 @@ const SLOWEST_SKIP_LABELS = new Set([
   "BFF Route",
   "Gateway",
   "Orchestrator",
-  "Workflow",
   "RAG",
+  "GitHub Search",
+  "Tavily Search",
 ]);
 
 function flattenForSlowest(nodes: LatencyTimelineNode[]): LatencyTimelineNode[] {
