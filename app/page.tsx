@@ -23,7 +23,7 @@ export default function Home() {
             </Link>
           </div>
           <Link href="/blog/building-an-ai-orchestrator" className="landing-blog-link">
-            Read: Building an AI Orchestrator →
+            Inside HuntAI&apos;s orchestrator →
           </Link>
         </div>
       </div>

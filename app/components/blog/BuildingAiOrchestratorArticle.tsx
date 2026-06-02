@@ -1,429 +1,454 @@
 /**
- * Article body: Building an AI Orchestrator (SEO landing content).
+ * Article body: HuntAI production orchestrator engineering deep-dive.
  */
 
 import Link from "next/link";
 
+import { BlogLatencyChart } from "@/components/blog/BlogLatencyChart";
 import { BlogPre } from "@/components/blog/BlogPre";
 
-const ORCHESTRATOR_REPO = "https://github.com/taixingbi/layer-orchestrator-v1";
-const PLATFORM_ORG = "https://github.com/taixingbi";
+const REPOS = {
+  web: "https://github.com/taixingbi/layer-web-v1",
+  gateway: "https://github.com/taixingbi/layer-gateway-api-v1",
+  orchestrator: "https://github.com/taixingbi/layer-orchestrator-v1",
+  rag: "https://github.com/taixingbi/layer-rag-query-v1",
+  inference: "https://github.com/taixingbi/layer-gateway-inference-v1",
+  reranker: "https://github.com/taixingbi/layer-gateway-reranker-v1",
+  embed: "https://github.com/taixingbi/layer-gateway-embed-v1",
+  mcpGithub: "https://github.com/taixingbi/layer-mcp-github-v1",
+  k3s: "https://github.com/taixingbi/huntai-k3s",
+  routerEval: "https://github.com/taixingbi/layer-orchestrator-v1/tree/main/router-eval/golden-test",
+} as const;
 
 export function BuildingAiOrchestratorArticle() {
   return (
     <article className="blog-article">
       <header className="blog-article-header">
-        <p className="blog-eyebrow">Architecture · Production AI</p>
-        <h1>Building an AI Orchestrator: The Brain Behind Modern AI Applications 🧠🚀</h1>
+        <p className="blog-eyebrow">Production engineering · HuntAI platform</p>
+        <h1>From Prompt to Response: Inside HuntAI&apos;s Orchestrator</h1>
         <p className="blog-lede">
-          As AI applications become more sophisticated, the large language model is only one piece of
-          the puzzle. The real challenge is deciding whether a question needs RAG, code search, web
-          search, or a direct answer—and routing it there reliably at scale.
+          HuntAI is not a single LLM call. It is a multi-service platform where every user question
+          passes through rewrite, route classification, optional retrieval, and streamed generation—with
+          correlation IDs, nested latency, and router evaluation baked in from day one.
         </p>
       </header>
 
       <section>
-        <h2>Introduction</h2>
+        <h2>The system at a glance</h2>
         <p>
-          This is the job of an <strong>AI orchestrator</strong>. Think of it as the air traffic
-          controller of your AI platform ✈️. It intelligently routes requests to the right tools,
-          services, and models, ensuring users receive accurate, fast, and reliable answers.
+          Most readers scan before they read. Here is the full request path before we go deeper into
+          any single component.
         </p>
-        <ul className="blog-checklist">
-          <li>Should this question use Retrieval-Augmented Generation (RAG)?</li>
-          <li>Should it search a code repository?</li>
-          <li>Should it use web search?</li>
-          <li>Can it be answered directly without retrieval?</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>🏗️ High-Level Architecture</h2>
-        <BlogPre title="Architecture overview">
+        <BlogPre title="HuntAI request path">
           {`
-                    ┌─────────────┐
-                    │    User     │
-                    └──────┬──────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │   Web UI    │
-                    └──────┬──────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │ Gateway API │
-                    └──────┬──────┘
-                           │
-                           ▼
-              ┌─────────────────────────┐
-              │      Orchestrator       │
-              └──────┬─────┬─────┬──────┘
-                     │     │     │
-                     ▼     ▼     ▼
-               ┌──────┐ ┌──────┐ ┌──────┐
-               │ RAG  │ │ Code │ │ Web  │
-               │      │ │Search│ │Search│
-               └──┬───┘ └──┬───┘ └──┬───┘
-                  │        │        │
-                  └────────┴────────┘
-                           │
-                           ▼
-                  ┌────────────────┐
-                  │ LLM Inference  │
-                  │    Gateway     │
-                  └────────────────┘
+User
+ │
+ ▼
+layer-web-v1
+ │
+ ▼
+layer-gateway-api-v1
+ │
+ ▼
+layer-orchestrator-v1
+ │
+ ├── Router (Qwen2.5-7B + LoRA adapters)
+ ├── layer-rag-query-v1
+ ├── layer-mcp-github-v1
+ ├── Web Search (Tavily)
+ └── layer-gateway-inference-v1
 `.trim()}
         </BlogPre>
         <p>
-          The orchestrator receives every user request and determines the best path to generate a
-          response.
+          The orchestrator is the decision point. It does not generate every answer itself—it selects
+          the right backend, forwards correlation headers, aggregates latency, and streams the result
+          back through the gateway to the web UI.
         </p>
       </section>
 
       <section>
-        <h2>🎯 Why Do AI Applications Need an Orchestrator?</h2>
-        <p>Without an orchestrator, the model must answer everything on its own:</p>
-        <BlogPre>{`
-User
- │
- ▼
-LLM
-`.trim()}</BlogPre>
-        <h3>Common challenges</h3>
-        <ul className="blog-list-cross">
-          <li>Hallucinations</li>
-          <li>No access to private documents</li>
-          <li>No access to source code repositories</li>
-          <li>No real-time web information</li>
-          <li>Difficult to integrate new tools</li>
-        </ul>
-        <p>With an orchestrator, requests fan out to specialized backends:</p>
-        <BlogPre>{`
-User
- │
- ▼
-Orchestrator
- │
- ├── RAG
- ├── Code Search
- ├── Web Search
- └── LLM
-`.trim()}</BlogPre>
-        <ul className="blog-list-check">
-          <li>Better accuracy</li>
-          <li>Access to enterprise knowledge</li>
-          <li>Real-time information retrieval</li>
-          <li>Easier scalability</li>
-          <li>Modular architecture</li>
-        </ul>
+        <h2>The HuntAI service stack</h2>
+        <p>
+          Generic architecture diagrams talk about &ldquo;RAG service&rdquo; and &ldquo;LLM
+          service.&rdquo; HuntAI runs as named, independently deployable repos:
+        </p>
+        <div className="blog-service-table-wrap">
+          <table className="blog-service-table">
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <a href={REPOS.web} target="_blank" rel="noopener noreferrer">
+                    layer-web-v1
+                  </a>
+                </td>
+                <td>Next.js web UI and BFF; SSE client, debug panel, conversation history</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href={REPOS.gateway} target="_blank" rel="noopener noreferrer">
+                    layer-gateway-api-v1
+                  </a>
+                </td>
+                <td>Public API gateway; auth, session cookies, upstream orchestrator proxy</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href={REPOS.orchestrator} target="_blank" rel="noopener noreferrer">
+                    layer-orchestrator-v1
+                  </a>
+                </td>
+                <td>Rewrite, route classification, tool dispatch, SSE aggregation</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href={REPOS.rag} target="_blank" rel="noopener noreferrer">
+                    layer-rag-query-v1
+                  </a>
+                </td>
+                <td>Vector retrieval against private knowledge collections</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href={REPOS.embed} target="_blank" rel="noopener noreferrer">
+                    layer-gateway-embed-v1
+                  </a>
+                </td>
+                <td>Embedding gateway for query and document vectors</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href={REPOS.reranker} target="_blank" rel="noopener noreferrer">
+                    layer-gateway-reranker-v1
+                  </a>
+                </td>
+                <td>Cross-encoder reranking of retrieved chunks</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href={REPOS.inference} target="_blank" rel="noopener noreferrer">
+                    layer-gateway-inference-v1
+                  </a>
+                </td>
+                <td>Chat completions gateway fronting vLLM (Qwen2.5-7B-Instruct + LoRA routers)</td>
+              </tr>
+              <tr>
+                <td>
+                  <a href={REPOS.mcpGithub} target="_blank" rel="noopener noreferrer">
+                    layer-mcp-github-v1
+                  </a>
+                </td>
+                <td>GitHub repo search and README retrieval via MCP</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Each service exposes <code>/health</code> and <code>/ready</code>. The orchestrator returns{" "}
+          <code>503</code> when upstream inference or RAG is unavailable, so bad traffic never reaches
+          a half-dead dependency chain.
+        </p>
       </section>
 
       <section>
-        <h2>⚙️ How an AI Orchestrator Works</h2>
+        <h2>End-to-end request trace</h2>
+        <p>
+          Observability is where this architecture diverges from tutorial RAG demos. Every HuntAI
+          request carries correlation IDs from the browser through every hop:
+        </p>
+        <BlogPre title="Correlation IDs (HTTP headers + first SSE frame)">
+          {`
+X-Request-Id:  req_a1b2c3...
+X-Session-Id:  ses_f4e5d6...
+X-Trace-Id:    tr_789abc...
+conversation_id: conv_012def...   (JSON body)
+`.trim()}
+        </BlogPre>
+        <BlogPre title="Trace propagation">
+          {`
+request_id
+   │
+trace_id ──────► LangSmith (optional feedback + run search)
+   │
+   ├─► layer-gateway-api-v1
+   │
+   ├─► layer-orchestrator-v1
+   │      ├── rewrite
+   │      ├── route
+   │      └── tool phase (RAG / GitHub MCP / web)
+   │
+   ├─► layer-rag-query-v1
+   │      ├── embed (layer-gateway-embed-v1)
+   │      └── rerank (layer-gateway-reranker-v1)
+   │
+   └─► layer-gateway-inference-v1 ──► vLLM
+`.trim()}
+        </BlogPre>
+        <p>
+          The web UI debug panel surfaces route, latency timeline, trace links (LangSmith, Grafana
+          Loki), and per-step timings—so a slow answer is diagnosable without reading server logs
+          first.
+        </p>
+      </section>
+
+      <section>
+        <h2>Why we did not start with agents</h2>
+        <p>
+          Many AI products begin with agent frameworks that loop until the model decides it is done.
+          HuntAI deliberately chose deterministic orchestration first.
+        </p>
+        <ul className="blog-list-check">
+          <li>Easier debugging — one route, one tool call, one answer path per request</li>
+          <li>Lower latency — no multi-turn planner loop on the hot path</li>
+          <li>Predictable routing — structured JSON from a fine-tuned router, not free-form tool choice</li>
+          <li>Better evaluation — golden datasets with pass/fail per question</li>
+        </ul>
+        <p>
+          The pipeline is fixed: rewrite → route → execute → stream → trace. Agent loops can be added
+          later when a business case requires multi-step reasoning—but most enterprise questions do
+          not need that complexity on day one.
+        </p>
+      </section>
+
+      <section>
+        <h2>Request pipeline: rewrite, route, execute</h2>
         <p>
           <strong>Example question:</strong> What are the renewal requirements for H4 EAD?
         </p>
 
-        <h3>Step 1: Query rewriting ✍️</h3>
+        <h3>1. Rewrite</h3>
         <p>
-          The orchestrator first rewrites or normalizes the user&apos;s question. This improves
-          retrieval quality and routing accuracy.
+          The router model normalizes the question for retrieval and classification. Multi-turn context
+          is folded in when <code>history</code> is present.
         </p>
-        <BlogPre>{`
-{
-  "rewritten_question": "What are the renewal requirements for H4 EAD?"
-}
-`.trim()}</BlogPre>
 
-        <h3>Step 2: Route classification 🧭</h3>
-        <p>A lightweight router model determines which service should handle the request.</p>
-        <BlogPre title="Example routes">{`
-ROUTES = [
-    "rag_private_kb",
-    "code_search",
-    "web_search",
-    "greeting",
-    "identity",
-    "help",
-    "capabilities",
-    "clarify",
-    "reject"
-]
-`.trim()}</BlogPre>
-        <BlogPre title="Example output">{`
+        <h3>2. Route</h3>
+        <p>
+          A lightweight Qwen2.5-7B router—fine-tuned with SFT then DPO—returns structured JSON. This
+          is the actual router output shape, not a simplified sketch:
+        </p>
+        <BlogPre title="Router decision (layer-orchestrator-v1)">
+          {`
 {
+  "rewritten_question": "What are the renewal requirements for H4 EAD?",
   "route": "rag_private_kb",
-  "confidence": 0.98
-}
-`.trim()}</BlogPre>
-
-        <h3>Step 3: Execute the selected route 🔀</h3>
-        <p>The orchestrator invokes the appropriate backend service.</p>
-        <BlogPre>{`
-if route == "rag_private_kb":
-    return rag_query()
-
-if route == "code_search":
-    return code_search()
-
-if route == "web_search":
-    return web_search()
-`.trim()}</BlogPre>
-        <p>
-          This modular approach makes it easy to add new capabilities over time.
-        </p>
-
-        <h3>Step 4: Stream the response ⚡</h3>
-        <p>
-          Instead of waiting for the entire answer, modern AI systems stream responses to the user
-          interface.
-        </p>
-        <BlogPre>{`
-meta
-rewrite
-route
-token
-token
-token
-done
-`.trim()}</BlogPre>
-        <p>Users receive answers in real time, creating a faster and more interactive experience.</p>
-      </section>
-
-      <section>
-        <h2>🧠 The Role of a Router Model</h2>
-        <p>
-          One of the most important components of an AI orchestrator is the router model. Rather than
-          using a large and expensive model for every decision, many systems use a lightweight
-          fine-tuned model dedicated to routing.
-        </p>
-        <BlogPre title="Example model family">{`
-Qwen2.5-7B-Instruct
-├── router-qwen2.5-7b-sft-v1.00
-└── router-qwen2.5-7b-dpo-v1.00
-`.trim()}</BlogPre>
-        <p>The router returns structured output:</p>
-        <BlogPre>{`
-{
-  "rewritten_question": "...",
-  "route": "rag_private_kb",
-  "confidence": 0.95,
+  "confidence": 0.97,
   "static_answer": null,
-  "reason": "Question requires private knowledge base retrieval"
+  "reason": "Private knowledge base retrieval required"
 }
+`.trim()}
+        </BlogPre>
+        <p>Supported routes include tool paths and internal intents:</p>
+        <BlogPre>{`
+rag_private_kb | github_repo_search | web_search
+greeting | identity | help | capabilities | clarify | reject
 `.trim()}</BlogPre>
-        <ul className="blog-list-check">
-          <li>Faster response times</li>
-          <li>Lower infrastructure costs</li>
-          <li>Predictable outputs</li>
-          <li>Easier evaluation and testing</li>
-        </ul>
+
+        <h3>3. Execute</h3>
+        <p>
+          For <code>rag_private_kb</code>, the orchestrator calls{" "}
+          <code>layer-rag-query-v1</code>, which embeds the query, retrieves candidates, reranks, and
+          returns context. Generation runs through <code>layer-gateway-inference-v1</code> with citations
+          attached on the final <code>done</code> event.
+        </p>
       </section>
 
       <section>
-        <h2>🌊 Streaming Architecture</h2>
-        <p>Many AI applications use Server-Sent Events (SSE) for streaming.</p>
-        <BlogPre>{`
-event: meta
+        <h2>Real SSE stream</h2>
+        <p>
+          HuntAI streams over Server-Sent Events. The web BFF forwards frames from the gateway; the
+          orchestrator emits typed JSON on each event. A production RAG answer looks like this on the
+          wire:
+        </p>
+        <BlogPre title="SSE wire format (abbreviated)">
+          {`
+event: correlation
+data: {"type":"correlation","request_id":"req_...","trace_id":"tr_...",
+       "session_id":"ses_...","conversation_id":"conv_...","is_new_conversation":false}
+
 event: rewrite
+data: {"type":"rewrite","text":"What are the renewal requirements for H4 EAD?"}
+
 event: route
-event: token
+data: {"type":"route","route":"rag_private_kb","route_detail":{"type":"tool",
+       "name":"rag_private_kb","confidence":0.97},"route_source":"router_model"}
+
+event: answer_delta
+data: {"type":"answer_delta","text":"H4 EAD renewal typically requires..."}
+
+event: answer_delta
+data: {"type":"answer_delta","text":" ... filing Form I-765 before expiry."}
+
 event: done
+data: {"type":"done","latency_ms":{"total":1370,"intent_router":{"total":142},
+       "rag":{"retrieve_rerank":550,"chat":620}},"usage":{"total":{"prompt_tokens":840,
+       "completion_tokens":156,"total_tokens":996}},"answer":{"citations":[...]}}
+`.trim()}
+        </BlogPre>
+        <p>
+          Clients can render tokens as they arrive (<code>answer_delta</code>) while still receiving
+          the full envelope—citations, follow-ups, latency, token usage—on <code>done</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Evaluating the router</h2>
+        <p>
+          Routing quality is measured against golden datasets, not vibes. HuntAI ships a batch eval
+          harness that calls <code>POST /v1/orchestrator/eval/router</code> for every row in CSV
+          suites under <code>router-eval/golden-test/data/</code>.
+        </p>
+        <BlogPre title="Golden test example">
+          {`
+Question:         What are the renewal requirements for H4 EAD?
+Expected route:   rag_private_kb
+Predicted route:  rag_private_kb
+Result:           PASS (route_match: true)
+`.trim()}
+        </BlogPre>
+        <p>Two router LoRA adapters are scored independently:</p>
+        <BlogPre>{`
+Qwen2.5-7B-Instruct
+├── router-qwen2.5-7b-sft-v1.00   (supervised fine-tune)
+└── router-qwen2.5-7b-dpo-v1.00   (direct preference optimization)
 `.trim()}</BlogPre>
+        <p>
+          The runner produces per-suite CSVs and a Markdown report with match rates and bad items.
+          Prompt versions (<code>router-v2.00</code>, etc.) are pinned in deployment manifests so
+          regressions are caught before rollout. See the{" "}
+          <a href={REPOS.routerEval} target="_blank" rel="noopener noreferrer">
+            golden test harness
+          </a>{" "}
+          for the full workflow.
+        </p>
+      </section>
+
+      <section>
+        <h2>Performance: where latency goes</h2>
+        <p>
+          A common question from platform engineers: how much overhead does orchestration add? In
+          practice, router inference is small compared to retrieval and generation. HuntAI reports
+          nested <code>latency_ms</code> on every response so you can answer that from production data,
+          not guesses.
+        </p>
+        <BlogLatencyChart />
+        <p>
+          On a typical RAG path, rewrite and route together are often under 300 ms. Retrieval plus
+          rerank dominates until context is large; generation scales with output length. GitHub MCP
+          and web-search routes add their own nested timings under <code>latency_ms.github</code> or
+          tool-specific keys.
+        </p>
+      </section>
+
+      <section>
+        <h2>Deployment architecture</h2>
+        <p>
+          HuntAI runs on a home-lab k3s cluster with GitOps delivery—not a managed PaaS abstraction.
+          That choice keeps the same service boundaries in dev and prod.
+        </p>
+        <BlogPre title="GitOps delivery">
+          {`
+GitHub push (layer-orchestrator-v1 main)
+   │
+   ▼
+CI ──► pin image SHA in huntai-k3s manifests
+   │
+   ▼
+Argo CD (orchestrator-dev, gateway-dev, …)
+   │
+   ▼
+k3s cluster (namespace: ai-dev)
+   │
+   ├── layer-gateway-api-v1
+   ├── layer-orchestrator-v1
+   ├── layer-rag-query-v1
+   ├── layer-gateway-reranker-v1
+   ├── layer-gateway-embed-v1
+   ├── layer-gateway-inference-v1 ──► vLLM (Qwen2.5-7B + LoRA)
+   ├── layer-mcp-github-v1
+   └── layer-web-v1
+        │
+        ▼
+Cloudflare Tunnel (dev ingress → taixingai.com)
+`.trim()}
+        </BlogPre>
+        <p>
+          Inference runs on GPU nodes via vLLM with LoRA adapters loaded for router models. Prometheus
+          and Grafana Cloud collect HTTP and pipeline metrics; Loki indexes logs by{" "}
+          <code>trace_id</code>. Manifests and deploy runbooks live in{" "}
+          <a href={REPOS.k3s} target="_blank" rel="noopener noreferrer">
+            huntai-k3s
+          </a>
+          .
+        </p>
+      </section>
+
+      <section>
+        <h2>Production hardening</h2>
         <ul className="blog-list-check">
-          <li>Live token streaming</li>
-          <li>Better transparency into routing decisions</li>
-          <li>Easier debugging</li>
-          <li>Improved user experience</li>
+          <li>
+            <strong>Readiness gates</strong> — orchestrator <code>/ready</code> checks inference and
+            RAG HTTP before accepting traffic
+          </li>
+          <li>
+            <strong>Structured logging</strong> — every request logs <code>request_id</code>,{" "}
+            <code>trace_id</code>, <code>route</code>, and <code>latency_ms</code>
+          </li>
+          <li>
+            <strong>Access control forwarding</strong> — user roles and groups propagate to RAG for
+            collection-scoped retrieval
+          </li>
+          <li>
+            <strong>Deterministic short-circuits</strong> — known patterns (e.g. HuntAI repo questions)
+            can bypass the router LLM via rules when confidence is already effectively 1.0
+          </li>
         </ul>
       </section>
 
       <section>
-        <h2>🛡️ Production Features for AI Systems</h2>
-        <p>Building an AI orchestrator for production requires more than routing logic.</p>
-
-        <h3>Health checks ❤️</h3>
-        <BlogPre>{`
-/health
-/ready
-`.trim()}</BlogPre>
-        <p>
-          Readiness checks typically verify the LLM gateway, RAG service, and external dependencies.
-          If a dependency is unavailable, the service returns <code>503 Service Unavailable</code>,
-          preventing requests from reaching unhealthy backends.
-        </p>
-
-        <h3>Observability 🔍</h3>
-        <p>Every request should generate traceable identifiers:</p>
-        <BlogPre>{`
-{
-  "request_id": "...",
-  "trace_id": "...",
-  "session_id": "...",
-  "conversation_id": "..."
-}
-`.trim()}</BlogPre>
-        <p>
-          These identifiers are propagated across services to simplify debugging and monitoring.
-        </p>
-
-        <h3>AI tracing and monitoring 📈</h3>
-        <BlogPre>{`
-User
- │
- ▼
-Gateway
- │
- ▼
-Orchestrator
- │
- ▼
-Trace Platform
- │
- ├── Rewrite
- ├── Route
- ├── RAG Retrieval
- ├── Rerank
- └── Generation
-`.trim()}</BlogPre>
-        <ul className="blog-list-check">
-          <li>End-to-end debugging</li>
-          <li>Latency analysis</li>
-          <li>Prompt evaluation</li>
-          <li>Failure investigation</li>
-          <li>Performance optimization</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>💻 Example AI Orchestrator Code</h2>
-        <p>Simplified routing logic:</p>
-        <BlogPre>{`
-route_result = router.predict(question)
-
-if route_result.route == "rag_private_kb":
-    answer = rag_client.query(
-        route_result.rewritten_question
-    )
-
-elif route_result.route == "code_search":
-    answer = code_client.search(
-        route_result.rewritten_question
-    )
-
-elif route_result.route == "web_search":
-    answer = web_client.search(
-        route_result.rewritten_question
-    )
-
-return stream_answer(answer)
-`.trim()}</BlogPre>
-        <p>
-          This pattern is simple, readable, and easy to extend as new tools are introduced.
-        </p>
-      </section>
-
-      <section>
-        <h2>📚 Best Practices and Lessons Learned</h2>
-        <p>
-          A common mistake when building AI applications is starting with complex agent frameworks too
-          early. For many enterprise and production AI systems, a straightforward orchestrator
-          architecture works remarkably well.
-        </p>
-        <BlogPre title="Recommended workflow">{`
-1️⃣ Rewrite the Question
-        │
-        ▼
-2️⃣ Route Classification
-        │
-        ▼
-3️⃣ Execute Tool
-        │
-        ▼
-4️⃣ Generate Response
-        │
-        ▼
-5️⃣ Stream + Trace
-`.trim()}</BlogPre>
-        <p>
-          Only introduce multi-step agent loops when there is a clear business need.
-        </p>
-      </section>
-
-      <section>
-        <h2>🔗 Project Repository</h2>
-        <p>
-          Explore a real-world implementation of an AI orchestration platform on GitHub:
-        </p>
+        <h2>Repository map</h2>
         <ul className="blog-link-list">
           <li>
-            <a href={ORCHESTRATOR_REPO} target="_blank" rel="noopener noreferrer">
+            <a href={REPOS.orchestrator} target="_blank" rel="noopener noreferrer">
               layer-orchestrator-v1
             </a>
-            {" — routing, rewrite, RAG, and streaming orchestration service"}
+            {" — pipeline, router, SSE, eval endpoint"}
           </li>
           <li>
-            <a href={PLATFORM_ORG} target="_blank" rel="noopener noreferrer">
-              taixingbi on GitHub
+            <a href={REPOS.gateway} target="_blank" rel="noopener noreferrer">
+              layer-gateway-api-v1
             </a>
-            {" — gateway, RAG, inference, and web UI repos in the HuntAI platform"}
+            {" — auth, sessions, upstream proxy"}
+          </li>
+          <li>
+            <a href={REPOS.k3s} target="_blank" rel="noopener noreferrer">
+              huntai-k3s
+            </a>
+            {" — Argo CD apps, manifests, deploy docs"}
           </li>
         </ul>
         <p>
-          Ready to try it?{" "}
+          Want to see routing in action?{" "}
           <Link href="/signup" className="blog-inline-link">
             Sign up for HuntAI
           </Link>{" "}
-          and ask questions routed by a production orchestrator.
+          and inspect the Details panel on any answer—route, latency timeline, and trace links included.
         </p>
       </section>
 
       <section>
-        <h2>🎉 Final Thoughts</h2>
+        <h2>Closing</h2>
         <p>
-          AI orchestrators are rapidly becoming a foundational component of modern AI applications.
-          They transform a collection of models, tools, and services into a cohesive platform by:
+          The orchestrator is the operating system of HuntAI: it connects models, retrieval, tools, and
+          observability into one coherent user experience. The interesting engineering is not picking a
+          framework—it is making routing testable, latency visible, and deployment repeatable.
         </p>
-        <ul className="blog-list-check">
-          <li>Routing requests intelligently</li>
-          <li>Managing external tools</li>
-          <li>Improving response quality</li>
-          <li>Streaming results efficiently</li>
-          <li>Providing observability and monitoring</li>
-          <li>Increasing reliability and scalability</li>
-        </ul>
-        <p>
-          As AI systems continue to evolve, the orchestrator is increasingly becoming the operating
-          system of intelligent applications—connecting models, tools, and knowledge into a seamless
-          user experience.
-        </p>
-        <BlogPre title="Architecture summary">{`
-┌───────────┐
-│   User    │
-└─────┬─────┘
-      │
-      ▼
-┌───────────┐
-│  Gateway  │
-└─────┬─────┘
-      │
-      ▼
-┌─────────────────┐
-│  Orchestrator   │
-└─┬─────┬─────┬───┘
-  │     │     │
-  ▼     ▼     ▼
- RAG  Search  Web
-  │     │     │
-  └──┬──┴──┬──┘
-     ▼     ▼
-   LLM Engine
-        │
-        ▼
-      User
-`.trim()}</BlogPre>
-        <p className="blog-closing">Build smart. Route intelligently. Scale confidently. 🚀</p>
+        <p className="blog-closing">Build smart. Route deterministically. Measure everything.</p>
       </section>
     </article>
   );

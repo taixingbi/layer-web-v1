@@ -77,7 +77,7 @@ export default function BuildingAiOrchestratorPage() {
         <nav className="blog-breadcrumb" aria-label="Breadcrumb">
           <Link href="/blog">Blog</Link>
           <span aria-hidden="true">/</span>
-          <span aria-current="page">AI Orchestrator</span>
+          <span aria-current="page">HuntAI Orchestrator</span>
         </nav>
         <BuildingAiOrchestratorArticle />
         <aside className="blog-post-cta">

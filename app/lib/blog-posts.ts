@@ -15,19 +15,21 @@ export type BlogPostMeta = {
 export const BLOG_POSTS: BlogPostMeta[] = [
   {
     slug: "building-an-ai-orchestrator",
-    title: "Building an AI Orchestrator: The Brain Behind Modern AI Applications",
+    title: "From Prompt to Response: Inside HuntAI's Orchestrator",
     description:
-      "Learn how an AI orchestrator routes questions to RAG, code search, web search, and LLM inference—with query rewriting, streaming SSE, observability, and production-ready patterns.",
+      "How HuntAI routes requests across layer-orchestrator-v1, RAG, GitHub MCP, and vLLM—with real SSE events, router golden tests, nested latency, and k3s GitOps deployment.",
     publishedAt: "2026-06-01",
+    updatedAt: "2026-06-01",
     tags: [
+      "HuntAI",
       "AI orchestrator",
-      "LLM routing",
-      "RAG",
-      "retrieval augmented generation",
+      "production RAG",
+      "router evaluation",
       "SSE streaming",
       "observability",
+      "k3s GitOps",
     ],
-    readingTimeMinutes: 12,
+    readingTimeMinutes: 14,
   },
 ];
 
