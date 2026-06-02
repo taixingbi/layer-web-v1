@@ -22,6 +22,9 @@ export default function Home() {
               Sign in
             </Link>
           </div>
+          <Link href="/blog/building-an-ai-orchestrator" className="landing-blog-link">
+            Read: Building an AI Orchestrator →
+          </Link>
         </div>
       </div>
     </div>
