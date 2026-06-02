@@ -379,7 +379,7 @@ retry:
 GitHub push (layer-gateway-inference-v1 main)
    │
    ▼
-Docker Hub: taixingbi/layer-gateway-inference-v1:<sha>
+GHCR: ghcr.io/taixingbi/layer-gateway-inference-v1:<sha>
    │
    ▼
 huntai-k3s manifest pin → Argo CD (gateway-inference-dev)
