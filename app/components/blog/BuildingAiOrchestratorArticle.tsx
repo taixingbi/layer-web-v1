@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { BlogLatencyChart } from "@/components/blog/BlogLatencyChart";
 import { BlogPre } from "@/components/blog/BlogPre";
+import { blogPostPath } from "@/lib/blog-posts";
 
 const REPOS = {
   web: "https://github.com/taixingbi/layer-web-v1",
@@ -408,6 +409,18 @@ Cloudflare Tunnel (dev ingress → taixingai.com)
             can bypass the router LLM via rules when confidence is already effectively 1.0
           </li>
         </ul>
+      </section>
+
+      <section>
+        <h2>Related reading</h2>
+        <p>
+          Generation runs through the GPU inference tier. For load-aware scheduling, circuit breakers,
+          and multi-node vLLM routing, see{" "}
+          <Link href={blogPostPath("layer-gateway-inference-design")} className="blog-inline-link">
+            GPU-Aware Inference Routing: Inside layer-gateway-inference-v1
+          </Link>
+          .
+        </p>
       </section>
 
       <section>

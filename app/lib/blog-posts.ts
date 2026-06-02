@@ -31,6 +31,24 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     ],
     readingTimeMinutes: 14,
   },
+  {
+    slug: "layer-gateway-inference-design",
+    title: "GPU-Aware Inference Routing: Inside layer-gateway-inference-v1",
+    description:
+      "How HuntAI schedules chat completions across multiple vLLM GPU backends—with load-aware scoring, admission queues, circuit breakers, Prometheus metrics, and k3s GitOps deployment.",
+    publishedAt: "2026-06-01",
+    updatedAt: "2026-06-01",
+    tags: [
+      "HuntAI",
+      "inference gateway",
+      "vLLM",
+      "GPU routing",
+      "load balancing",
+      "Prometheus",
+      "k3s",
+    ],
+    readingTimeMinutes: 11,
+  },
 ];
 
 export function getBlogPost(slug: string): BlogPostMeta | undefined {
