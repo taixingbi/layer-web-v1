@@ -23,6 +23,8 @@ const REPOS = {
 const SFT_LORA_ID = "router-qwen2.5-7b-sft-v1.00";
 const DPO_LORA_ID = "router-qwen2.5-7b-dpo-v1.00";
 
+const CHECKPOINT_DIR_PATTERN = "checkpoints/router-{method}-qwen2.5-*";
+
 export function RouterSftDpoArticle() {
   return (
     <article className="blog-article">
@@ -264,7 +266,7 @@ BASE_MODEL=Qwen/Qwen2.5-7B-Instruct HF_REPO_VERSION=1.00 TRAIN_METHOD=sft python
         </BlogPre>
         <p>
           JSONL is fetched into <code>./data/sft/</code> or <code>./data/dpo/</code> on first run.
-          Checkpoints land under <code>checkpoints/router-{method}-qwen2.5-*</code>; CI can push to
+          Checkpoints land under <code>{CHECKPOINT_DIR_PATTERN}</code>; CI can push to
           Hugging Face Hub for vLLM to load as LoRA modules.
         </p>
       </section>
