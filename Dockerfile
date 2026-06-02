@@ -22,8 +22,22 @@ RUN pnpm build
 # ---- Runner ----
 FROM node:20-alpine AS runner
 WORKDIR /app
+
+ARG APP_VERSION=dev
+ARG GIT_SHA=unknown
+ARG GIT_BRANCH=unknown
+ARG BUILD_TIME=unknown
+ARG BUILD_IMAGE=unknown
+ARG IMAGE_DIGEST=unknown
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV APP_VERSION=${APP_VERSION}
+ENV GIT_SHA=${GIT_SHA}
+ENV GIT_BRANCH=${GIT_BRANCH}
+ENV BUILD_TIME=${BUILD_TIME}
+ENV BUILD_IMAGE=${BUILD_IMAGE}
+ENV IMAGE_DIGEST=${IMAGE_DIGEST}
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
