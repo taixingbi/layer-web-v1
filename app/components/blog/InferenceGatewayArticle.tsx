@@ -19,6 +19,9 @@ const REPOS = {
 /** Prometheus metric name (braces in a module string — not inline in JSX). */
 const OPENAI_FALLBACK_METRIC = "gateway_fallback_requests_total{provider=\"openai\"}";
 
+const SFT_LORA_ID = "router-qwen2.5-7b-sft-v1.00";
+const DPO_LORA_ID = "router-qwen2.5-7b-dpo-v1.00";
+
 export function InferenceGatewayArticle() {
   return (
     <article className="blog-article">
@@ -305,7 +308,11 @@ Prometheus: GET /metrics on gateway pod
         </BlogPre>
         <p>
           High-cardinality IDs are kept in logs, not Prometheus labels—avoiding metric explosion while
-          still allowing trace_id lookup in Loki.
+          still allowing trace_id lookup in Loki. Deploy and dashboards:{" "}
+          <Link href={blogPostPath("grafana-observability")} className="blog-inline-link">
+            Observability with Grafana Cloud
+          </Link>
+          .
         </p>
       </section>
 
@@ -425,6 +432,13 @@ k3s namespace ai-dev
           RAG, and SSE aggregation, see{" "}
           <Link href={blogPostPath("building-an-ai-orchestrator")} className="blog-inline-link">
             From Prompt to Response: Inside HuntAI&apos;s Orchestrator
+          </Link>
+          .
+        </p>
+        <p>
+          Router LoRA adapters ({SFT_LORA_ID}, {DPO_LORA_ID}) are trained and evaluated separately—see{" "}
+          <Link href={blogPostPath("router-sft-dpo-training")} className="blog-inline-link">
+            Training the HuntAI Router: SFT, DPO, and Golden Eval
           </Link>
           .
         </p>

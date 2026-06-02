@@ -108,11 +108,11 @@ layer-orchestrator-v1
               </tr>
               <tr>
                 <td>
-                  <a href={REPOS.rag} target="_blank" rel="noopener noreferrer">
+                  <Link href={blogPostPath("layer-rag-query-design")} className="blog-inline-link">
                     layer-rag-query-v1
-                  </a>
+                  </Link>
                 </td>
-                <td>Vector retrieval against private knowledge collections</td>
+                <td>Hybrid RAG: retrieve, rerank, cite, stream answers</td>
               </tr>
               <tr>
                 <td>
@@ -193,7 +193,11 @@ trace_id ──────► LangSmith (optional feedback + run search)
         <p>
           The web UI debug panel surfaces route, latency timeline, trace links (LangSmith, Grafana
           Loki), and per-step timings—so a slow answer is diagnosable without reading server logs
-          first.
+          first. Full stack setup:{" "}
+          <Link href={blogPostPath("grafana-observability")} className="blog-inline-link">
+            Observability with Grafana Cloud
+          </Link>
+          .
         </p>
       </section>
 
@@ -255,7 +259,11 @@ greeting | identity | help | capabilities | clarify | reject
           For <code>rag_private_kb</code>, the orchestrator calls{" "}
           <code>layer-rag-query-v1</code>, which embeds the query, retrieves candidates, reranks, and
           returns context. Generation runs through <code>layer-gateway-inference-v1</code> with citations
-          attached on the final <code>done</code> event.
+          attached on the final <code>done</code> event. See{" "}
+          <Link href={blogPostPath("layer-rag-query-design")} className="blog-inline-link">
+            Hybrid RAG in Production
+          </Link>{" "}
+          for the full retrieval pipeline.
         </p>
       </section>
 
@@ -325,7 +333,11 @@ Qwen2.5-7B-Instruct
           <a href={REPOS.routerEval} target="_blank" rel="noopener noreferrer">
             golden test harness
           </a>{" "}
-          for the full workflow.
+          for the full workflow. For dataset builds, QLoRA training, and SFT vs DPO, see{" "}
+          <Link href={blogPostPath("router-sft-dpo-training")} className="blog-inline-link">
+            Training the HuntAI Router: SFT, DPO, and Golden Eval
+          </Link>
+          .
         </p>
       </section>
 
