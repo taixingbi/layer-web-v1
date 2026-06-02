@@ -16,6 +16,9 @@ const REPOS = {
     "https://github.com/taixingbi/layer-gateway-inference-v1/blob/main/docs/artichecture.md",
 } as const;
 
+/** Prometheus metric name (braces in a module string — not inline in JSX). */
+const OPENAI_FALLBACK_METRIC = "gateway_fallback_requests_total{provider=\"openai\"}";
+
 export function InferenceGatewayArticle() {
   return (
     <article className="blog-article">
@@ -321,7 +324,7 @@ no_backend_fallback   — no eligible GPU backend (ScheduleError)
 `.trim()}
         </BlogPre>
         <p>
-          Metric <code>gateway_fallback_requests_total{provider=&quot;openai&quot;}</code> increments on
+          Metric <code>{OPENAI_FALLBACK_METRIC}</code> increments on
           each fallback dispatch. In HuntAI dev, fallback is typically disabled; GPU routing is the hot
           path.
         </p>
