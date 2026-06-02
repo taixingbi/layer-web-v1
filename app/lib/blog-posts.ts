@@ -86,6 +86,24 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     readingTimeMinutes: 11,
   },
   {
+    slug: "role-based-access-control",
+    title: "From Login to Retrieval: Role-Based Access in HuntAI",
+    description:
+      "How HuntAI authenticates at layer-gateway-api-v1, forwards X-User-* headers through the orchestrator, tags chunks at ingest, and enforces Qdrant ACL filters in layer-rag-query-v1.",
+    publishedAt: "2026-06-02",
+    updatedAt: "2026-06-02",
+    tags: [
+      "HuntAI",
+      "RBAC",
+      "access control",
+      "Supabase auth",
+      "RAG security",
+      "Qdrant",
+      "gateway",
+    ],
+    readingTimeMinutes: 12,
+  },
+  {
     slug: "grafana-observability",
     title: "Observability with Grafana Cloud: Metrics, Logs, and Dashboards",
     description:

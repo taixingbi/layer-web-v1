@@ -346,6 +346,12 @@ python eva/metric.py -i eva/result/... -o eva/result/...-eva-...
         <h2>Related reading</h2>
         <ul className="blog-link-list">
           <li>
+            <Link href={blogPostPath("role-based-access-control")} className="blog-inline-link">
+              From Login to Retrieval: Role-Based Access
+            </Link>
+            {" — auth at the gateway through Qdrant ACL filters"}
+          </li>
+          <li>
             <Link href={blogPostPath("building-an-ai-orchestrator")} className="blog-inline-link">
               From Prompt to Response: Inside HuntAI&apos;s Orchestrator
             </Link>

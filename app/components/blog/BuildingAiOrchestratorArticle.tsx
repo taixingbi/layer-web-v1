@@ -426,8 +426,13 @@ Cloudflare Tunnel (dev ingress → taixingai.com)
       <section>
         <h2>Related reading</h2>
         <p>
-          Generation runs through the GPU inference tier. For load-aware scheduling, circuit breakers,
-          and multi-node vLLM routing, see{" "}
+          Private knowledge routes depend on identity propagated from the gateway. For Supabase
+          login through Qdrant ACL filters, see{" "}
+          <Link href={blogPostPath("role-based-access-control")} className="blog-inline-link">
+            From Login to Retrieval: Role-Based Access
+          </Link>
+          . Generation runs through the GPU inference tier—for load-aware scheduling, circuit
+          breakers, and multi-node vLLM routing, see{" "}
           <Link href={blogPostPath("layer-gateway-inference-design")} className="blog-inline-link">
             GPU-Aware Inference Routing: Inside layer-gateway-inference-v1
           </Link>
