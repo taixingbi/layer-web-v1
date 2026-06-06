@@ -1,5 +1,5 @@
 /**
- * Translate layer-gateway-api-v1 SSE (`meta`, `token`, `error`, `done`) into the
+ * Translate layer-gateway-api-v1 SSE (`meta`, `answer_delta`, `error`, `done`) into the
  * shapes expected by `app/chat/page.tsx` (`status`, `result_chunk`, `error`, `stream_end`).
  */
 

@@ -126,7 +126,7 @@ async function pumpGatewayUpstreamToClientEvents(
       } catch {
         /* ignore malformed route frames */
       }
-    } else if (ev === "token") {
+    } else if (ev === "answer_delta" || ev === "token") {
       const delta = tokenDeltaFromGatewayData(parsed.dataRaw);
       if (delta) {
         accumulated += delta;
