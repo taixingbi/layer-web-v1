@@ -30,8 +30,9 @@ type TimelineHoverContext = RouteInfo & {
   citationCount: number;
 };
 
-type Props = TimelineHoverContext & {
+type Props = Pick<TimelineHoverContext, keyof RouteInfo | "usage"> & {
   latency_ms?: LatencyObject;
+  citations?: ChatMessage["citations"];
 };
 
 function hasRouteInfo(info: RouteInfo | null | undefined): boolean {
