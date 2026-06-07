@@ -78,8 +78,6 @@ function ChatAssistantMessageInner({
             ) : null}
           </div>
 
-          {showDetails ? <AssistantMessageMeta msg={debugMsg} /> : null}
-
           {hasFollowUps ? (
             <details className="chat-follow-up-disclosure group">
               <summary className="chat-follow-up-summary">
@@ -108,6 +106,8 @@ function ChatAssistantMessageInner({
               </div>
             </details>
           ) : null}
+
+          {showDetails ? <AssistantMessageMeta msg={debugMsg} /> : null}
 
           {!isStreaming && msg.content.trim() ? (
             <div className="chat-message-actions">
