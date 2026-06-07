@@ -76,7 +76,7 @@ function gatewayApi(latency: LatencyObject): LatencyObject | undefined {
 
 /** Orchestrator tool id for private KB RAG (matches ``meta.route.tool`` / handler name). */
 const TOOL_RAG_PRIVATE_KB_ID = "rag_private_kb";
-const TOOL_RAG_PRIVATE_KB_LABEL = "rag_private_kb";
+const TOOL_RAG_PRIVATE_KB_LABEL = "Tool Rag Private KB";
 
 function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): LatencyTimelineNode[] {
   const out: LatencyTimelineNode[] = [];
@@ -324,7 +324,7 @@ const SLOWEST_SKIP_LABELS = new Set([
   "BFF Route",
   "Gateway",
   "Orchestrator",
-  "rag_private_kb",
+  "Tool Rag Private KB",
   "GitHub Search",
   "Tavily Search",
 ]);
