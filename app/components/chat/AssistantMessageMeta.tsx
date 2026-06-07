@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { CitationSourceList } from "@/components/chat/CitationSourceList";
 import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
 import { DebugTracePanel } from "@/components/chat/DebugTracePanel";
@@ -9,19 +9,15 @@ import { buildLatencyTimelineView, formatLatencyShort } from "@/lib/latency-time
 import { isLatencyObject, latencyDisplayTotalMs, type LatencyObject } from "@/lib/chat-latency";
 import type { ChatMessage } from "@/lib/chat-types";
 
-type DebugTab = "sources" | "followup" | "trace" | "route" | "timeline" | "rewrite";
+type DebugTab = "sources" | "trace" | "route" | "timeline";
 
 type Props = {
   msg: ChatMessage;
-  loading?: boolean;
-  onFollowUp: (q: string) => void;
 };
 
 function buildDetailsSummary(
   citationCount: number,
   latencyMs: number | null,
-  hasRewrite: boolean,
-  followUpCount: number,
   hasTrace: boolean,
 ): string {
   const parts: string[] = [];
@@ -31,35 +27,20 @@ function buildDetailsSummary(
   if (latencyMs != null && latencyMs > 0) {
     parts.push(`${formatLatencyShort(latencyMs)} latency`);
   }
-  if (hasRewrite) parts.push("rewrite");
-  if (followUpCount > 0) {
-    parts.push(`${followUpCount} follow-up${followUpCount === 1 ? "" : "s"}`);
-  }
   if (hasTrace) parts.push("trace");
   return parts.length > 0 ? parts.join(" · ") : "Details…";
 }
 
 function defaultTab(msg: ChatMessage, hasSources: boolean, hasLatency: boolean): DebugTab {
   if (hasSources) return "sources";
-  if (msg.follow_up_questions?.length) return "followup";
   if (msg.trace_id || msg.run_id || msg.usage) return "trace";
   if (msg.route || msg.route_detail) return "route";
   if (hasLatency) return "timeline";
-  if (msg.rewrite?.trim()) return "rewrite";
   return "sources";
 }
 
-export function AssistantMessageMeta({
-  msg,
-  loading = false,
-  onFollowUp,
-}: Props) {
-  const followUpSelectId = useId();
+export function AssistantMessageMeta({ msg }: Props) {
   const citeCount = msg.citations?.length ?? 0;
-  const followUpCount = msg.follow_up_questions?.length ?? 0;
-  const rewriteText = msg.rewrite?.trim() ?? "";
-  const hasRewrite = Boolean(rewriteText);
-  const hasFollowUps = followUpCount > 0;
   const hasSources = citeCount > 0;
   const latencyTotal =
     msg.latency_ms && isLatencyObject(msg.latency_ms) ? latencyDisplayTotalMs(msg.latency_ms) : null;
@@ -70,7 +51,7 @@ export function AssistantMessageMeta({
     msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.conversation_id || msg.usage,
   );
   const hasRoute = Boolean(msg.route || msg.route_detail);
-  const hasMeta = hasRewrite || hasFollowUps || hasSources || hasLatency || hasTrace || hasRoute;
+  const hasMeta = hasSources || hasLatency || hasTrace || hasRoute;
 
   const initialTab = useMemo(
     () => defaultTab(msg, hasSources, Boolean(hasLatency)),
@@ -80,21 +61,13 @@ export function AssistantMessageMeta({
 
   if (!hasMeta) return null;
 
-  const summary = buildDetailsSummary(
-    citeCount,
-    latencyTotal,
-    hasRewrite,
-    followUpCount,
-    hasTrace,
-  );
+  const summary = buildDetailsSummary(citeCount, latencyTotal, hasTrace);
 
   const allTabs = [
     { id: "sources", label: "Sources", show: hasSources },
-    { id: "followup", label: "Follow-up", show: hasFollowUps },
     { id: "trace", label: "Trace", show: hasTrace },
     { id: "route", label: "Route", show: hasRoute },
     { id: "timeline", label: "Timeline", show: Boolean(hasLatency) },
-    { id: "rewrite", label: "Rewrite", show: hasRewrite },
   ] satisfies Array<{ id: DebugTab; label: string; show: boolean }>;
 
   const tabs = allTabs.filter((t) => t.show);
@@ -130,35 +103,6 @@ export function AssistantMessageMeta({
 
           {tabs.length > 0 ? (
             <div className="chat-debug-tab-panel" role="tabpanel">
-              {activeTab === "followup" && hasFollowUps ? (
-                <div className="chat-follow-up-section">
-                  <label htmlFor={followUpSelectId} className="chat-follow-up-label">
-                    Follow-up
-                  </label>
-                  <select
-                    id={followUpSelectId}
-                    className="chat-follow-up-select"
-                    defaultValue=""
-                    onChange={(e) => {
-                      const q = e.target.value;
-                      if (!q) return;
-                      if (loading) {
-                        e.target.value = "";
-                        return;
-                      }
-                      onFollowUp(q);
-                      e.target.value = "";
-                    }}
-                  >
-                    <option value="">Choose a follow-up question…</option>
-                    {msg.follow_up_questions!.map((q) => (
-                      <option key={q} value={q}>
-                        {q}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
               {activeTab === "sources" && hasSources ? (
                 <CitationSourceList citations={msg.citations!} />
               ) : null}
@@ -173,9 +117,6 @@ export function AssistantMessageMeta({
               ) : null}
               {activeTab === "timeline" && hasLatency ? (
                 <LatencyTimelinePanel latency_ms={msg.latency_ms as LatencyObject} />
-              ) : null}
-              {activeTab === "rewrite" && hasRewrite ? (
-                <p className="chat-details-rewrite">{rewriteText}</p>
               ) : null}
             </div>
           ) : null}

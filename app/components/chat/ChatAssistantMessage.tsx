@@ -43,15 +43,14 @@ function ChatAssistantMessageInner({
   const showThinking = isStreaming && !msg.content.trim() && !msg.rewrite;
   const showAnswer = !isStreaming || Boolean(msg.content.trim());
   const citeCount = msg.citations?.length ?? 0;
-  const hasRewrite = Boolean(msg.rewrite?.trim());
   const hasFollowUps = Boolean(msg.follow_up_questions?.length);
   const showLatency = !isStreaming && Boolean(msg.latency_ms);
   const hasTrace = Boolean(
     msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.usage,
   );
   const hasRoute = Boolean(msg.route || msg.route_detail);
-  const showDetails =
-    hasRewrite || hasFollowUps || citeCount > 0 || showLatency || hasTrace || hasRoute;
+  const showDetails = citeCount > 0 || showLatency || hasTrace || hasRoute;
+  const rewriteText = msg.rewrite?.trim() ?? "";
 
   const debugMsg: ChatMessage = {
     ...msg,
@@ -63,6 +62,13 @@ function ChatAssistantMessageInner({
       <div className="chat-assistant-block w-full text-[15px] leading-relaxed">
         <div className="chat-assistant-sections">
           <div className="whitespace-pre-wrap break-words chat-assistant-answer">
+            {rewriteText ? (
+              <p className="chat-rewrite-meta">
+                <span className="chat-rewrite-meta-label">Rewrite: </span>
+                <span className="chat-rewrite-meta-query">&ldquo;{rewriteText}&rdquo;</span>
+                {isStreaming && !msg.content.trim() ? <StreamingCursor /> : null}
+              </p>
+            ) : null}
             {showThinking ? <ChatLoadingDots label={statusLabel} /> : null}
             {showAnswer ? (
               <p className="chat-assistant-answer-text">
@@ -72,8 +78,25 @@ function ChatAssistantMessageInner({
             ) : null}
           </div>
 
-          {showDetails ? (
-            <AssistantMessageMeta msg={debugMsg} loading={loading} onFollowUp={onFollowUp} />
+          {showDetails ? <AssistantMessageMeta msg={debugMsg} /> : null}
+
+          {hasFollowUps ? (
+            <div className="chat-follow-up-section">
+              <p className="chat-follow-up-label">Follow-up</p>
+              <div className="chat-follow-up-chips">
+                {msg.follow_up_questions!.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => onFollowUp(q)}
+                    className="chat-follow-up-chip"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : null}
 
           {!isStreaming && msg.content.trim() ? (
