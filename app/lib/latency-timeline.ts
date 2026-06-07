@@ -74,6 +74,10 @@ function gatewayApi(latency: LatencyObject): LatencyObject | undefined {
   return undefined;
 }
 
+/** Orchestrator tool id for private KB RAG (matches ``meta.route.tool`` / handler name). */
+const TOOL_RAG_PRIVATE_KB_ID = "rag_private_kb";
+const TOOL_RAG_PRIVATE_KB_LABEL = "rag_private_kb";
+
 function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): LatencyTimelineNode[] {
   const out: LatencyTimelineNode[] = [];
 
@@ -130,7 +134,7 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   for (const [key, label] of flatPairs) {
     if (out.some((n) => n.label === label)) continue;
     const ms = readMs(rag[key]);
-    if (ms != null && ms > 0) out.push(node(`${prefix}-rag-${key}`, label, ms, rootMs));
+    if (ms != null && ms > 0) out.push(node(`${prefix}-${key}`, label, ms, rootMs));
   }
 
   return out;
@@ -203,8 +207,24 @@ function buildWorkflowDownstreamNodes(
     out.push(node("intent-router", "Router", router, rootMs));
   }
 
-  addDownstreamToolNode(out, workflow, rootMs, "rag", "rag", "RAG", ragChildNodes);
-  addDownstreamToolNode(out, workflow, rootMs, "tool_rag", "rag", "RAG", ragChildNodes);
+  addDownstreamToolNode(
+    out,
+    workflow,
+    rootMs,
+    "rag",
+    TOOL_RAG_PRIVATE_KB_ID,
+    TOOL_RAG_PRIVATE_KB_LABEL,
+    ragChildNodes,
+  );
+  addDownstreamToolNode(
+    out,
+    workflow,
+    rootMs,
+    "tool_rag",
+    TOOL_RAG_PRIVATE_KB_ID,
+    TOOL_RAG_PRIVATE_KB_LABEL,
+    ragChildNodes,
+  );
 
   addDownstreamToolNode(
     out,
@@ -304,7 +324,7 @@ const SLOWEST_SKIP_LABELS = new Set([
   "BFF Route",
   "Gateway",
   "Orchestrator",
-  "RAG",
+  "rag_private_kb",
   "GitHub Search",
   "Tavily Search",
 ]);

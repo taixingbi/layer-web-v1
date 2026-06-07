@@ -39,7 +39,7 @@ export function timelineNodeRepoUrl(nodeId: string): string | null {
   if (nodeId.includes("rerank")) {
     return repoUrl("layer-gateway-reranker-v1");
   }
-  if (nodeId === "rag" || nodeId.startsWith("rag-")) {
+  if (nodeId === "rag_private_kb" || nodeId.startsWith("rag_private_kb-")) {
     return repoUrl("layer-rag-query-v1");
   }
   return null;

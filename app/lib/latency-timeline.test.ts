@@ -49,10 +49,10 @@ describe("buildLatencyTimelineView", () => {
     expect(gateway?.label).toBe("Gateway");
     const orchestrator = gateway?.children.find((c) => c.label === "Orchestrator");
     expect(orchestrator?.children.some((c) => c.label === "Workflow")).toBe(false);
-    expect(orchestrator?.children.some((c) => c.label === "RAG")).toBe(true);
+    expect(orchestrator?.children.some((c) => c.label === "rag_private_kb")).toBe(true);
 
     const followUp = orchestrator?.children
-      .find((c) => c.label === "RAG")
+      .find((c) => c.label === "rag_private_kb")
       ?.children.find((c) => c.label === "Follow-up Chat");
     expect(followUp?.rank).toBe(1);
   });
