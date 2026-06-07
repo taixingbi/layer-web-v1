@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
 import {
   buildLatencyTimelineView,
   formatLatencyShort,
@@ -14,10 +15,35 @@ import {
   timelineNodeRepoUrl,
 } from "@/lib/latency-timeline-repos";
 import { type LatencyObject } from "@/lib/chat-latency";
+import type { ChatMessage } from "@/lib/chat-types";
 
-type Props = {
-  latency_ms: LatencyObject;
+const ROUTER_NODE_ID = "intent-router";
+
+type RouteInfo = Pick<ChatMessage, "route" | "route_detail" | "route_source" | "model">;
+
+type Props = RouteInfo & {
+  latency_ms?: LatencyObject;
 };
+
+function hasRouteInfo(info: RouteInfo | null | undefined): boolean {
+  if (!info) return false;
+  return Boolean(
+    info.route?.trim() ||
+      info.route_detail?.name?.trim() ||
+      info.route_detail?.reason?.trim() ||
+      info.route_detail?.type?.trim() ||
+      info.route_source?.trim() ||
+      info.model?.trim(),
+  );
+}
+
+function treeHasNode(nodes: LatencyTimelineNode[], id: string): boolean {
+  for (const node of nodes) {
+    if (node.id === id) return true;
+    if (treeHasNode(node.children, id)) return true;
+  }
+  return false;
+}
 
 function timelineMaxMs(nodes: LatencyTimelineNode[]): number {
   let max = 1;
@@ -67,6 +93,19 @@ function GitHubMark() {
   );
 }
 
+function RouterHoverPopover({ routeInfo }: { routeInfo: RouteInfo }) {
+  return (
+    <div className="chat-latency-router-popover" role="tooltip">
+      <DebugRoutePanel
+        route={routeInfo.route}
+        route_detail={routeInfo.route_detail}
+        route_source={routeInfo.route_source}
+        model={routeInfo.model}
+      />
+    </div>
+  );
+}
+
 function TimelineRow({
   node,
   depth,
@@ -75,6 +114,7 @@ function TimelineRow({
   siblingCount,
   repoLinkNodeIds,
   maxMs,
+  routeInfo,
 }: {
   node: LatencyTimelineNode;
   depth: number;
@@ -83,6 +123,7 @@ function TimelineRow({
   siblingCount: number;
   repoLinkNodeIds: Set<string>;
   maxMs: number;
+  routeInfo: RouteInfo | null;
 }) {
   const isLast = index === siblingCount - 1;
   const prefix = depth === 0 ? "" : parentIsLast.map((last) => (last ? "   " : "│  ")).join("");
@@ -93,24 +134,39 @@ function TimelineRow({
     connector,
   });
   const showRepoLink = repoLinkNodeIds.has(node.id);
+  const showRouteHover = node.id === ROUTER_NODE_ID && hasRouteInfo(routeInfo);
 
   const barWidth = Math.max(4, Math.round((node.ms / maxMs) * 100));
 
+  const rowBlock = (
+    <div className={`chat-latency-row-block${showRouteHover ? " is-router-hover" : ""}`}>
+      <div className="chat-latency-row">
+        <pre className="chat-latency-line">{line}</pre>
+        {showRepoLink ? <GitHubRepoLink nodeId={node.id} /> : null}
+      </div>
+      <div
+        className="chat-latency-bar-track"
+        style={{ paddingLeft: `${prefix.length + connector.length}ch` }}
+      >
+        <div
+          className="chat-latency-bar-fill"
+          style={{ width: `${barWidth}%` }}
+          title={`${formatLatencyShort(node.ms)} (${node.percent}%)`}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <div className="chat-latency-row-block">
-        <div className="chat-latency-row">
-          <pre className="chat-latency-line">{line}</pre>
-          {showRepoLink ? <GitHubRepoLink nodeId={node.id} /> : null}
+      {showRouteHover ? (
+        <div className="chat-latency-router-wrap" title="Hover for route details">
+          {rowBlock}
+          <RouterHoverPopover routeInfo={routeInfo!} />
         </div>
-        <div className="chat-latency-bar-track" style={{ paddingLeft: `${prefix.length + connector.length}ch` }}>
-          <div
-            className="chat-latency-bar-fill"
-            style={{ width: `${barWidth}%` }}
-            title={`${formatLatencyShort(node.ms)} (${node.percent}%)`}
-          />
-        </div>
-      </div>
+      ) : (
+        rowBlock
+      )}
       {node.children.length > 0
         ? node.children.map((child, childIndex) => (
             <TimelineRow
@@ -122,6 +178,7 @@ function TimelineRow({
               siblingCount={node.children.length}
               repoLinkNodeIds={repoLinkNodeIds}
               maxMs={maxMs}
+              routeInfo={routeInfo}
             />
           ))
         : null}
@@ -129,7 +186,13 @@ function TimelineRow({
   );
 }
 
-function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
+function RequestTimelineTree({
+  view,
+  routeInfo,
+}: {
+  view: LatencyTimelineView;
+  routeInfo: RouteInfo | null;
+}) {
   const repoLinkNodeIds = useMemo(() => firstRepoLinkNodeIds(view.tree), [view.tree]);
   const maxMs = useMemo(() => timelineMaxMs(view.tree), [view.tree]);
 
@@ -147,6 +210,7 @@ function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
             siblingCount={view.tree.length}
             repoLinkNodeIds={repoLinkNodeIds}
             maxMs={maxMs}
+            routeInfo={routeInfo}
           />
         ))}
       </div>
@@ -154,12 +218,35 @@ function RequestTimelineTree({ view }: { view: LatencyTimelineView }) {
   );
 }
 
-export function LatencyTimelinePanel({ latency_ms }: Props) {
-  const view = buildLatencyTimelineView(latency_ms);
-  if (!view) return null;
+export function LatencyTimelinePanel({
+  latency_ms,
+  route,
+  route_detail,
+  route_source,
+  model,
+}: Props) {
+  const view = latency_ms ? buildLatencyTimelineView(latency_ms) : null;
+  const routeInfo = hasRouteInfo({ route, route_detail, route_source, model })
+    ? { route, route_detail, route_source, model }
+    : null;
+
+  if (!view && !routeInfo) return null;
+
+  const routerInTree = view ? treeHasNode(view.tree, ROUTER_NODE_ID) : false;
+
   return (
     <div className="chat-latency-panel">
-      <RequestTimelineTree view={view} />
+      {view ? <RequestTimelineTree view={view} routeInfo={routeInfo} /> : null}
+      {routeInfo && (!view || !routerInTree) ? (
+        <div className={view ? "chat-latency-route-fallback" : undefined}>
+          <DebugRoutePanel
+            route={routeInfo.route}
+            route_detail={routeInfo.route_detail}
+            route_source={routeInfo.route_source}
+            model={routeInfo.model}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

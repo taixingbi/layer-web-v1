@@ -2,14 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { CitationSourceList } from "@/components/chat/CitationSourceList";
-import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
 import { DebugTracePanel } from "@/components/chat/DebugTracePanel";
 import { LatencyTimelinePanel } from "@/components/chat/LatencyTimelinePanel";
 import { buildLatencyTimelineView, formatLatencyShort } from "@/lib/latency-timeline";
 import { isLatencyObject, latencyDisplayTotalMs, type LatencyObject } from "@/lib/chat-latency";
 import type { ChatMessage } from "@/lib/chat-types";
 
-type DebugTab = "sources" | "trace" | "route" | "timeline";
+type DebugTab = "sources" | "trace" | "timeline";
 
 type Props = {
   msg: ChatMessage;
@@ -31,11 +30,15 @@ function buildDetailsSummary(
   return parts.length > 0 ? parts.join(" · ") : "Details…";
 }
 
-function defaultTab(msg: ChatMessage, hasSources: boolean, hasLatency: boolean): DebugTab {
+function defaultTab(
+  msg: ChatMessage,
+  hasSources: boolean,
+  hasTimeline: boolean,
+  hasTrace: boolean,
+): DebugTab {
   if (hasSources) return "sources";
-  if (msg.trace_id || msg.run_id || msg.usage) return "trace";
-  if (msg.route || msg.route_detail) return "route";
-  if (hasLatency) return "timeline";
+  if (hasTrace) return "trace";
+  if (hasTimeline) return "timeline";
   return "sources";
 }
 
@@ -47,15 +50,16 @@ export function AssistantMessageMeta({ msg }: Props) {
   const hasLatency = Boolean(
     msg.latency_ms && isLatencyObject(msg.latency_ms) && buildLatencyTimelineView(msg.latency_ms),
   );
+  const hasRoute = Boolean(msg.route || msg.route_detail);
+  const hasTimeline = hasLatency || hasRoute;
   const hasTrace = Boolean(
     msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.conversation_id || msg.usage,
   );
-  const hasRoute = Boolean(msg.route || msg.route_detail);
-  const hasMeta = hasSources || hasLatency || hasTrace || hasRoute;
+  const hasMeta = hasSources || hasTimeline || hasTrace;
 
   const initialTab = useMemo(
-    () => defaultTab(msg, hasSources, Boolean(hasLatency)),
-    [msg, hasSources, hasLatency],
+    () => defaultTab(msg, hasSources, hasTimeline, hasTrace),
+    [msg, hasSources, hasTimeline, hasTrace],
   );
   const [tab, setTab] = useState<DebugTab>(initialTab);
 
@@ -66,8 +70,7 @@ export function AssistantMessageMeta({ msg }: Props) {
   const allTabs = [
     { id: "sources", label: "Sources", show: hasSources },
     { id: "trace", label: "Trace", show: hasTrace },
-    { id: "route", label: "Route", show: hasRoute },
-    { id: "timeline", label: "Timeline", show: Boolean(hasLatency) },
+    { id: "timeline", label: "Timeline", show: hasTimeline },
   ] satisfies Array<{ id: DebugTab; label: string; show: boolean }>;
 
   const tabs = allTabs.filter((t) => t.show);
@@ -107,16 +110,14 @@ export function AssistantMessageMeta({ msg }: Props) {
                 <CitationSourceList citations={msg.citations!} />
               ) : null}
               {activeTab === "trace" && hasTrace ? <DebugTracePanel msg={msg} /> : null}
-              {activeTab === "route" && hasRoute ? (
-                <DebugRoutePanel
+              {activeTab === "timeline" && hasTimeline ? (
+                <LatencyTimelinePanel
+                  latency_ms={hasLatency ? (msg.latency_ms as LatencyObject) : undefined}
                   route={msg.route}
                   route_detail={msg.route_detail}
                   route_source={msg.route_source}
                   model={msg.model}
                 />
-              ) : null}
-              {activeTab === "timeline" && hasLatency ? (
-                <LatencyTimelinePanel latency_ms={msg.latency_ms as LatencyObject} />
               ) : null}
             </div>
           ) : null}
