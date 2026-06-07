@@ -78,6 +78,10 @@ function gatewayApi(latency: LatencyObject): LatencyObject | undefined {
 const TOOL_RAG_PRIVATE_KB_ID = "rag_private_kb";
 const TOOL_RAG_PRIVATE_KB_LABEL = "Tool Rag Private KB";
 
+/** Orchestrator tool id for GitHub MCP search (handler ``github_search``). */
+const TOOL_GITHUB_SEARCH_ID = "github-search";
+const TOOL_GITHUB_SEARCH_LABEL = "Tool Github Search";
+
 function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): LatencyTimelineNode[] {
   const out: LatencyTimelineNode[] = [];
 
@@ -231,8 +235,8 @@ function buildWorkflowDownstreamNodes(
     workflow,
     rootMs,
     "tool_github_search",
-    "github-search",
-    "GitHub Search",
+    TOOL_GITHUB_SEARCH_ID,
+    TOOL_GITHUB_SEARCH_LABEL,
     githubSearchChildNodes,
   );
   addDownstreamToolNode(
@@ -240,8 +244,8 @@ function buildWorkflowDownstreamNodes(
     workflow,
     rootMs,
     "github",
-    "github-search",
-    "GitHub Search",
+    TOOL_GITHUB_SEARCH_ID,
+    TOOL_GITHUB_SEARCH_LABEL,
     githubSearchChildNodes,
   );
 
@@ -325,7 +329,7 @@ const SLOWEST_SKIP_LABELS = new Set([
   "Gateway",
   "Orchestrator",
   "Tool Rag Private KB",
-  "GitHub Search",
+  "Tool Github Search",
   "Tavily Search",
 ]);
 

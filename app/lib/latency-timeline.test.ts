@@ -57,7 +57,7 @@ describe("buildLatencyTimelineView", () => {
     expect(followUp?.rank).toBe(1);
   });
 
-  it("shows GitHub Search downstream instead of Workflow wrapper", () => {
+  it("shows Tool Github Search downstream instead of Workflow wrapper", () => {
     const body = {
       ...gatewayBody,
       orchestrator: {
@@ -76,8 +76,8 @@ describe("buildLatencyTimelineView", () => {
     };
     const view = buildLatencyTimelineView({ gateway_api: body, total: 5000 });
     const orch = view!.tree[0].children[0]?.children.find((c) => c.label === "Orchestrator");
-    expect(orch?.children.map((c) => c.label)).toEqual(["Router", "GitHub Search"]);
-    const github = orch?.children.find((c) => c.label === "GitHub Search");
+    expect(orch?.children.map((c) => c.label)).toEqual(["Router", "Tool Github Search"]);
+    const github = orch?.children.find((c) => c.label === "Tool Github Search");
     expect(github?.children.some((c) => c.label === "Chat")).toBe(true);
   });
 
