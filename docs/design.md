@@ -42,7 +42,7 @@ flowchart TD
 
 ### Chat UI (`app/chat/page.tsx`)
 
-- Renders conversation, streaming assistant text, inline rewrite above the answer, follow-up chip buttons below the answer (outside the debug Details panel), citations/trace in Details, user message edit (ChatGPT-style branch), feedback affordances.
+- Renders conversation, streaming assistant text, inline rewrite above the answer, collapsible follow-up chip buttons below the answer (collapsed by default; expand on click), citations/trace in Details, user message edit (ChatGPT-style branch), feedback affordances.
 - **ChatGPT-style sidebar** ([`app/components/ChatSidebar.tsx`](../app/components/ChatSidebar.tsx)): lists persisted threads after sign-in; **New chat** starts a fresh thread; selecting a thread loads messages from the gateway.
 - **`sessionStorage`:** `layer_chat_session_id` for `X-Session-Id`; **`layer_active_conversation_id`** for the current thread UUID (from gateway); optional **`layer_bearer_token`** → `Authorization` (overrides cookie). **Auth:** **`/login`** and **`/signup`** set an httpOnly **`layer_access_token`** cookie (see [auth-design.md](auth-design.md)).
 - Sends `conversation_id` / `X-Conversation-Id` on each message when a thread is active; stores gateway-returned `conversation_id` from JSON or `stream_end`.

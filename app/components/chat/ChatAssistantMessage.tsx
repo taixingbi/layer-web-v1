@@ -81,22 +81,32 @@ function ChatAssistantMessageInner({
           {showDetails ? <AssistantMessageMeta msg={debugMsg} /> : null}
 
           {hasFollowUps ? (
-            <div className="chat-follow-up-section">
-              <p className="chat-follow-up-label">Follow-up</p>
-              <div className="chat-follow-up-chips">
-                {msg.follow_up_questions!.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    disabled={loading}
-                    onClick={() => onFollowUp(q)}
-                    className="chat-follow-up-chip"
-                  >
-                    {q}
-                  </button>
-                ))}
+            <details className="chat-follow-up-disclosure group">
+              <summary className="chat-follow-up-summary">
+                <span className="chat-follow-up-chevron" aria-hidden>
+                  ▶
+                </span>
+                Follow-up
+                {msg.follow_up_questions!.length > 1
+                  ? ` (${msg.follow_up_questions!.length})`
+                  : ""}
+              </summary>
+              <div className="chat-follow-up-section">
+                <div className="chat-follow-up-chips">
+                  {msg.follow_up_questions!.map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => onFollowUp(q)}
+                      className="chat-follow-up-chip"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            </details>
           ) : null}
 
           {!isStreaming && msg.content.trim() ? (
