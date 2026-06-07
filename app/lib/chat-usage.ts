@@ -1,6 +1,6 @@
 import type { TokenUsageSlice } from "@/lib/chat-types";
 
-function asUsageSlice(value: unknown): TokenUsageSlice | null {
+export function asUsageSlice(value: unknown): TokenUsageSlice | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const o = value as Record<string, unknown>;
   const prompt =
@@ -101,4 +101,50 @@ export function formatTokenLine(usage: TokenUsageSlice): string {
     parts.push(`${usage.total_tokens} total`);
   }
   return parts.join(" · ");
+}
+
+/** Total token count for one usage slice. */
+export function tokenCount(usage: TokenUsageSlice | null | undefined): number {
+  if (!usage) return 0;
+  if (usage.total_tokens != null && Number.isFinite(usage.total_tokens)) {
+    return Math.round(usage.total_tokens);
+  }
+  const prompt = usage.prompt_tokens ?? 0;
+  const completion = usage.completion_tokens ?? 0;
+  return Math.round(prompt + completion);
+}
+
+const USD_PER_M_INPUT = 0.15;
+const USD_PER_M_OUTPUT = 0.6;
+const USD_PER_M_TOTAL_FALLBACK = 0.35;
+
+/** Rough USD estimate from token counts (self-hosted / blended rate). */
+export function estimateUsageCostUsd(usage: TokenUsageSlice | null | undefined): number {
+  if (!usage) return 0;
+  const prompt = usage.prompt_tokens ?? 0;
+  const completion = usage.completion_tokens ?? 0;
+  if (prompt > 0 || completion > 0) {
+    return (prompt * USD_PER_M_INPUT + completion * USD_PER_M_OUTPUT) / 1_000_000;
+  }
+  const total = usage.total_tokens ?? 0;
+  return (total * USD_PER_M_TOTAL_FALLBACK) / 1_000_000;
+}
+
+export function formatUsageCost(usd: number): string {
+  if (!Number.isFinite(usd) || usd <= 0) return "$0";
+  if (usd < 0.01) return `$${usd.toFixed(4)}`;
+  if (usd < 1) return `$${usd.toFixed(3)}`;
+  return `$${usd.toFixed(2)}`;
+}
+
+export function formatUsageTokens(tokens: number): string {
+  return `${Math.round(tokens)} tok`;
+}
+
+/** True when usage envelope has at least one token. */
+export function hasUsageTokens(usage: Record<string, unknown> | undefined): boolean {
+  if (!usage) return false;
+  const top = asUsageSlice(usage);
+  if (top && tokenCount(top) > 0) return true;
+  return parseUsageRows(usage).some((row) => tokenCount(row.usage) > 0);
 }

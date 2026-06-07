@@ -5,10 +5,11 @@ import { CitationSourceList } from "@/components/chat/CitationSourceList";
 import { DebugTracePanel } from "@/components/chat/DebugTracePanel";
 import { LatencyTimelinePanel } from "@/components/chat/LatencyTimelinePanel";
 import { buildLatencyTimelineView, formatLatencyShort } from "@/lib/latency-timeline";
+import { hasUsageTokens } from "@/lib/chat-usage";
 import { isLatencyObject, latencyDisplayTotalMs, type LatencyObject } from "@/lib/chat-latency";
 import type { ChatMessage } from "@/lib/chat-types";
 
-type DebugTab = "sources" | "trace" | "timeline";
+type DebugTab = "sources" | "usage" | "latency";
 
 type Props = {
   msg: ChatMessage;
@@ -17,7 +18,7 @@ type Props = {
 function buildDetailsSummary(
   citationCount: number,
   latencyMs: number | null,
-  hasTrace: boolean,
+  hasUsage: boolean,
 ): string {
   const parts: string[] = [];
   if (citationCount > 0) {
@@ -26,19 +27,19 @@ function buildDetailsSummary(
   if (latencyMs != null && latencyMs > 0) {
     parts.push(`${formatLatencyShort(latencyMs)} latency`);
   }
-  if (hasTrace) parts.push("trace");
+  if (hasUsage) parts.push("usage");
   return parts.length > 0 ? parts.join(" · ") : "Details…";
 }
 
 function defaultTab(
   msg: ChatMessage,
   hasSources: boolean,
-  hasTimeline: boolean,
-  hasTrace: boolean,
+  hasLatencyTab: boolean,
+  hasUsageTab: boolean,
 ): DebugTab {
   if (hasSources) return "sources";
-  if (hasTrace) return "trace";
-  if (hasTimeline) return "timeline";
+  if (hasUsageTab) return "usage";
+  if (hasLatencyTab) return "latency";
   return "sources";
 }
 
@@ -47,30 +48,35 @@ export function AssistantMessageMeta({ msg }: Props) {
   const hasSources = citeCount > 0;
   const latencyTotal =
     msg.latency_ms && isLatencyObject(msg.latency_ms) ? latencyDisplayTotalMs(msg.latency_ms) : null;
-  const hasLatency = Boolean(
+  const hasLatencyTab = Boolean(
     msg.latency_ms && isLatencyObject(msg.latency_ms) && buildLatencyTimelineView(msg.latency_ms),
   );
   const hasRoute = Boolean(msg.route || msg.route_detail);
-  const hasTimeline = hasLatency || hasRoute;
-  const hasTrace = Boolean(
-    msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.conversation_id || msg.usage,
+  const hasLatencyPanel = hasLatencyTab || hasRoute;
+  const hasUsageTab = Boolean(
+    hasUsageTokens(msg.usage) ||
+      msg.trace_id ||
+      msg.run_id ||
+      msg.request_id ||
+      msg.session_id ||
+      msg.conversation_id,
   );
-  const hasMeta = hasSources || hasTimeline || hasTrace;
+  const hasMeta = hasSources || hasLatencyPanel || hasUsageTab;
 
   const initialTab = useMemo(
-    () => defaultTab(msg, hasSources, hasTimeline, hasTrace),
-    [msg, hasSources, hasTimeline, hasTrace],
+    () => defaultTab(msg, hasSources, hasLatencyPanel, hasUsageTab),
+    [msg, hasSources, hasLatencyPanel, hasUsageTab],
   );
   const [tab, setTab] = useState<DebugTab>(initialTab);
 
   if (!hasMeta) return null;
 
-  const summary = buildDetailsSummary(citeCount, latencyTotal, hasTrace);
+  const summary = buildDetailsSummary(citeCount, latencyTotal, hasUsageTokens(msg.usage));
 
   const allTabs = [
     { id: "sources", label: "Sources", show: hasSources },
-    { id: "trace", label: "Trace", show: hasTrace },
-    { id: "timeline", label: "Timeline", show: hasTimeline },
+    { id: "usage", label: "Usage", show: hasUsageTab },
+    { id: "latency", label: "Latency", show: hasLatencyPanel },
   ] satisfies Array<{ id: DebugTab; label: string; show: boolean }>;
 
   const tabs = allTabs.filter((t) => t.show);
@@ -109,10 +115,10 @@ export function AssistantMessageMeta({ msg }: Props) {
               {activeTab === "sources" && hasSources ? (
                 <CitationSourceList citations={msg.citations!} />
               ) : null}
-              {activeTab === "trace" && hasTrace ? <DebugTracePanel msg={msg} /> : null}
-              {activeTab === "timeline" && hasTimeline ? (
+              {activeTab === "usage" && hasUsageTab ? <DebugTracePanel msg={msg} /> : null}
+              {activeTab === "latency" && hasLatencyPanel ? (
                 <LatencyTimelinePanel
-                  latency_ms={hasLatency ? (msg.latency_ms as LatencyObject) : undefined}
+                  latency_ms={hasLatencyTab ? (msg.latency_ms as LatencyObject) : undefined}
                   route={msg.route}
                   route_detail={msg.route_detail}
                   route_source={msg.route_source}

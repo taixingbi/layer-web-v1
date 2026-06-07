@@ -2,9 +2,10 @@
 
 import { useCallback, useState } from "react";
 import type { ChatMessage } from "@/lib/chat-types";
+import { UsageTimelinePanel } from "@/components/chat/UsageTimelinePanel";
 import { debugBundleJson } from "@/lib/debug-bundle";
 import { grafanaTraceUrl, huntaiGitHubUrl, langsmithTraceUrl } from "@/lib/debug-links";
-import { formatTokenLine, parseUsageRows } from "@/lib/chat-usage";
+import { hasUsageTokens } from "@/lib/chat-usage";
 
 type Props = {
   msg: ChatMessage;
@@ -27,7 +28,7 @@ export function DebugTracePanel({ msg }: Props) {
   const traceId = msg.trace_id ?? msg.run_id;
   const langsmith = langsmithTraceUrl(traceId);
   const grafana = grafanaTraceUrl(traceId);
-  const usageRows = parseUsageRows(msg.usage);
+  const showUsageTree = hasUsageTokens(msg.usage);
 
   const onCopyBundle = useCallback(async () => {
     try {
@@ -45,15 +46,17 @@ export function DebugTracePanel({ msg }: Props) {
 
   return (
     <div className="chat-debug-trace-panel">
+      {showUsageTree ? <UsageTimelinePanel usage={msg.usage} /> : null}
+
       {hasIds ? (
-        <dl className="chat-debug-dl">
+        <dl className={`chat-debug-dl${showUsageTree ? " chat-debug-dl-spaced" : ""}`}>
           <IdRow label="trace_id" value={traceId} />
           <IdRow label="request_id" value={msg.request_id} />
           <IdRow label="session_id" value={msg.session_id} />
           <IdRow label="conversation_id" value={msg.conversation_id} />
         </dl>
-      ) : (
-        <p className="chat-debug-empty">Correlation ids appear after the reply is saved.</p>
+      ) : showUsageTree ? null : (
+        <p className="chat-debug-empty">No token usage for this reply.</p>
       )}
 
       <div className="chat-debug-external-links">
@@ -74,20 +77,6 @@ export function DebugTracePanel({ msg }: Props) {
           {copied ? "Copied" : "Copy debug bundle"}
         </button>
       </div>
-
-      {usageRows.length > 0 ? (
-        <div className="chat-debug-usage">
-          <p className="chat-details-section-label">Token usage</p>
-          <ul className="chat-debug-usage-list">
-            {usageRows.map((row) => (
-              <li key={row.key}>
-                <span className="chat-debug-usage-label">{row.label}</span>
-                <span className="chat-debug-usage-tokens">{formatTokenLine(row.usage)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   );
 }

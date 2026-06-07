@@ -248,7 +248,7 @@ function RequestTimelineTree({
 
   return (
     <div className="chat-latency-tree-wrap">
-      <p className="chat-latency-tree-label">Execution timeline</p>
+      <p className="chat-latency-tree-label">Execution latency</p>
       <div className="chat-latency-tree">
         {view.tree.map((node, index) => (
           <TimelineRow
