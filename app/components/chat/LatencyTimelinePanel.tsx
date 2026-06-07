@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { DebugChatPanel } from "@/components/chat/DebugChatPanel";
 import { DebugEmbedPanel } from "@/components/chat/DebugEmbedPanel";
 import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
+import { TimelineHoverWrap } from "@/components/chat/TimelineHoverWrap";
 import {
   buildLatencyTimelineView,
   formatLatencyShort,
@@ -205,10 +206,14 @@ function TimelineRow({
   return (
     <>
       {showHover && hoverKind ? (
-        <div className="chat-latency-hover-wrap">
-          {rowBlock}
-          <TimelineHoverPopover kind={hoverKind} nodeId={node.id} hoverCtx={hoverCtx} />
-        </div>
+        <TimelineHoverWrap
+          enabled
+          popover={
+            <TimelineHoverPopover kind={hoverKind} nodeId={node.id} hoverCtx={hoverCtx} />
+          }
+        >
+          <div className="chat-latency-row-scroll">{rowBlock}</div>
+        </TimelineHoverWrap>
       ) : (
         rowBlock
       )}

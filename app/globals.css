@@ -225,12 +225,20 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
+.chat-latency-panel,
+.chat-latency-tree-wrap,
+.chat-debug-tab-panel {
+  overflow: visible;
+}
 .chat-latency-tree {
   margin: 0.25rem 0 0;
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
+}
+.chat-latency-row-scroll {
   overflow-x: auto;
+  overflow-y: visible;
 }
 .chat-latency-row {
   display: flex;
@@ -635,18 +643,13 @@ body {
   border-radius: 0.25rem;
   transition: background 0.12s ease;
 }
+.chat-latency-hover-wrap.is-hover-open .chat-latency-row-block.is-timeline-hover,
 .chat-latency-hover-wrap:hover .chat-latency-row-block.is-timeline-hover {
   background: #f3f4f6;
   cursor: help;
 }
 .chat-latency-hover-popover {
-  display: none;
-  position: absolute;
-  left: 0;
-  top: calc(100% + 0.25rem);
-  z-index: 20;
   min-width: 14rem;
-  max-width: min(22rem, 100vw);
   padding: 0.625rem;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
@@ -654,7 +657,7 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
-.chat-latency-hover-wrap:hover .chat-latency-hover-popover {
+.chat-latency-hover-popover.is-portaled {
   display: block;
 }
 .chat-latency-route-fallback {
@@ -896,6 +899,7 @@ body {
   .chat-latency-bar-track {
     background: #333;
   }
+  .chat-latency-hover-wrap.is-hover-open .chat-latency-row-block.is-timeline-hover,
   .chat-latency-hover-wrap:hover .chat-latency-row-block.is-timeline-hover {
     background: #333;
   }
