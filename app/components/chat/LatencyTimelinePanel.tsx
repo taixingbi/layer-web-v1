@@ -196,13 +196,12 @@ function TimelineRow({
           connector,
         })
       : formatUsageLine(node.label, usage.tokens, usage.costUsd, {
-          rank: node.rank,
           prefix,
           connector,
         });
 
   const showRepoLink = repoLinkNodeIds.has(node.id);
-  const hoverKind = metric === "latency" ? timelineHoverKind(node.id, node.label) : null;
+  const hoverKind = timelineHoverKind(node.id, node.label);
   const showHover =
     hoverKind != null && hasTimelineHoverContent(hoverKind, node.id, hoverCtx);
 
