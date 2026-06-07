@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { formatTokenLine, parseUsageRows } from "./chat-usage";
+import { formatTokenLine, parseUsageRows, phaseUsageSlice } from "./chat-usage";
+
+describe("phaseUsageSlice", () => {
+  it("reads tool phase tokens", () => {
+    const usage = {
+      tool_rag: {
+        chat: { prompt_tokens: 328, completion_tokens: 25, total_tokens: 353 },
+      },
+    };
+    expect(phaseUsageSlice(usage, "tool_rag", "chat")).toEqual({
+      prompt_tokens: 328,
+      completion_tokens: 25,
+      total_tokens: 353,
+    });
+    expect(phaseUsageSlice(usage, "tool_rag", "follow_up_chat")).toBeNull();
+  });
+});
 
 describe("parseUsageRows", () => {
   it("flattens nested gateway usage", () => {

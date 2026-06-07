@@ -68,6 +68,18 @@ function nestedUsageRows(prefix: string, label: string, obj: Record<string, unkn
   return rows;
 }
 
+/** Read token usage for one tool phase (e.g. ``tool_rag`` · ``chat``). */
+export function phaseUsageSlice(
+  usage: Record<string, unknown> | undefined,
+  toolKey: string,
+  phaseKey: string,
+): TokenUsageSlice | null {
+  if (!usage) return null;
+  const tool = usage[toolKey];
+  if (!tool || typeof tool !== "object" || Array.isArray(tool)) return null;
+  return asUsageSlice((tool as Record<string, unknown>)[phaseKey]);
+}
+
 /** Flatten gateway ``usage`` object for the debug panel. */
 export function parseUsageRows(usage: Record<string, unknown> | undefined): UsageRow[] {
   if (!usage) return [];

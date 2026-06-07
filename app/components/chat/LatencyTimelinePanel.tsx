@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import { DebugChatPanel } from "@/components/chat/DebugChatPanel";
+import { DebugEmbedPanel } from "@/components/chat/DebugEmbedPanel";
 import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
 import {
   buildLatencyTimelineView,
@@ -14,14 +16,21 @@ import {
   timelineNodeRepoName,
   timelineNodeRepoUrl,
 } from "@/lib/latency-timeline-repos";
+import { phaseUsageSlice } from "@/lib/chat-usage";
 import { type LatencyObject } from "@/lib/chat-latency";
 import type { ChatMessage } from "@/lib/chat-types";
+import { chatUsageToolKey, timelineHoverKind, type TimelineHoverKind } from "@/lib/timeline-hover";
 
 const ROUTER_NODE_ID = "intent-router";
 
 type RouteInfo = Pick<ChatMessage, "route" | "route_detail" | "route_source" | "model">;
 
-type Props = RouteInfo & {
+type TimelineHoverContext = RouteInfo & {
+  usage?: Record<string, unknown>;
+  citationCount: number;
+};
+
+type Props = TimelineHoverContext & {
   latency_ms?: LatencyObject;
 };
 
@@ -35,6 +44,20 @@ function hasRouteInfo(info: RouteInfo | null | undefined): boolean {
       info.route_source?.trim() ||
       info.model?.trim(),
   );
+}
+
+function hasTimelineHoverContent(kind: TimelineHoverKind, nodeId: string, ctx: TimelineHoverContext): boolean {
+  if (kind === "router") return hasRouteInfo(ctx);
+  if (kind === "embed") return true;
+  if (kind === "chat") {
+    const tokens = phaseUsageSlice(ctx.usage, chatUsageToolKey(nodeId), "chat");
+    return Boolean(
+      ctx.model?.trim() ||
+        tokens ||
+        ctx.citationCount > 0,
+    );
+  }
+  return false;
 }
 
 function treeHasNode(nodes: LatencyTimelineNode[], id: string): boolean {
@@ -93,15 +116,34 @@ function GitHubMark() {
   );
 }
 
-function RouterHoverPopover({ routeInfo }: { routeInfo: RouteInfo }) {
+function TimelineHoverPopover({
+  kind,
+  nodeId,
+  hoverCtx,
+}: {
+  kind: TimelineHoverKind;
+  nodeId: string;
+  hoverCtx: TimelineHoverContext;
+}) {
   return (
-    <div className="chat-latency-router-popover" role="tooltip">
-      <DebugRoutePanel
-        route={routeInfo.route}
-        route_detail={routeInfo.route_detail}
-        route_source={routeInfo.route_source}
-        model={routeInfo.model}
-      />
+    <div className="chat-latency-hover-popover" role="tooltip">
+      {kind === "router" ? (
+        <DebugRoutePanel
+          route={hoverCtx.route}
+          route_detail={hoverCtx.route_detail}
+          route_source={hoverCtx.route_source}
+          model={hoverCtx.model}
+        />
+      ) : null}
+      {kind === "embed" ? <DebugEmbedPanel /> : null}
+      {kind === "chat" ? (
+        <DebugChatPanel
+          nodeId={nodeId}
+          model={hoverCtx.model}
+          usage={hoverCtx.usage}
+          citationCount={hoverCtx.citationCount}
+        />
+      ) : null}
     </div>
   );
 }
@@ -114,7 +156,7 @@ function TimelineRow({
   siblingCount,
   repoLinkNodeIds,
   maxMs,
-  routeInfo,
+  hoverCtx,
 }: {
   node: LatencyTimelineNode;
   depth: number;
@@ -123,7 +165,7 @@ function TimelineRow({
   siblingCount: number;
   repoLinkNodeIds: Set<string>;
   maxMs: number;
-  routeInfo: RouteInfo | null;
+  hoverCtx: TimelineHoverContext;
 }) {
   const isLast = index === siblingCount - 1;
   const prefix = depth === 0 ? "" : parentIsLast.map((last) => (last ? "   " : "│  ")).join("");
@@ -134,12 +176,14 @@ function TimelineRow({
     connector,
   });
   const showRepoLink = repoLinkNodeIds.has(node.id);
-  const showRouteHover = node.id === ROUTER_NODE_ID && hasRouteInfo(routeInfo);
+  const hoverKind = timelineHoverKind(node.id, node.label);
+  const showHover =
+    hoverKind != null && hasTimelineHoverContent(hoverKind, node.id, hoverCtx);
 
   const barWidth = Math.max(4, Math.round((node.ms / maxMs) * 100));
 
   const rowBlock = (
-    <div className={`chat-latency-row-block${showRouteHover ? " is-router-hover" : ""}`}>
+    <div className={`chat-latency-row-block${showHover ? " is-timeline-hover" : ""}`}>
       <div className="chat-latency-row">
         <pre className="chat-latency-line">{line}</pre>
         {showRepoLink ? <GitHubRepoLink nodeId={node.id} /> : null}
@@ -159,10 +203,10 @@ function TimelineRow({
 
   return (
     <>
-      {showRouteHover ? (
-        <div className="chat-latency-router-wrap" title="Hover for route details">
+      {showHover && hoverKind ? (
+        <div className="chat-latency-hover-wrap">
           {rowBlock}
-          <RouterHoverPopover routeInfo={routeInfo!} />
+          <TimelineHoverPopover kind={hoverKind} nodeId={node.id} hoverCtx={hoverCtx} />
         </div>
       ) : (
         rowBlock
@@ -178,7 +222,7 @@ function TimelineRow({
               siblingCount={node.children.length}
               repoLinkNodeIds={repoLinkNodeIds}
               maxMs={maxMs}
-              routeInfo={routeInfo}
+              hoverCtx={hoverCtx}
             />
           ))
         : null}
@@ -188,10 +232,10 @@ function TimelineRow({
 
 function RequestTimelineTree({
   view,
-  routeInfo,
+  hoverCtx,
 }: {
   view: LatencyTimelineView;
-  routeInfo: RouteInfo | null;
+  hoverCtx: TimelineHoverContext;
 }) {
   const repoLinkNodeIds = useMemo(() => firstRepoLinkNodeIds(view.tree), [view.tree]);
   const maxMs = useMemo(() => timelineMaxMs(view.tree), [view.tree]);
@@ -210,7 +254,7 @@ function RequestTimelineTree({
             siblingCount={view.tree.length}
             repoLinkNodeIds={repoLinkNodeIds}
             maxMs={maxMs}
-            routeInfo={routeInfo}
+            hoverCtx={hoverCtx}
           />
         ))}
       </div>
@@ -224,11 +268,19 @@ export function LatencyTimelinePanel({
   route_detail,
   route_source,
   model,
+  usage,
+  citations,
 }: Props) {
   const view = latency_ms ? buildLatencyTimelineView(latency_ms) : null;
-  const routeInfo = hasRouteInfo({ route, route_detail, route_source, model })
-    ? { route, route_detail, route_source, model }
-    : null;
+  const hoverCtx: TimelineHoverContext = {
+    route,
+    route_detail,
+    route_source,
+    model,
+    usage,
+    citationCount: citations?.length ?? 0,
+  };
+  const routeInfo = hasRouteInfo(hoverCtx) ? hoverCtx : null;
 
   if (!view && !routeInfo) return null;
 
@@ -236,7 +288,7 @@ export function LatencyTimelinePanel({
 
   return (
     <div className="chat-latency-panel">
-      {view ? <RequestTimelineTree view={view} routeInfo={routeInfo} /> : null}
+      {view ? <RequestTimelineTree view={view} hoverCtx={hoverCtx} /> : null}
       {routeInfo && (!view || !routerInTree) ? (
         <div className={view ? "chat-latency-route-fallback" : undefined}>
           <DebugRoutePanel

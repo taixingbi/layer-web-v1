@@ -117,6 +117,8 @@ export function AssistantMessageMeta({ msg }: Props) {
                   route_detail={msg.route_detail}
                   route_source={msg.route_source}
                   model={msg.model}
+                  usage={msg.usage}
+                  citations={msg.citations}
                 />
               ) : null}
             </div>

@@ -628,18 +628,18 @@ body {
   background: linear-gradient(90deg, #6ee7b7, #10a37f);
   border-radius: 2px;
 }
-.chat-latency-router-wrap {
+.chat-latency-hover-wrap {
   position: relative;
 }
-.chat-latency-router-wrap .chat-latency-row-block.is-router-hover {
+.chat-latency-hover-wrap .chat-latency-row-block.is-timeline-hover {
   border-radius: 0.25rem;
   transition: background 0.12s ease;
 }
-.chat-latency-router-wrap:hover .chat-latency-row-block.is-router-hover {
+.chat-latency-hover-wrap:hover .chat-latency-row-block.is-timeline-hover {
   background: #f3f4f6;
   cursor: help;
 }
-.chat-latency-router-popover {
+.chat-latency-hover-popover {
   display: none;
   position: absolute;
   left: 0;
@@ -654,7 +654,7 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   pointer-events: none;
 }
-.chat-latency-router-wrap:hover .chat-latency-router-popover {
+.chat-latency-hover-wrap:hover .chat-latency-hover-popover {
   display: block;
 }
 .chat-latency-route-fallback {
@@ -896,10 +896,10 @@ body {
   .chat-latency-bar-track {
     background: #333;
   }
-  .chat-latency-router-wrap:hover .chat-latency-row-block.is-router-hover {
+  .chat-latency-hover-wrap:hover .chat-latency-row-block.is-timeline-hover {
     background: #333;
   }
-  .chat-latency-router-popover {
+  .chat-latency-hover-popover {
     border-color: #404040;
     background: #1f1f1f;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
