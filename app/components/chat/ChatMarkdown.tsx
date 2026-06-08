@@ -6,6 +6,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 
 import { isBlockMarkdownSegment } from "@/lib/assistant-markdown-parts";
+import { normalizeChatLinkHref } from "@/lib/chat-link";
 
 const CHAT_MARKDOWN_PLUGINS = [remarkGfm, remarkBreaks];
 
@@ -16,11 +17,20 @@ const sharedMarkdownComponents: Components = {
   ul: ({ children }) => <ul className="chat-md-ul">{children}</ul>,
   ol: ({ children }) => <ol className="chat-md-ol">{children}</ol>,
   li: ({ children }) => <li className="chat-md-li">{children}</li>,
-  a: ({ href, children }) => (
-    <a href={href} className="chat-md-link" target="_blank" rel="noreferrer">
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    const normalized = normalizeChatLinkHref(href);
+    const external =
+      normalized?.startsWith("http://") || normalized?.startsWith("https://");
+    return (
+      <a
+        href={normalized}
+        className="chat-md-link"
+        {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
+      >
+        {children}
+      </a>
+    );
+  },
   pre: ({ children }) => <pre className="chat-md-pre">{children}</pre>,
   code: ({ className, children }) => {
     const isBlock = Boolean(className);
