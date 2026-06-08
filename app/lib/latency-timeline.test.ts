@@ -39,7 +39,7 @@ describe("buildLatencyTimelineView", () => {
     expect(view).not.toBeNull();
     expect(view!.totalMs).toBe(4844);
     expect(view!.totalSecondsLabel).toBe("4.84s");
-    expect(view!.slowest[0]).toMatchObject({ rank: 1, label: "Follow-up Chat", ms: 1512 });
+    expect(view!.slowest[0]).toMatchObject({ rank: 1, label: "Suggested questions", ms: 1512 });
     expect(view!.slowest[1]).toMatchObject({ rank: 2, label: "Router", ms: 1371 });
     expect(view!.slowest[2]).toMatchObject({ rank: 3, label: "Storage", ms: 831 });
 
@@ -53,7 +53,7 @@ describe("buildLatencyTimelineView", () => {
 
     const followUp = orchestrator?.children
       .find((c) => c.label === "Tool Rag Private KB")
-      ?.children.find((c) => c.label === "Follow-up Chat");
+      ?.children.find((c) => c.label === "Suggested questions");
     expect(followUp?.rank).toBe(1);
   });
 
@@ -92,8 +92,8 @@ describe("buildLatencyTimelineView", () => {
 
 describe("formatTimelineLine", () => {
   it("formats a ranked slowest line", () => {
-    const line = formatTimelineLine("Follow-up Chat", 1512, 31, { rank: 1 });
-    expect(line).toContain("Follow-up Chat");
+    const line = formatTimelineLine("Suggested questions", 1512, 31, { rank: 1 });
+    expect(line).toContain("Suggested questions");
     expect(line).toContain("1512 ms (31%)");
     expect(line).toContain("[#1]");
   });
@@ -108,7 +108,7 @@ describe("formatTimelineSeconds", () => {
 
 describe("shortSlowestLabel", () => {
   it("shortens labels for compact summary", () => {
-    expect(shortSlowestLabel("Follow-up Chat")).toBe("Follow-up");
+    expect(shortSlowestLabel("Suggested questions")).toBe("Suggested");
     expect(shortSlowestLabel("Router")).toBe("Router");
   });
 });

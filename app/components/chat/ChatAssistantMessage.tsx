@@ -7,6 +7,7 @@ import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
 import { StreamingCursor } from "@/components/chat/StreamingCursor";
 import { assistantMessageLayout } from "@/lib/chat-assistant-layout";
 import type { ChatMessage } from "@/lib/chat-types";
+import { suggestedQuestionsChatLabel } from "@/lib/timeline-phase-labels";
 
 type Props = {
   msg: ChatMessage;
@@ -79,7 +80,9 @@ function ChatAssistantMessageInner({
                     onClick={() => onFollowUp(msg.follow_up_questions![0])}
                     className="chat-follow-up-meta-item chat-follow-up-meta-item--inline"
                   >
-                    <span className="chat-rewrite-meta-label">Follow-up: </span>
+                    <span className="chat-rewrite-meta-label">
+                      {suggestedQuestionsChatLabel(1)}{" "}
+                    </span>
                     <span className="chat-rewrite-meta-query">
                       &ldquo;{msg.follow_up_questions![0]}&rdquo;
                     </span>
@@ -87,7 +90,9 @@ function ChatAssistantMessageInner({
                 ) : (
                   <>
                     <p className="chat-rewrite-meta chat-follow-up-meta-label">
-                      <span className="chat-rewrite-meta-label">Follow-ups:</span>
+                      <span className="chat-rewrite-meta-label">
+                        {suggestedQuestionsChatLabel(msg.follow_up_questions!.length)}
+                      </span>
                     </p>
                     {msg.follow_up_questions!.map((q) => (
                       <button

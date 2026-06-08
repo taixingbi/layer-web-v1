@@ -48,7 +48,7 @@ function nestedUsageRows(prefix: string, label: string, obj: Record<string, unkn
         k === "chat"
           ? "Chat"
           : k === "follow_up_chat"
-            ? "Follow-up Chat"
+            ? "Suggested questions"
             : k.replace(/_/g, " ");
       rows.push({
         key: `${prefix}.${k}`,

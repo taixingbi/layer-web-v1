@@ -7,6 +7,8 @@ import {
   PHASE_ANSWER_GENERATION,
   PHASE_QUERY_EMBEDDING,
   PHASE_RAG_ANSWER_GENERATION,
+  PHASE_SUGGESTED_QUESTIONS,
+  PHASE_SUGGESTED_QUESTIONS_RERANK,
 } from "@/lib/timeline-phase-labels";
 
 export type LatencyTimelineNode = {
@@ -111,7 +113,7 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
     }
     const followUp = readMs(generation.follow_up);
     if (followUp != null && followUp > 0) {
-      out.push(node(`${prefix}-generation-follow_up`, "Follow-up Chat", followUp, rootMs));
+      out.push(node(`${prefix}-generation-follow_up`, PHASE_SUGGESTED_QUESTIONS, followUp, rootMs));
     }
   }
 
@@ -122,8 +124,8 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
       ["retrieve", "Retrieve"],
       ["chunk_rerank", "Rerank"],
       ["chat", PHASE_RAG_ANSWER_GENERATION],
-      ["follow_up_chat", "Follow-up Chat"],
-      ["follow_up_rerank", "Follow-up Rerank"],
+      ["follow_up_chat", PHASE_SUGGESTED_QUESTIONS],
+      ["follow_up_rerank", PHASE_SUGGESTED_QUESTIONS_RERANK],
     ];
     for (const [key, label] of pairs) {
       const ms = readMs(service[key]);
@@ -137,8 +139,8 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
     ["rerank", "Rerank"],
     ["chunk_rerank", "Rerank"],
     ["chat", PHASE_RAG_ANSWER_GENERATION],
-    ["follow_up_chat", "Follow-up Chat"],
-    ["follow_up_rerank", "Follow-up Rerank"],
+    ["follow_up_chat", PHASE_SUGGESTED_QUESTIONS],
+    ["follow_up_rerank", PHASE_SUGGESTED_QUESTIONS_RERANK],
   ];
   for (const [key, label] of flatPairs) {
     if (out.some((n) => n.label === label)) continue;
@@ -174,7 +176,7 @@ function githubSearchChildNodes(
     ["github_search", "Search"],
     ["retrieve_rerank", "Retrieve + Rerank"],
     ["chat", PHASE_ANSWER_GENERATION],
-    ["follow_up_chat", "Follow-up Chat"],
+    ["follow_up_chat", PHASE_SUGGESTED_QUESTIONS],
   ]);
 }
 
@@ -379,7 +381,7 @@ export function formatLatencyShort(totalMs: number): string {
 
 /** Compact slowest-op label for inline summaries. */
 export function shortSlowestLabel(label: string): string {
-  if (label === "Follow-up Chat") return "Follow-up";
+  if (label === PHASE_SUGGESTED_QUESTIONS) return "Suggested";
   if (label === "User Message Write") return "User write";
   if (label === "Assistant Message Write") return "Assistant write";
   return label;

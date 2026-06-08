@@ -12,7 +12,7 @@ describe("timelineHoverKind", () => {
   });
 
   it("ignores follow-up and unlabeled phases", () => {
-    expect(timelineHoverKind("rag_private_kb-generation-follow_up", "Follow-up Chat")).toBeNull();
+    expect(timelineHoverKind("rag_private_kb-generation-follow_up", "Suggested questions")).toBeNull();
     expect(timelineHoverKind("rag_private_kb-retrieval-rerank", "Rerank")).toBeNull();
   });
 });
