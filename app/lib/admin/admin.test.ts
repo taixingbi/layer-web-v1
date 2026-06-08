@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { isAdminProfile } from "@/lib/admin/auth";
-import { collectGpuKeys, dcgmMibToGb, dcgmTotalMib, gpuDeviceKey } from "@/lib/admin/gpu-metrics";
+import {
+  canonicalGpuKey,
+  collectGpuKeys,
+  dcgmMibToGb,
+  dcgmRawToMib,
+  dcgmTotalMib,
+  indexPromSamples,
+  lookupPromSample,
+} from "@/lib/admin/gpu-metrics";
 import { parsePromScalar, routeDistributionFromVector } from "@/lib/admin/prometheus";
 
 describe("isAdminProfile", () => {
@@ -32,16 +40,22 @@ describe("routeDistributionFromVector", () => {
   });
 });
 
-describe("gpuDeviceKey", () => {
-  it("prefers UUID so FB_USED and GPU_UTIL samples join", () => {
+describe("gpuAliasKeys", () => {
+  it("joins util and FB samples when only FB has UUID", () => {
     const uuid = "GPU-604ac76c-d9cf-fef3-62e9-d92044ab6e52";
-    expect(gpuDeviceKey({ UUID: uuid, gpu: "0", kubernetes_node: "gpu-node-1" })).toBe(`uuid:${uuid}`);
+    const util = { kubernetes_node: "gpu-node-1", gpu: "0", Hostname: "gpu-node-1" };
+    const fb = { UUID: uuid, gpu: "0", Hostname: "gpu-node-1" };
+    const usedMap = indexPromSamples([{ metric: fb, value: [0, "18432"] }]);
+    expect(lookupPromSample(usedMap, util)?.value[1]).toBe("18432");
+  });
+});
+
+describe("canonicalGpuKey", () => {
+  it("prefers UUID", () => {
+    expect(canonicalGpuKey({ UUID: "GPU-abc", gpu: "0" })).toBe("uuid:GPU-abc");
   });
 
-  it("keys by node and gpu index when UUID is absent", () => {
-    const a = gpuDeviceKey({ kubernetes_node: "gpu-node-1", gpu: "0" });
-    const b = gpuDeviceKey({ kubernetes_node: "gpu-node-2", gpu: "0" });
-    expect(a).not.toBe(b);
+  it("separates two nodes with gpu=0", () => {
     expect(collectGpuKeys(
       [{ metric: { kubernetes_node: "gpu-node-1", gpu: "0" }, value: [0, "1"] }],
       [{ metric: { kubernetes_node: "gpu-node-2", gpu: "0" }, value: [0, "2"] }],
@@ -52,6 +66,12 @@ describe("gpuDeviceKey", () => {
 describe("dcgmTotalMib", () => {
   it("falls back to used + free when TOTAL is missing", () => {
     expect(dcgmTotalMib(8192, 16384, Number.NaN)).toBe(24576);
+  });
+});
+
+describe("dcgmRawToMib", () => {
+  it("treats large values as bytes", () => {
+    expect(dcgmRawToMib(24 * 1024 ** 3)).toBeCloseTo(24576, 0);
   });
 });
 

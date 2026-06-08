@@ -4,11 +4,14 @@
 
 import { adminConfig } from "@/lib/admin/config";
 import {
+  canonicalGpuKey,
   collectGpuKeys,
   dcgmMibToGb,
+  dcgmRawToMib,
   dcgmTotalMib,
   gpuDisplayName,
   indexPromSamples,
+  lookupPromSample,
   type PromSample,
 } from "@/lib/admin/gpu-metrics";
 import type {
@@ -232,24 +235,24 @@ async function queryGpuDevices(): Promise<AdminGpuDevice[]> {
   );
 
   return keys.map((key) => {
-    const utilRow = utilByKey.get(key);
-    const used = usedByKey.get(key);
-    const free = freeByKey.get(key);
-    const total = totalByKey.get(key);
-    const temp = tempByKey.get(key);
-    const power = powerByKey.get(key);
-    const sampleMetric =
-      utilRow?.metric ?? used?.metric ?? free?.metric ?? total?.metric ?? { gpu: "0" };
-    const usedMib = used ? Number(used.value[1]) : NaN;
-    const freeMib = free ? Number(free.value[1]) : NaN;
-    const totalMibRaw = total ? Number(total.value[1]) : NaN;
-    const totalMib = dcgmTotalMib(usedMib, freeMib, totalMibRaw);
+    const utilRow = utilByKey.get(key) ?? [...utilByKey.values()].find((r) => canonicalGpuKey(r.metric) === key);
+    const reference = utilRow?.metric ?? { gpu: "0" };
+    const used = lookupPromSample(usedByKey, reference);
+    const free = lookupPromSample(freeByKey, reference);
+    const total = lookupPromSample(totalByKey, reference);
+    const temp = lookupPromSample(tempByKey, reference);
+    const power = lookupPromSample(powerByKey, reference);
+    const sampleMetric = utilRow?.metric ?? used?.metric ?? free?.metric ?? total?.metric ?? reference;
+    const usedMib = used ? dcgmRawToMib(Number(used.value[1])) : null;
+    const freeMib = free ? dcgmRawToMib(Number(free.value[1])) : null;
+    const totalMibRaw = total ? dcgmRawToMib(Number(total.value[1])) : null;
+    const totalMib = dcgmTotalMib(usedMib ?? NaN, freeMib ?? NaN, totalMibRaw ?? NaN);
     const utilValue = utilRow ? Number(utilRow.value[1]) : NaN;
 
     return {
       name: gpuDisplayName(sampleMetric),
       util: Number.isFinite(utilValue) ? round1(utilValue) : null,
-      memoryUsedGb: Number.isFinite(usedMib) ? dcgmMibToGb(usedMib) : null,
+      memoryUsedGb: usedMib != null ? dcgmMibToGb(usedMib) : null,
       memoryTotalGb: totalMib != null ? dcgmMibToGb(totalMib) : null,
       tempC: temp ? round1(Number(temp.value[1])) : null,
       powerW: power ? round1(Number(power.value[1])) : null,
