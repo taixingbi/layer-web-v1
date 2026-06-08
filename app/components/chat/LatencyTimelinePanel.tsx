@@ -41,7 +41,7 @@ type TimelineHoverContext = RouteInfo & {
   usage?: Record<string, unknown>;
   latency_ms?: Record<string, unknown>;
   rag?: RagEnvelope;
-  citationCount: number;
+  citations?: ChatMessage["citations"];
 };
 
 type Props = Pick<TimelineHoverContext, keyof RouteInfo | "usage" | "rag"> & {
@@ -70,7 +70,7 @@ function hasTimelineHoverContent(kind: TimelineHoverKind, nodeId: string, ctx: T
   if (kind === "embed") return true;
   if (kind === "chat") {
     const tokens = phaseUsageSlice(ctx.usage, chatUsageToolKey(nodeId), "chat");
-    return Boolean(ctx.model?.trim() || tokens || ctx.citationCount > 0);
+    return Boolean(ctx.model?.trim() || tokens || (ctx.citations?.length ?? 0) > 0);
   }
   return false;
 }
@@ -156,17 +156,17 @@ function TimelineHoverPopover({
         <DebugRagToolPanel
           route={hoverCtx.route_detail?.name ?? hoverCtx.route}
           rag={hoverCtx.rag}
-          latency_ms={hoverCtx.latency_ms}
-          usage={hoverCtx.usage}
         />
       ) : null}
-      {kind === "embed" ? <DebugEmbedPanel /> : null}
+      {kind === "embed" ? (
+        <DebugEmbedPanel embedModel={hoverCtx.rag?.retrieval?.embed_model} />
+      ) : null}
       {kind === "chat" ? (
         <DebugChatPanel
           nodeId={nodeId}
           model={hoverCtx.model}
           usage={hoverCtx.usage}
-          citationCount={hoverCtx.citationCount}
+          citations={hoverCtx.citations}
         />
       ) : null}
     </div>
@@ -396,7 +396,7 @@ export function LatencyTimelinePanel({
     usage,
     latency_ms: latency_ms as Record<string, unknown> | undefined,
     rag,
-    citationCount: citations?.length ?? 0,
+    citations,
   };
   const routeInfo = hasRouteInfo(hoverCtx) ? hoverCtx : null;
 

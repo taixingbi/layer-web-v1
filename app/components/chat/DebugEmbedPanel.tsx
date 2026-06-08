@@ -1,16 +1,23 @@
 "use client";
 
-export function DebugEmbedPanel() {
+const EMBED_PHASE = "Query embedding";
+
+type Props = {
+  embedModel?: string;
+};
+
+export function DebugEmbedPanel({ embedModel }: Props) {
+  const model = embedModel?.trim();
+
   return (
     <div className="chat-debug-kv-block">
-      <p className="chat-details-section-label">Embed</p>
-      <dl className="chat-debug-dl">
-        <dt>Phase</dt>
-        <dd>Query embedding</dd>
-      </dl>
-      <p className="chat-debug-reason-text">
-        Vectorizes the rewritten question for hybrid retrieval.
-      </p>
+      <p className="chat-details-section-label">{EMBED_PHASE}</p>
+      {model ? (
+        <dl className="chat-debug-dl">
+          <dt>Model</dt>
+          <dd>{model}</dd>
+        </dl>
+      ) : null}
     </div>
   );
 }
