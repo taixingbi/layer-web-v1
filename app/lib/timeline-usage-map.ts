@@ -10,7 +10,7 @@ import {
 } from "@/lib/chat-usage";
 import type { TokenUsageSlice } from "@/lib/chat-types";
 import type { LatencyTimelineNode } from "@/lib/latency-timeline";
-import { isChatTimelineLabel } from "@/lib/timeline-phase-labels";
+import { isChatTimelineLabel, PHASE_SUGGESTED_QUESTIONS } from "@/lib/timeline-phase-labels";
 
 export type NodeUsageMetrics = {
   tokens: number;
@@ -81,7 +81,7 @@ export function usageSliceForTimelineNode(
     }
   }
 
-  if (label === "Follow-up Chat") {
+  if (label === PHASE_SUGGESTED_QUESTIONS) {
     if (nodeId.includes("rag_private_kb")) {
       return (
         phaseUsageSlice(usage, "tool_rag", "follow_up_chat") ??

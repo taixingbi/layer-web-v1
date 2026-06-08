@@ -47,6 +47,18 @@ describe("usageSliceForTimelineNode", () => {
     ).toBe(353);
   });
 
+  it("maps suggested questions phase to follow_up_chat usage", () => {
+    expect(
+      tokenCount(
+        usageSliceForTimelineNode(
+          "rag_private_kb-generation-follow_up",
+          "Suggested questions",
+          sampleUsage,
+        )!,
+      ),
+    ).toBe(522);
+  });
+
   it("returns null for embed (zero tokens, row still kept in tree)", () => {
     expect(
       usageSliceForTimelineNode("rag_private_kb-retrieval-embed", "Query embedding", sampleUsage),
