@@ -58,8 +58,6 @@ export function adminServiceTargets(): AdminServiceTarget[] {
       readyPath: "/ready",
     },
     { id: "qdrant", name: "Qdrant", baseUrl: fromEnv("QDRANT_BASE_URL"), healthPath: "/healthz" },
-    { id: "redis", name: "Redis", baseUrl: fromEnv("REDIS_HEALTH_URL") },
-    { id: "postgres", name: "Postgres", baseUrl: fromEnv("POSTGRES_HEALTH_URL") },
   ];
 }
 

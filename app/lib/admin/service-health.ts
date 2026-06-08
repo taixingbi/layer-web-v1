@@ -3,6 +3,7 @@
  */
 
 import { adminConfig, adminServiceTargets, type AdminServiceTarget } from "@/lib/admin/config";
+import { probeSupabaseHealth } from "@/lib/admin/supabase-health";
 import type { AdminServiceHealth, ServiceStatus } from "@/lib/admin/types";
 
 type ProbeResult = {
@@ -89,17 +90,21 @@ async function probeService(target: AdminServiceTarget): Promise<ProbeResult> {
 /** Fan-out health checks for all configured admin service targets. */
 export async function fetchServiceHealth(): Promise<AdminServiceHealth[]> {
   const list = adminServiceTargets();
-  return Promise.all(
-    list.map(async (target) => {
-      const probe = await probeService(target);
-      const configured = Boolean(target.baseUrl.trim());
-      return {
-        id: target.id,
-        name: target.name,
-        status: statusFromProbe(probe, configured),
-        version: probe.version,
-        detail: probe.detail,
-      } satisfies AdminServiceHealth;
-    }),
-  );
+  const [httpServices, supabase] = await Promise.all([
+    Promise.all(
+      list.map(async (target) => {
+        const probe = await probeService(target);
+        const configured = Boolean(target.baseUrl.trim());
+        return {
+          id: target.id,
+          name: target.name,
+          status: statusFromProbe(probe, configured),
+          version: probe.version,
+          detail: probe.detail,
+        } satisfies AdminServiceHealth;
+      }),
+    ),
+    probeSupabaseHealth(),
+  ]);
+  return [...httpServices, supabase];
 }
