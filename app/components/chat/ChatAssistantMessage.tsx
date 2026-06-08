@@ -61,7 +61,7 @@ function ChatAssistantMessageInner({
     <div className="flex w-full justify-start">
       <div className="chat-assistant-block w-full text-[15px] leading-relaxed">
         <div className="chat-assistant-sections">
-          <div className="whitespace-pre-wrap break-words chat-assistant-answer">
+          <div className="break-words chat-assistant-answer">
             {rewriteText ? (
               <p className="chat-rewrite-meta">
                 <span className="chat-rewrite-meta-label">Rewrite: </span>
@@ -71,10 +71,10 @@ function ChatAssistantMessageInner({
             ) : null}
             {showThinking ? <ChatLoadingDots label={statusLabel} /> : null}
             {showAnswer ? (
-              <p className="chat-assistant-answer-text">
+              <div className="chat-assistant-answer-text">
                 <AssistantMessageContent content={msg.content} />
                 {isStreaming ? <StreamingCursor /> : null}
-              </p>
+              </div>
             ) : null}
           </div>
 

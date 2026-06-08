@@ -144,6 +144,96 @@ body {
 .chat-assistant-answer-text {
   margin: 0;
 }
+/* Assistant answer markdown (GitHub search / RAG prose) */
+.chat-md {
+  display: flow-root;
+}
+.chat-md > :first-child {
+  margin-top: 0;
+}
+.chat-md > :last-child {
+  margin-bottom: 0;
+}
+.chat-md-h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0 0 0.5rem;
+  color: #111827;
+}
+.chat-md-h2 {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 1rem 0 0.4rem;
+  color: #111827;
+}
+.chat-md-h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0.75rem 0 0.35rem;
+  color: #374151;
+}
+.chat-md-p {
+  margin: 0 0 0.65rem;
+}
+.chat-md-p:last-child {
+  margin-bottom: 0;
+}
+.chat-md-inline {
+  display: inline;
+}
+.chat-md-ul,
+.chat-md-ol {
+  margin: 0 0 0.75rem;
+  padding-left: 1.25rem;
+}
+.chat-md-li {
+  margin: 0.2rem 0;
+}
+.chat-md-li::marker {
+  color: #6b7280;
+}
+.chat-md-link {
+  color: #0f766e;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-md-link:hover {
+  color: #0d9488;
+}
+.chat-md-strong {
+  font-weight: 600;
+  color: #111827;
+}
+.chat-md-code {
+  font-size: 0.88em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  background: #f3f4f6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.chat-md-pre {
+  overflow-x: auto;
+  margin: 0.65rem 0 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.625rem;
+  border: 1px solid #e5e7eb;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre;
+}
+.chat-md-pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
 .chat-cite-marker {
   font-size: 0.72em;
   font-weight: 600;
