@@ -106,6 +106,7 @@ export function AssistantMessageMeta({ msg }: Props) {
                   route_source={msg.route_source}
                   model={msg.model}
                   usage={msg.usage}
+                  rag={msg.rag}
                   citations={msg.citations}
                   traceMsg={msg}
                 />

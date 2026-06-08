@@ -38,7 +38,22 @@ describe("donePayloadFromGatewayData", () => {
       route_source: null,
       usage: null,
       latency_ms: null,
+      rag: null,
     });
+  });
+
+  it("extracts rag from gateway done JSON", () => {
+    const rag = {
+      collection: "taixing_knowledge",
+      retrieval: { retrieved_chunks: 40, reranked_chunks: 10, context_chunks: 5 },
+    };
+    const raw = JSON.stringify({
+      status: "success",
+      rag,
+      citations: [],
+      follow_up_questions: [],
+    });
+    expect(donePayloadFromGatewayData(raw).rag).toEqual(rag);
   });
 
   it("extracts assistant_message_id when present on done", () => {

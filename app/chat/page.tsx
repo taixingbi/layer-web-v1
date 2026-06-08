@@ -554,6 +554,7 @@ export default function ChatPage() {
               citations?: ChatMessage["citations"];
               follow_up_questions?: string[];
               latency_ms?: Record<string, unknown>;
+              rag?: ChatMessage["rag"];
             })
           : {};
       if (typeof obj.conversation_id === "string") {
@@ -603,6 +604,7 @@ export default function ChatPage() {
                 ? { follow_up_questions: followUps }
                 : {}),
               ...(latency_ms ? { latency_ms } : {}),
+              ...(obj.rag ? { rag: obj.rag } : {}),
             };
           })
         );

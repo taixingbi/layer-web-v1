@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DebugChatPanel } from "@/components/chat/DebugChatPanel";
 import { DebugEmbedPanel } from "@/components/chat/DebugEmbedPanel";
+import { DebugRagToolPanel } from "@/components/chat/DebugRagToolPanel";
 import { DebugRoutePanel } from "@/components/chat/DebugRoutePanel";
 import { TimelineHoverWrap } from "@/components/chat/TimelineHoverWrap";
 import { TraceLinksFooter } from "@/components/chat/TraceLinksFooter";
@@ -21,6 +22,7 @@ import {
 import { formatUsageCost, formatUsageTokens, phaseUsageSlice } from "@/lib/chat-usage";
 import { type LatencyObject } from "@/lib/chat-latency";
 import type { ChatMessage } from "@/lib/chat-types";
+import type { RagEnvelope } from "@/lib/rag-envelope";
 import {
   buildUsageMetricsByNodeId,
   rootUsageTotals,
@@ -37,10 +39,12 @@ type RouteInfo = Pick<ChatMessage, "route" | "route_detail" | "route_source" | "
 
 type TimelineHoverContext = RouteInfo & {
   usage?: Record<string, unknown>;
+  latency_ms?: Record<string, unknown>;
+  rag?: RagEnvelope;
   citationCount: number;
 };
 
-type Props = Pick<TimelineHoverContext, keyof RouteInfo | "usage"> & {
+type Props = Pick<TimelineHoverContext, keyof RouteInfo | "usage" | "rag"> & {
   latency_ms?: LatencyObject;
   citations?: ChatMessage["citations"];
   traceMsg?: ChatMessage;
@@ -60,6 +64,9 @@ function hasRouteInfo(info: RouteInfo | null | undefined): boolean {
 
 function hasTimelineHoverContent(kind: TimelineHoverKind, nodeId: string, ctx: TimelineHoverContext): boolean {
   if (kind === "router") return hasRouteInfo(ctx);
+  if (kind === "rag_tool") {
+    return Boolean(ctx.rag?.collection || ctx.route?.trim() || ctx.route_detail?.name?.trim());
+  }
   if (kind === "embed") return true;
   if (kind === "chat") {
     const tokens = phaseUsageSlice(ctx.usage, chatUsageToolKey(nodeId), "chat");
@@ -143,6 +150,14 @@ function TimelineHoverPopover({
           route_detail={hoverCtx.route_detail}
           route_source={hoverCtx.route_source}
           model={hoverCtx.model}
+        />
+      ) : null}
+      {kind === "rag_tool" ? (
+        <DebugRagToolPanel
+          route={hoverCtx.route_detail?.name ?? hoverCtx.route}
+          rag={hoverCtx.rag}
+          latency_ms={hoverCtx.latency_ms}
+          usage={hoverCtx.usage}
         />
       ) : null}
       {kind === "embed" ? <DebugEmbedPanel /> : null}
@@ -363,6 +378,7 @@ export function LatencyTimelinePanel({
   route_source,
   model,
   usage,
+  rag,
   citations,
   traceMsg,
 }: Props) {
@@ -378,6 +394,8 @@ export function LatencyTimelinePanel({
     route_source,
     model,
     usage,
+    latency_ms: latency_ms as Record<string, unknown> | undefined,
+    rag,
     citationCount: citations?.length ?? 0,
   };
   const routeInfo = hasRouteInfo(hoverCtx) ? hoverCtx : null;

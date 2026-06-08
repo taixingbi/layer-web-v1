@@ -1,11 +1,13 @@
 /** Map execution-timeline node ids/labels to hover detail panels. */
 
-export type TimelineHoverKind = "router" | "embed" | "chat";
+export type TimelineHoverKind = "router" | "rag_tool" | "embed" | "chat";
 
 const ROUTER_NODE_ID = "intent-router";
+const TOOL_RAG_PRIVATE_KB_ID = "rag_private_kb";
 
 export function timelineHoverKind(nodeId: string, label: string): TimelineHoverKind | null {
   if (nodeId === ROUTER_NODE_ID) return "router";
+  if (nodeId === TOOL_RAG_PRIVATE_KB_ID) return "rag_tool";
   if (label === "Embed") return "embed";
   if (label === "Chat") return "chat";
   return null;
