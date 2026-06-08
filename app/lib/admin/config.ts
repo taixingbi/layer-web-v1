@@ -23,6 +23,8 @@ export type AdminServiceTarget = {
   id: string;
   name: string;
   baseUrl: string;
+  /** Liveness path (default `/health`). Qdrant uses `/healthz`. */
+  healthPath?: string;
   readyPath?: string;
 };
 
@@ -55,7 +57,7 @@ export function adminServiceTargets(): AdminServiceTarget[] {
       baseUrl: fromEnv("RERANKER_GATEWAY_BASE_URL"),
       readyPath: "/ready",
     },
-    { id: "qdrant", name: "Qdrant", baseUrl: fromEnv("QDRANT_BASE_URL"), readyPath: "/readyz" },
+    { id: "qdrant", name: "Qdrant", baseUrl: fromEnv("QDRANT_BASE_URL"), healthPath: "/healthz" },
     { id: "redis", name: "Redis", baseUrl: fromEnv("REDIS_HEALTH_URL") },
     { id: "postgres", name: "Postgres", baseUrl: fromEnv("POSTGRES_HEALTH_URL") },
   ];

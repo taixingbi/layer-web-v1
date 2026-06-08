@@ -55,7 +55,8 @@ async function probeService(target: AdminServiceTarget): Promise<ProbeResult> {
     return { healthOk: false, readyOk: null, version: null, detail: "URL not configured" };
   }
 
-  const health = await fetchJson(`${base}/health`, adminConfig.healthTimeoutMs);
+  const healthPath = target.healthPath ?? "/health";
+  const health = await fetchJson(`${base}${healthPath}`, adminConfig.healthTimeoutMs);
   let readyOk: boolean | null = null;
   if (target.readyPath) {
     const ready = await fetchJson(`${base}${target.readyPath}`, adminConfig.healthTimeoutMs);
