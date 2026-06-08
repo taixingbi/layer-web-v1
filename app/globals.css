@@ -144,6 +144,19 @@ body {
 .chat-assistant-answer-text {
   margin: 0;
 }
+@keyframes chat-answer-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.chat-assistant-answer-in {
+  animation: chat-answer-in 0.22s ease-out;
+}
 /* Assistant answer markdown (GitHub search / RAG prose) */
 .chat-md {
   display: flow-root;
@@ -485,6 +498,40 @@ body {
 }
 .chat-rewrite-meta-query {
   color: #9ca3af;
+}
+.chat-follow-up-meta {
+  margin-top: 0.5rem;
+}
+.chat-follow-up-meta-label {
+  margin-bottom: 0.125rem;
+}
+.chat-follow-up-meta-item {
+  display: block;
+  width: 100%;
+  margin: 0 0 0.2rem;
+  padding: 0 0 0 0.625rem;
+  border: none;
+  border-left: 2px solid #e8e8e8;
+  background: none;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+.chat-follow-up-meta-item--inline {
+  margin-bottom: 0.375rem;
+}
+.chat-follow-up-meta-item:last-child {
+  margin-bottom: 0;
+}
+.chat-follow-up-meta-item:hover:not(:disabled) .chat-rewrite-meta-query {
+  color: #6b7280;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-follow-up-meta-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .chat-details-disclosure {
   width: 100%;

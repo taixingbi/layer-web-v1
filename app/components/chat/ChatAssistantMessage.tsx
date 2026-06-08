@@ -5,6 +5,7 @@ import { AssistantMessageContent } from "@/components/chat/AssistantMessageConte
 import { AssistantMessageMeta } from "@/components/chat/AssistantMessageMeta";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
 import { StreamingCursor } from "@/components/chat/StreamingCursor";
+import { assistantMessageLayout } from "@/lib/chat-assistant-layout";
 import type { ChatMessage } from "@/lib/chat-types";
 
 type Props = {
@@ -40,16 +41,10 @@ function ChatAssistantMessageInner({
   onCopy,
   onRegenerate,
 }: Props) {
-  const showThinking = isStreaming && !msg.content.trim() && !msg.rewrite;
-  const showAnswer = !isStreaming || Boolean(msg.content.trim());
-  const citeCount = msg.citations?.length ?? 0;
-  const hasFollowUps = Boolean(msg.follow_up_questions?.length);
-  const showLatency = !isStreaming && Boolean(msg.latency_ms);
-  const hasTrace = Boolean(
-    msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.usage,
+  const { showThinking, showAnswer, showDetails, showFollowUps } = assistantMessageLayout(
+    msg,
+    isStreaming,
   );
-  const hasRoute = Boolean(msg.route || msg.route_detail);
-  const showDetails = citeCount > 0 || showLatency || hasTrace || hasRoute;
   const rewriteText = msg.rewrite?.trim() ?? "";
 
   const debugMsg: ChatMessage = {
@@ -66,46 +61,50 @@ function ChatAssistantMessageInner({
               <p className="chat-rewrite-meta">
                 <span className="chat-rewrite-meta-label">Rewrite: </span>
                 <span className="chat-rewrite-meta-query">&ldquo;{rewriteText}&rdquo;</span>
-                {isStreaming && !msg.content.trim() ? <StreamingCursor /> : null}
               </p>
             ) : null}
             {showThinking ? <ChatLoadingDots label={statusLabel} /> : null}
             {showAnswer ? (
-              <div className="chat-assistant-answer-text">
+              <div className="chat-assistant-answer-text chat-assistant-answer-in">
                 <AssistantMessageContent content={msg.content} />
                 {isStreaming ? <StreamingCursor /> : null}
               </div>
             ) : null}
-          </div>
-
-          {hasFollowUps ? (
-            <details className="chat-follow-up-disclosure group">
-              <summary className="chat-follow-up-summary">
-                <span className="chat-follow-up-chevron" aria-hidden>
-                  ▶
-                </span>
-                Follow-up
-                {msg.follow_up_questions!.length > 1
-                  ? ` (${msg.follow_up_questions!.length})`
-                  : ""}
-              </summary>
-              <div className="chat-follow-up-section">
-                <div className="chat-follow-up-chips">
-                  {msg.follow_up_questions!.map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => onFollowUp(q)}
-                      className="chat-follow-up-chip"
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
+            {showFollowUps ? (
+              <div className="chat-follow-up-meta">
+                {msg.follow_up_questions!.length === 1 ? (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => onFollowUp(msg.follow_up_questions![0])}
+                    className="chat-follow-up-meta-item chat-follow-up-meta-item--inline"
+                  >
+                    <span className="chat-rewrite-meta-label">Follow-up: </span>
+                    <span className="chat-rewrite-meta-query">
+                      &ldquo;{msg.follow_up_questions![0]}&rdquo;
+                    </span>
+                  </button>
+                ) : (
+                  <>
+                    <p className="chat-rewrite-meta chat-follow-up-meta-label">
+                      <span className="chat-rewrite-meta-label">Follow-ups:</span>
+                    </p>
+                    {msg.follow_up_questions!.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => onFollowUp(q)}
+                        className="chat-follow-up-meta-item"
+                      >
+                        <span className="chat-rewrite-meta-query">&ldquo;{q}&rdquo;</span>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
-            </details>
-          ) : null}
+            ) : null}
+          </div>
 
           {showDetails ? <AssistantMessageMeta msg={debugMsg} /> : null}
 
