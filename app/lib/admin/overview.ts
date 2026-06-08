@@ -64,12 +64,8 @@ export async function buildAdminOverview(): Promise<AdminOverviewPayload> {
             : "unavailable",
     },
     inference: {
-      model: prom.inference.model ?? null,
       runtime: prom.inference.runtime ?? "vLLM",
-      replicas: prom.inference.replicas ?? null,
-      ttftP50Ms: prom.inference.ttftP50Ms ?? null,
-      fullP50Ms: prom.inference.fullP50Ms ?? null,
-      tokensPerSecond: prom.inference.tokensPerSecond ?? null,
+      workloads: prom.inference.workloads ?? [],
     },
     gpu: prom.gpu,
     recentRequests: supa.recentRequests,

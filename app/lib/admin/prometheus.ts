@@ -3,19 +3,24 @@
  */
 
 import { adminConfig } from "@/lib/admin/config";
+import {
+  collectGpuKeys,
+  dcgmMibToGb,
+  gpuDisplayName,
+  indexPromSamples,
+  type PromSample,
+} from "@/lib/admin/gpu-metrics";
 import type {
   AdminGpuDevice,
   AdminInferenceSection,
+  AdminInferenceWorkload,
   AdminOverviewKpis,
   AdminRagMetrics,
   AdminRouterSection,
 } from "@/lib/admin/types";
 import { versionPayload } from "@/lib/build-info";
 
-type PromVector = {
-  metric: Record<string, string>;
-  value: [number, string];
-};
+type PromVector = PromSample;
 
 type PromQueryResponse = {
   status: "success" | "error";
@@ -142,20 +147,59 @@ async function queryRagMetrics(): Promise<Partial<AdminRagMetrics>> {
 }
 
 async function queryInferenceSection(): Promise<Partial<AdminInferenceSection>> {
-  const [ttft, full, tokensPerSecond, replicas] = await Promise.all([
-    promInstant(histogramQuantileMs("gateway_ttfb_ms")),
-    promInstant(histogramQuantileMs("gateway_request_latency_ms{path=\"/v1/chat/completions\"}")),
-    promInstant("sum(rate(vllm:generation_tokens_total[1m]))"),
-    promInstant('count(up{job=~"vllm-chat.*"} == 1)'),
+  const workload = "inference";
+  const [
+    chatReplicas,
+    embedReplicas,
+    rerankReplicas,
+    chatTokens,
+    embedTokens,
+    rerankReqRate,
+    chatLatency,
+    embedLatency,
+    rerankLatency,
+  ] = await Promise.all([
+    promInstant(`count(up{workload="${workload}"} == 1)`),
+    promInstant('count(up{workload="embedding"} == 1)'),
+    promInstant('count(up{workload="reranker"} == 1)'),
+    promInstant(`sum(rate(vllm:generation_tokens_total{workload="${workload}"}[1m]))`),
+    promInstant('sum(rate(vllm:prompt_tokens_total{workload="embedding"}[1m]))'),
+    promInstant('sum(rate(vllm:request_success_total{workload="reranker"}[1m]))'),
+    promInstant(histogramQuantileMs("vllm:e2e_request_latency_seconds", `workload="${workload}"`)),
+    promInstant(histogramQuantileMs("vllm:e2e_request_latency_seconds", 'workload="embedding"')),
+    promInstant(histogramQuantileMs("vllm:e2e_request_latency_seconds", 'workload="reranker"')),
   ]);
 
+  const workloads: AdminInferenceWorkload[] = [
+    {
+      id: "chat",
+      label: "Chat",
+      model: adminConfig.chatModel,
+      replicas: parsePromScalar(chatReplicas) != null ? Math.round(parsePromScalar(chatReplicas)!) : null,
+      tokensPerSecond: parsePromScalar(chatTokens) != null ? Math.round(parsePromScalar(chatTokens)!) : null,
+      latencyP50Ms: parsePromScalar(chatLatency) != null ? Math.round(parsePromScalar(chatLatency)!) : null,
+    },
+    {
+      id: "embedding",
+      label: "Embedding",
+      model: adminConfig.embeddingModel,
+      replicas: parsePromScalar(embedReplicas) != null ? Math.round(parsePromScalar(embedReplicas)!) : null,
+      tokensPerSecond: parsePromScalar(embedTokens) != null ? Math.round(parsePromScalar(embedTokens)!) : null,
+      latencyP50Ms: parsePromScalar(embedLatency) != null ? Math.round(parsePromScalar(embedLatency)!) : null,
+    },
+    {
+      id: "reranker",
+      label: "Reranker",
+      model: adminConfig.rerankerModel,
+      replicas: parsePromScalar(rerankReplicas) != null ? Math.round(parsePromScalar(rerankReplicas)!) : null,
+      tokensPerSecond: parsePromScalar(rerankReqRate) != null ? Math.round(parsePromScalar(rerankReqRate)!) : null,
+      latencyP50Ms: parsePromScalar(rerankLatency) != null ? Math.round(parsePromScalar(rerankLatency)!) : null,
+    },
+  ];
+
   return {
-    model: adminConfig.inferenceModel,
     runtime: adminConfig.inferenceRuntime,
-    replicas: parsePromScalar(replicas) != null ? Math.round(parsePromScalar(replicas)!) : null,
-    ttftP50Ms: parsePromScalar(ttft) != null ? Math.round(parsePromScalar(ttft)!) : null,
-    fullP50Ms: parsePromScalar(full) != null ? Math.round(parsePromScalar(full)!) : null,
-    tokensPerSecond: parsePromScalar(tokensPerSecond) != null ? Math.round(parsePromScalar(tokensPerSecond)!) : null,
+    workloads,
   };
 }
 
@@ -168,34 +212,41 @@ async function queryGpuDevices(): Promise<AdminGpuDevice[]> {
     promInstant('DCGM_FI_DEV_POWER_USAGE{workload="gpu-telemetry"}'),
   ]);
 
-  const utilByGpu = new Map<string, PromVector>();
-  for (const row of parsePromVector(utilRes)) {
-    const key = row.metric.gpu ?? row.metric.GPU ?? row.metric.device ?? "0";
-    utilByGpu.set(key, row);
-  }
+  const utilRows = parsePromVector(utilRes);
+  const usedByKey = indexPromSamples(parsePromVector(usedRes));
+  const totalByKey = indexPromSamples(parsePromVector(totalRes));
+  const tempByKey = indexPromSamples(parsePromVector(tempRes));
+  const powerByKey = indexPromSamples(parsePromVector(powerRes));
+  const utilByKey = indexPromSamples(utilRows);
 
-  const devices: AdminGpuDevice[] = [];
-  for (const [gpuKey, utilRow] of utilByGpu.entries()) {
-    const match = (rows: PromVector[]) =>
-      rows.find((r) => (r.metric.gpu ?? r.metric.GPU ?? r.metric.device) === gpuKey);
-    const used = match(parsePromVector(usedRes));
-    const total = match(parsePromVector(totalRes));
-    const temp = match(parsePromVector(tempRes));
-    const power = match(parsePromVector(powerRes));
-    const modelName = utilRow.metric.modelName ?? utilRow.metric.model ?? "GPU";
-    const usedBytes = used ? Number(used.value[1]) : NaN;
-    const totalBytes = total ? Number(total.value[1]) : NaN;
-    devices.push({
-      name: `GPU${gpuKey} ${modelName}`.trim(),
-      util: round1(Number(utilRow.value[1])),
-      memoryUsedGb: Number.isFinite(usedBytes) ? round1(usedBytes / 1024 ** 3) : null,
-      memoryTotalGb: Number.isFinite(totalBytes) ? round1(totalBytes / 1024 ** 3) : null,
+  const keys = collectGpuKeys(
+    utilRows,
+    parsePromVector(usedRes),
+    parsePromVector(totalRes),
+    parsePromVector(tempRes),
+    parsePromVector(powerRes),
+  );
+
+  return keys.map((key) => {
+    const utilRow = utilByKey.get(key);
+    const sampleMetric = utilRow?.metric ?? usedByKey.get(key)?.metric ?? { gpu: key.split("::")[1] ?? "0" };
+    const used = usedByKey.get(key);
+    const total = totalByKey.get(key);
+    const temp = tempByKey.get(key);
+    const power = powerByKey.get(key);
+    const usedMib = used ? Number(used.value[1]) : NaN;
+    const totalMib = total ? Number(total.value[1]) : NaN;
+    const utilValue = utilRow ? Number(utilRow.value[1]) : NaN;
+
+    return {
+      name: gpuDisplayName(sampleMetric),
+      util: Number.isFinite(utilValue) ? round1(utilValue) : null,
+      memoryUsedGb: Number.isFinite(usedMib) ? dcgmMibToGb(usedMib) : null,
+      memoryTotalGb: Number.isFinite(totalMib) ? dcgmMibToGb(totalMib) : null,
       tempC: temp ? round1(Number(temp.value[1])) : null,
       powerW: power ? round1(Number(power.value[1])) : null,
-    });
-  }
-
-  return devices.sort((a, b) => a.name.localeCompare(b.name));
+    };
+  });
 }
 
 export type PrometheusBundle = {
@@ -222,7 +273,14 @@ export async function fetchPrometheusBundle(): Promise<PrometheusBundle> {
         distributionSource: "unavailable",
       },
       rag: { source: "unavailable" },
-      inference: { runtime: adminConfig.inferenceRuntime, model: adminConfig.inferenceModel },
+      inference: {
+        runtime: adminConfig.inferenceRuntime,
+        workloads: [
+          { id: "chat", label: "Chat", model: adminConfig.chatModel, replicas: null, tokensPerSecond: null, latencyP50Ms: null },
+          { id: "embedding", label: "Embedding", model: adminConfig.embeddingModel, replicas: null, tokensPerSecond: null, latencyP50Ms: null },
+          { id: "reranker", label: "Reranker", model: adminConfig.rerankerModel, replicas: null, tokensPerSecond: null, latencyP50Ms: null },
+        ],
+      },
       gpu: [],
     };
   }
@@ -242,7 +300,14 @@ export async function fetchPrometheusBundle(): Promise<PrometheusBundle> {
       overview: { version: versionPayload().version },
       router: { version: adminConfig.routerVersion, distribution: {}, distributionSource: "unavailable", accuracySource: "unavailable" },
       rag: { source: "unavailable" },
-      inference: { runtime: adminConfig.inferenceRuntime },
+      inference: {
+        runtime: adminConfig.inferenceRuntime,
+        workloads: [
+          { id: "chat", label: "Chat", model: adminConfig.chatModel, replicas: null, tokensPerSecond: null, latencyP50Ms: null },
+          { id: "embedding", label: "Embedding", model: adminConfig.embeddingModel, replicas: null, tokensPerSecond: null, latencyP50Ms: null },
+          { id: "reranker", label: "Reranker", model: adminConfig.rerankerModel, replicas: null, tokensPerSecond: null, latencyP50Ms: null },
+        ],
+      },
       gpu: [],
     };
   }

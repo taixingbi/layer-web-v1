@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import type {
   AdminGpuDevice,
+  AdminInferenceSection,
   AdminOverviewPayload,
   AdminRecentRequest,
   AdminServiceHealth,
@@ -92,6 +93,43 @@ function RouteDistribution({ distribution }: { distribution: Record<string, numb
         </li>
       ))}
     </ul>
+  );
+}
+
+function InferenceWorkloadCard({
+  workload,
+  runtime,
+}: {
+  workload: AdminInferenceSection["workloads"][number];
+  runtime: string;
+}) {
+  const throughputLabel = workload.id === "reranker" ? "Req/s" : "Tokens/s";
+  return (
+    <div className="admin-inference-workload">
+      <div className="admin-inference-workload-title">{workload.label}</div>
+      <dl className="admin-dl">
+        <div>
+          <dt>Model</dt>
+          <dd>{workload.model ?? "—"}</dd>
+        </div>
+        <div>
+          <dt>Runtime</dt>
+          <dd>{runtime}</dd>
+        </div>
+        <div>
+          <dt>Replicas</dt>
+          <dd>{fmtNum(workload.replicas)}</dd>
+        </div>
+        <div>
+          <dt>{throughputLabel}</dt>
+          <dd>{fmtNum(workload.tokensPerSecond)}</dd>
+        </div>
+        <div>
+          <dt>E2E P50</dt>
+          <dd>{fmtMs(workload.latencyP50Ms)}</dd>
+        </div>
+      </dl>
+    </div>
   );
 }
 
@@ -255,32 +293,11 @@ export function AdminDashboard({ data, onRefresh }: Props) {
 
       <div className="admin-row admin-row--half">
         <Panel title="Inference">
-          <dl className="admin-dl">
-            <div>
-              <dt>Model</dt>
-              <dd>{inference.model ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>Runtime</dt>
-              <dd>{inference.runtime}</dd>
-            </div>
-            <div>
-              <dt>Replicas</dt>
-              <dd>{fmtNum(inference.replicas)}</dd>
-            </div>
-            <div>
-              <dt>Tokens/s</dt>
-              <dd>{fmtNum(inference.tokensPerSecond)}</dd>
-            </div>
-            <div>
-              <dt>TTFT P50</dt>
-              <dd>{fmtMs(inference.ttftP50Ms)}</dd>
-            </div>
-            <div>
-              <dt>Full P50</dt>
-              <dd>{fmtMs(inference.fullP50Ms)}</dd>
-            </div>
-          </dl>
+          <div className="admin-inference-grid">
+            {inference.workloads.map((workload) => (
+              <InferenceWorkloadCard key={workload.id} workload={workload} runtime={inference.runtime} />
+            ))}
+          </div>
         </Panel>
         <Panel title="GPU Cluster (DCGM)">
           {gpu.length === 0 ? (

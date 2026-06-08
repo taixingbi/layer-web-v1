@@ -94,9 +94,17 @@ export const adminConfig = {
     return v || null;
   },
 
-  get inferenceModel(): string | null {
-    const v = fromEnv("ADMIN_INFERENCE_MODEL");
+  get chatModel(): string | null {
+    const v = fromEnv("ADMIN_INFERENCE_MODEL") || fromEnv("ADMIN_CHAT_MODEL");
     return v || null;
+  },
+
+  get embeddingModel(): string {
+    return fromEnv("ADMIN_EMBEDDING_MODEL", "BAAI/bge-m3");
+  },
+
+  get rerankerModel(): string {
+    return fromEnv("ADMIN_RERANKER_MODEL", "BAAI/bge-reranker-v2-m3");
   },
 
   get inferenceRuntime(): string {

@@ -38,13 +38,18 @@ export type AdminRagMetrics = {
   source: "prometheus" | "supabase" | "unavailable";
 };
 
-export type AdminInferenceSection = {
+export type AdminInferenceWorkload = {
+  id: "chat" | "embedding" | "reranker";
+  label: string;
   model: string | null;
-  runtime: string;
   replicas: number | null;
-  ttftP50Ms: number | null;
-  fullP50Ms: number | null;
   tokensPerSecond: number | null;
+  latencyP50Ms: number | null;
+};
+
+export type AdminInferenceSection = {
+  runtime: string;
+  workloads: AdminInferenceWorkload[];
 };
 
 export type AdminGpuDevice = {

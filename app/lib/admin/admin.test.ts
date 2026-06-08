@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { isAdminProfile } from "@/lib/admin/auth";
+import { collectGpuKeys, dcgmMibToGb, gpuDeviceKey } from "@/lib/admin/gpu-metrics";
 import { parsePromScalar, routeDistributionFromVector } from "@/lib/admin/prometheus";
 
 describe("isAdminProfile", () => {
@@ -28,6 +29,24 @@ describe("routeDistributionFromVector", () => {
     expect(out.rag_private_kb).toBe(62);
     expect(out.github_search).toBe(21);
     expect(out.web_search).toBe(17);
+  });
+});
+
+describe("gpuDeviceKey", () => {
+  it("keys by node and gpu index so two nodes are not collapsed", () => {
+    const a = gpuDeviceKey({ kubernetes_node: "gpu-node-1", gpu: "0" });
+    const b = gpuDeviceKey({ kubernetes_node: "gpu-node-2", gpu: "0" });
+    expect(a).not.toBe(b);
+    expect(collectGpuKeys(
+      [{ metric: { kubernetes_node: "gpu-node-1", gpu: "0" }, value: [0, "1"] }],
+      [{ metric: { kubernetes_node: "gpu-node-2", gpu: "0" }, value: [0, "2"] }],
+    )).toHaveLength(2);
+  });
+});
+
+describe("dcgmMibToGb", () => {
+  it("converts MiB to GiB", () => {
+    expect(dcgmMibToGb(20480)).toBe(20);
   });
 });
 
