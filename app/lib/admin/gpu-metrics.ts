@@ -7,8 +7,10 @@ export type PromSample = {
   value: [number, string];
 };
 
-/** Stable key across nodes (each node reports gpu=0). */
+/** Stable key per physical GPU (prefer DCGM UUID over node+index). */
 export function gpuDeviceKey(metric: PromMetricLabels): string {
+  const uuid = metric.UUID?.trim();
+  if (uuid) return `uuid:${uuid}`;
   const node =
     metric.kubernetes_node?.trim() ||
     metric.node?.trim() ||
@@ -17,6 +19,15 @@ export function gpuDeviceKey(metric: PromMetricLabels): string {
     "unknown";
   const gpu = metric.gpu?.trim() || metric.GPU?.trim() || metric.device?.trim() || "0";
   return `${node}::${gpu}`;
+}
+
+/** Resolve total framebuffer MiB from DCGM gauges (TOTAL is often not exported). */
+export function dcgmTotalMib(usedMib: number, freeMib: number, totalMib: number): number | null {
+  if (Number.isFinite(totalMib) && totalMib > 0) return totalMib;
+  if (Number.isFinite(usedMib) && Number.isFinite(freeMib) && usedMib >= 0 && freeMib >= 0) {
+    return usedMib + freeMib;
+  }
+  return null;
 }
 
 export function gpuDisplayName(metric: PromMetricLabels): string {

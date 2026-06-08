@@ -147,7 +147,9 @@ function GpuCard({ device }: { device: AdminGpuDevice }) {
           <dd>
             {device.memoryUsedGb != null && device.memoryTotalGb != null
               ? `${device.memoryUsedGb}/${device.memoryTotalGb} GB`
-              : "—"}
+              : device.memoryUsedGb != null
+                ? `${device.memoryUsedGb} GB used`
+                : "—"}
           </dd>
         </div>
         <div>

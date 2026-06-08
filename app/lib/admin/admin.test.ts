@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { isAdminProfile } from "@/lib/admin/auth";
-import { collectGpuKeys, dcgmMibToGb, gpuDeviceKey } from "@/lib/admin/gpu-metrics";
+import { collectGpuKeys, dcgmMibToGb, dcgmTotalMib, gpuDeviceKey } from "@/lib/admin/gpu-metrics";
 import { parsePromScalar, routeDistributionFromVector } from "@/lib/admin/prometheus";
 
 describe("isAdminProfile", () => {
@@ -33,7 +33,12 @@ describe("routeDistributionFromVector", () => {
 });
 
 describe("gpuDeviceKey", () => {
-  it("keys by node and gpu index so two nodes are not collapsed", () => {
+  it("prefers UUID so FB_USED and GPU_UTIL samples join", () => {
+    const uuid = "GPU-604ac76c-d9cf-fef3-62e9-d92044ab6e52";
+    expect(gpuDeviceKey({ UUID: uuid, gpu: "0", kubernetes_node: "gpu-node-1" })).toBe(`uuid:${uuid}`);
+  });
+
+  it("keys by node and gpu index when UUID is absent", () => {
     const a = gpuDeviceKey({ kubernetes_node: "gpu-node-1", gpu: "0" });
     const b = gpuDeviceKey({ kubernetes_node: "gpu-node-2", gpu: "0" });
     expect(a).not.toBe(b);
@@ -41,6 +46,12 @@ describe("gpuDeviceKey", () => {
       [{ metric: { kubernetes_node: "gpu-node-1", gpu: "0" }, value: [0, "1"] }],
       [{ metric: { kubernetes_node: "gpu-node-2", gpu: "0" }, value: [0, "2"] }],
     )).toHaveLength(2);
+  });
+});
+
+describe("dcgmTotalMib", () => {
+  it("falls back to used + free when TOTAL is missing", () => {
+    expect(dcgmTotalMib(8192, 16384, Number.NaN)).toBe(24576);
   });
 });
 

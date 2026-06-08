@@ -6,6 +6,7 @@ import { adminConfig } from "@/lib/admin/config";
 import {
   collectGpuKeys,
   dcgmMibToGb,
+  dcgmTotalMib,
   gpuDisplayName,
   indexPromSamples,
   type PromSample,
@@ -204,9 +205,10 @@ async function queryInferenceSection(): Promise<Partial<AdminInferenceSection>> 
 }
 
 async function queryGpuDevices(): Promise<AdminGpuDevice[]> {
-  const [utilRes, usedRes, totalRes, tempRes, powerRes] = await Promise.all([
+  const [utilRes, usedRes, freeRes, totalRes, tempRes, powerRes] = await Promise.all([
     promInstant('DCGM_FI_DEV_GPU_UTIL{workload="gpu-telemetry"}'),
     promInstant('DCGM_FI_DEV_FB_USED{workload="gpu-telemetry"}'),
+    promInstant('DCGM_FI_DEV_FB_FREE{workload="gpu-telemetry"}'),
     promInstant('DCGM_FI_DEV_FB_TOTAL{workload="gpu-telemetry"}'),
     promInstant('DCGM_FI_DEV_GPU_TEMP{workload="gpu-telemetry"}'),
     promInstant('DCGM_FI_DEV_POWER_USAGE{workload="gpu-telemetry"}'),
@@ -214,6 +216,7 @@ async function queryGpuDevices(): Promise<AdminGpuDevice[]> {
 
   const utilRows = parsePromVector(utilRes);
   const usedByKey = indexPromSamples(parsePromVector(usedRes));
+  const freeByKey = indexPromSamples(parsePromVector(freeRes));
   const totalByKey = indexPromSamples(parsePromVector(totalRes));
   const tempByKey = indexPromSamples(parsePromVector(tempRes));
   const powerByKey = indexPromSamples(parsePromVector(powerRes));
@@ -222,6 +225,7 @@ async function queryGpuDevices(): Promise<AdminGpuDevice[]> {
   const keys = collectGpuKeys(
     utilRows,
     parsePromVector(usedRes),
+    parsePromVector(freeRes),
     parsePromVector(totalRes),
     parsePromVector(tempRes),
     parsePromVector(powerRes),
@@ -229,20 +233,24 @@ async function queryGpuDevices(): Promise<AdminGpuDevice[]> {
 
   return keys.map((key) => {
     const utilRow = utilByKey.get(key);
-    const sampleMetric = utilRow?.metric ?? usedByKey.get(key)?.metric ?? { gpu: key.split("::")[1] ?? "0" };
     const used = usedByKey.get(key);
+    const free = freeByKey.get(key);
     const total = totalByKey.get(key);
     const temp = tempByKey.get(key);
     const power = powerByKey.get(key);
+    const sampleMetric =
+      utilRow?.metric ?? used?.metric ?? free?.metric ?? total?.metric ?? { gpu: "0" };
     const usedMib = used ? Number(used.value[1]) : NaN;
-    const totalMib = total ? Number(total.value[1]) : NaN;
+    const freeMib = free ? Number(free.value[1]) : NaN;
+    const totalMibRaw = total ? Number(total.value[1]) : NaN;
+    const totalMib = dcgmTotalMib(usedMib, freeMib, totalMibRaw);
     const utilValue = utilRow ? Number(utilRow.value[1]) : NaN;
 
     return {
       name: gpuDisplayName(sampleMetric),
       util: Number.isFinite(utilValue) ? round1(utilValue) : null,
       memoryUsedGb: Number.isFinite(usedMib) ? dcgmMibToGb(usedMib) : null,
-      memoryTotalGb: Number.isFinite(totalMib) ? dcgmMibToGb(totalMib) : null,
+      memoryTotalGb: totalMib != null ? dcgmMibToGb(totalMib) : null,
       tempC: temp ? round1(Number(temp.value[1])) : null,
       powerW: power ? round1(Number(power.value[1])) : null,
     };
