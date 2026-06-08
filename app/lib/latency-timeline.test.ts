@@ -78,7 +78,7 @@ describe("buildLatencyTimelineView", () => {
     const orch = view!.tree[0].children[0]?.children.find((c) => c.label === "Orchestrator");
     expect(orch?.children.map((c) => c.label)).toEqual(["Router", "Tool Github Search"]);
     const github = orch?.children.find((c) => c.label === "Tool Github Search");
-    expect(github?.children.some((c) => c.label === "Chat")).toBe(true);
+    expect(github?.children.some((c) => c.label === "Answer generation")).toBe(true);
   });
 
   it("supports gateway-only metadata from history", () => {

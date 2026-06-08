@@ -4,6 +4,7 @@
 
 import { gatewayTotalMs, isLatencyObject, latencyDisplayTotalMs, type LatencyObject } from "@/lib/chat-latency";
 import {
+  PHASE_ANSWER_GENERATION,
   PHASE_QUERY_EMBEDDING,
   PHASE_RAG_ANSWER_GENERATION,
 } from "@/lib/timeline-phase-labels";
@@ -172,7 +173,7 @@ function githubSearchChildNodes(
     ["github_readme", "README"],
     ["github_search", "Search"],
     ["retrieve_rerank", "Retrieve + Rerank"],
-    ["chat", "Chat"],
+    ["chat", PHASE_ANSWER_GENERATION],
     ["follow_up_chat", "Follow-up Chat"],
   ]);
 }
