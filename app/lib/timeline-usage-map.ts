@@ -10,6 +10,7 @@ import {
 } from "@/lib/chat-usage";
 import type { TokenUsageSlice } from "@/lib/chat-types";
 import type { LatencyTimelineNode } from "@/lib/latency-timeline";
+import { isChatTimelineLabel } from "@/lib/timeline-phase-labels";
 
 export type NodeUsageMetrics = {
   tokens: number;
@@ -66,7 +67,7 @@ export function usageSliceForTimelineNode(
     return asUsageSlice(tool.total) ?? asUsageSlice(tool);
   }
 
-  if (label === "Chat") {
+  if (isChatTimelineLabel(label)) {
     if (nodeId.includes("rag_private_kb")) {
       return (
         phaseUsageSlice(usage, "tool_rag", "chat") ?? phaseUsageSlice(usage, "rag", "chat")

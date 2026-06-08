@@ -1,6 +1,6 @@
 "use client";
 
-const EMBED_PHASE = "Query embedding";
+import { PHASE_QUERY_EMBEDDING } from "@/lib/timeline-phase-labels";
 
 type Props = {
   embedModel?: string;
@@ -11,7 +11,7 @@ export function DebugEmbedPanel({ embedModel }: Props) {
 
   return (
     <div className="chat-debug-kv-block">
-      <p className="chat-details-section-label">{EMBED_PHASE}</p>
+      <p className="chat-details-section-label">{PHASE_QUERY_EMBEDDING}</p>
       {model ? (
         <dl className="chat-debug-dl">
           <dt>Model</dt>

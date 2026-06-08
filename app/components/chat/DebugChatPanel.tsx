@@ -3,6 +3,7 @@
 import type { ChatCitation } from "@/lib/chat-types";
 import { citationExcerpt, citationTitle } from "@/lib/citations";
 import { formatTokenLine, phaseUsageSlice } from "@/lib/chat-usage";
+import { chatPhaseLabel } from "@/lib/timeline-phase-labels";
 import { chatUsageToolKey } from "@/lib/timeline-hover";
 
 type Props = {
@@ -11,10 +12,6 @@ type Props = {
   usage?: Record<string, unknown>;
   citations?: ChatCitation[];
 };
-
-function chatPhaseLabel(nodeId: string): string {
-  return nodeId.includes("github") ? "Answer generation" : "RAG answer generation";
-}
 
 function citationHoverText(c: ChatCitation, index: number): string {
   return citationExcerpt(c) ?? citationTitle(c, index);

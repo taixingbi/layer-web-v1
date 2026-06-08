@@ -3,6 +3,10 @@
  */
 
 import { gatewayTotalMs, isLatencyObject, latencyDisplayTotalMs, type LatencyObject } from "@/lib/chat-latency";
+import {
+  PHASE_QUERY_EMBEDDING,
+  PHASE_RAG_ANSWER_GENERATION,
+} from "@/lib/timeline-phase-labels";
 
 export type LatencyTimelineNode = {
   id: string;
@@ -88,7 +92,7 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   const retrieval = rag.retrieval;
   if (isLatencyObject(retrieval)) {
     const pairs: Array<[string, string]> = [
-      ["embed", "Embed"],
+      ["embed", PHASE_QUERY_EMBEDDING],
       ["retrieve", "Retrieve"],
       ["rerank", "Rerank"],
     ];
@@ -102,7 +106,7 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   if (isLatencyObject(generation)) {
     const answer = readMs(generation.answer);
     if (answer != null && answer > 0) {
-      out.push(node(`${prefix}-generation-answer`, "Chat", answer, rootMs));
+      out.push(node(`${prefix}-generation-answer`, PHASE_RAG_ANSWER_GENERATION, answer, rootMs));
     }
     const followUp = readMs(generation.follow_up);
     if (followUp != null && followUp > 0) {
@@ -113,10 +117,10 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   const service = rag.service;
   if (isLatencyObject(service)) {
     const pairs: Array<[string, string]> = [
-      ["embed", "Embed"],
+      ["embed", PHASE_QUERY_EMBEDDING],
       ["retrieve", "Retrieve"],
       ["chunk_rerank", "Rerank"],
-      ["chat", "Chat"],
+      ["chat", PHASE_RAG_ANSWER_GENERATION],
       ["follow_up_chat", "Follow-up Chat"],
       ["follow_up_rerank", "Follow-up Rerank"],
     ];
@@ -127,11 +131,11 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   }
 
   const flatPairs: Array<[string, string]> = [
-    ["embed", "Embed"],
+    ["embed", PHASE_QUERY_EMBEDDING],
     ["retrieve", "Retrieve"],
     ["rerank", "Rerank"],
     ["chunk_rerank", "Rerank"],
-    ["chat", "Chat"],
+    ["chat", PHASE_RAG_ANSWER_GENERATION],
     ["follow_up_chat", "Follow-up Chat"],
     ["follow_up_rerank", "Follow-up Rerank"],
   ];

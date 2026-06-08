@@ -38,14 +38,18 @@ describe("usageSliceForTimelineNode", () => {
     );
     expect(
       tokenCount(
-        usageSliceForTimelineNode("rag_private_kb-generation-answer", "Chat", sampleUsage)!,
+        usageSliceForTimelineNode(
+          "rag_private_kb-generation-answer",
+          "RAG answer generation",
+          sampleUsage,
+        )!,
       ),
     ).toBe(353);
   });
 
   it("returns null for embed (zero tokens, row still kept in tree)", () => {
     expect(
-      usageSliceForTimelineNode("rag_private_kb-retrieval-embed", "Embed", sampleUsage),
+      usageSliceForTimelineNode("rag_private_kb-retrieval-embed", "Query embedding", sampleUsage),
     ).toBeNull();
   });
 });
@@ -59,7 +63,7 @@ describe("buildUsageMetricsByNodeId", () => {
 
     const orchestrator = view.tree[0].children[0]?.children[0]?.children[0];
     const rag = orchestrator?.children.find((c) => c.label === "Tool Rag Private KB");
-    const embed = rag?.children.find((c) => c.label === "Embed");
+    const embed = rag?.children.find((c) => c.label === "Query embedding");
     expect(embed).toBeDefined();
     expect(metrics.get(embed!.id)?.tokens).toBe(0);
     expect(metrics.get("intent-router")?.tokens).toBe(576);
@@ -74,6 +78,8 @@ describe("formatUsageLine", () => {
   });
 
   it("shows label only when tokens are zero", () => {
-    expect(formatUsageLine("Embed", 0, 0, { connector: "├─ " })).toBe("├─ Embed");
+    expect(formatUsageLine("Query embedding", 0, 0, { connector: "├─ " })).toBe(
+      "├─ Query embedding",
+    );
   });
 });
