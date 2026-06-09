@@ -118,6 +118,8 @@ pnpm dev
 
 Open **http://localhost:3000/chat** — the BFF proxies to **`{GATEWAY_BASE_URL}/v1/chat`** and **`{GATEWAY_BASE_URL}/v1/feedback`**.
 
+**Training hub (admin):** **http://localhost:3000/train** — router SFT/DPO ops at `/train/router`. Dev deploy: **https://dev.taixingai.com/train** (sign in with an account that has the `admin` role).
+
 ## CI
 
 GitHub Actions runs **`pnpm install` → `pnpm lint` → `pnpm test`** on push/PR (see `.github/workflows/ci.yml`).

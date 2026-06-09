@@ -7,13 +7,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
+import { isAdminProfile } from "@/lib/is-admin-profile";
+import type { Profile } from "@/lib/profile";
 import { webApiPaths } from "@/lib/web-api-paths";
 
-type ProfileSnippet = {
-  display_name?: string | null;
-  username?: string | null;
-  email?: string | null;
-};
+type ProfileSnippet = Pick<Profile, "display_name" | "username" | "email" | "roles">;
 
 function initialsFromProfile(p: ProfileSnippet | null): string {
   const name = p?.display_name?.trim() || p?.username?.trim() || p?.email?.trim() || "U";
@@ -68,6 +66,7 @@ export function ChatUserMenu({ onSignOut }: ChatUserMenuProps) {
 
   const name = displayName(profile);
   const initials = initialsFromProfile(profile);
+  const isAdmin = isAdminProfile(profile);
   const close = useCallback(() => setOpen(false), []);
 
   return (
@@ -117,6 +116,26 @@ export function ChatUserMenu({ onSignOut }: ChatUserMenuProps) {
           >
             Profile
           </Link>
+          {isAdmin ? (
+            <>
+              <Link
+                href="/train"
+                role="menuitem"
+                onClick={close}
+                className="block px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+              >
+                Training
+              </Link>
+              <Link
+                href="/admin"
+                role="menuitem"
+                onClick={close}
+                className="block px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
+              >
+                Admin
+              </Link>
+            </>
+          ) : null}
           <button
             type="button"
             role="menuitem"

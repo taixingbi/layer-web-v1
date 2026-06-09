@@ -33,7 +33,7 @@ export function TrainAccessGate({ children }: Props) {
       <div className="admin-alert">
         <h1 className="admin-alert-title">Sign in required</h1>
         <p className="admin-muted">{error ?? "Sign in to open training tools."}</p>
-        <Link href="/login" className="admin-btn-secondary">
+        <Link href="/login?next=/train" className="admin-btn-secondary">
           Sign in
         </Link>
         {error ? (

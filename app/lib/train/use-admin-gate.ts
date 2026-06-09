@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { authFetch } from "@/lib/auth-fetch";
+import { authFetchWithTimeout } from "@/lib/auth-fetch";
 import { webApiPaths } from "@/lib/web-api-paths";
 
 export type AdminGateState = "loading" | "signed_out" | "forbidden" | "ok";
@@ -19,7 +19,7 @@ export function useAdminGate(): {
     setError(null);
     setState("loading");
     try {
-      const me = await authFetch(webApiPaths.auth.me);
+      const me = await authFetchWithTimeout(webApiPaths.auth.me);
       if (!me.ok) {
         setState("signed_out");
         return;
@@ -30,7 +30,7 @@ export function useAdminGate(): {
         return;
       }
 
-      const res = await authFetch(webApiPaths.train.access);
+      const res = await authFetchWithTimeout(webApiPaths.train.access);
       if (res.status === 403) {
         setState("forbidden");
         return;
@@ -43,7 +43,13 @@ export function useAdminGate(): {
       }
       setState("ok");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to verify access");
+      const msg =
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Access check timed out — retry or sign in again"
+          : err instanceof Error
+            ? err.message
+            : "Failed to verify access";
+      setError(msg);
       setState("signed_out");
     }
   }, []);

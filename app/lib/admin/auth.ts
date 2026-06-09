@@ -8,11 +8,10 @@ import { NextResponse } from "next/server";
 import { adminConfig } from "@/lib/admin/config";
 import { gatewayJsonAuthed } from "@/lib/gateway-proxy";
 import { resolveGatewayBearer } from "@/lib/gateway-auth";
+import { isAdminProfile } from "@/lib/is-admin-profile";
 import type { Profile } from "@/lib/profile";
 
-export function isAdminProfile(profile: Profile | null | undefined): boolean {
-  return (profile?.roles ?? []).some((role) => role.trim().toLowerCase() === "admin");
-}
+export { isAdminProfile };
 
 function adminApiKeyFromRequest(req: NextRequest): string | null {
   const configured = adminConfig.adminApiKey;
