@@ -61,8 +61,8 @@ export function RouterTrainPanel({ method }: Props) {
               <CommandBlock title="2. Train (local or EC2)">{`python -m app.train.main --method sft`}</CommandBlock>
               <CommandBlock title="3. Golden eval">{`ROUTER_MODEL=${loraId} \\
   ROUTER_PROMPT_VERSION=${ROUTER_DEFAULT_PROMPT_VERSION} \\
-  python -m app.eval \\
-  --result-dir data/golden-test/result/sft-v1.00`}</CommandBlock>
+  python -m app.eval
+# → data/result/${loraId}/`}</CommandBlock>
             </>
           ) : (
             <>
@@ -74,8 +74,8 @@ python -m app.build dpo`}</CommandBlock>
               <CommandBlock title="2. Train">{`python -m app.train.main --method dpo`}</CommandBlock>
               <CommandBlock title="3. Golden eval">{`ROUTER_MODEL=${loraId} \\
   ROUTER_PROMPT_VERSION=${ROUTER_DEFAULT_PROMPT_VERSION} \\
-  python -m app.eval \\
-  --result-dir data/golden-test/result/dpo-v1.00`}</CommandBlock>
+  python -m app.eval
+# → data/result/${loraId}/`}</CommandBlock>
             </>
           )}
         </section>
@@ -100,6 +100,8 @@ python -m app.build dpo`}</CommandBlock>
               <span className="admin-kv-val train-kv-mono">TRAIN_METHOD={method}</span>
             </li>
           </ul>
+          <CommandBlock title="0. Base model eval (no LoRA)">{`ROUTER_PROMPT_VERSION=${ROUTER_DEFAULT_PROMPT_VERSION} python -m app.eval
+# → data/result/base/`}</CommandBlock>
           <CommandBlock title="EC2 deploy (GitHub Actions)">{`# Repo var TRAIN_METHOD=${method}
 # Commit data/output/${method}/train.jsonl before push
 # Workflow: deploy.yml → S3 → EC2 SSM → app.train.main`}</CommandBlock>

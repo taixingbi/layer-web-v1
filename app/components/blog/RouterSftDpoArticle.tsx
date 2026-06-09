@@ -201,7 +201,7 @@ export function RouterSftDpoArticle() {
         </BlogPre>
         <p>
           Rebuild DPO after a golden eval pass so <strong>rejected</strong> comes from real{" "}
-          <code>route_match=false</code> rows in <code>golden-test/result/*.csv</code>, not only
+          <code>route_match=false</code> rows in <code>data/result/*.csv</code>, not only
           synthetic opposites:
         </p>
         <BlogPre>{`
@@ -305,13 +305,14 @@ Result:           PASS (route_match: true)
         </BlogPre>
         <p>Full suite with separate result dirs per adapter:</p>
         <BlogPre>{`
-ROUTER_MODEL=router-qwen2.5-7b-sft-v1.00 \\
-  python -m app.eval \\
-  --result-dir data/golden-test/result/sft-v1.00
+ROUTER_PROMPT_VERSION=router-v2.00 python -m app.eval
+# → data/result/base/  (orchestrator default LLM, no LoRA)
 
-ROUTER_MODEL=router-qwen2.5-7b-dpo-v1.00 \\
-  python -m app.eval \\
-  --result-dir data/golden-test/result/dpo-v1.00
+ROUTER_MODEL=router-qwen2.5-7b-sft-v1.00 python -m app.eval
+# → data/result/router-qwen2.5-7b-sft-v1.00/
+
+ROUTER_MODEL=router-qwen2.5-7b-dpo-v1.00 python -m app.eval
+# → data/result/router-qwen2.5-7b-dpo-v1.00/
 `.trim()}
         </BlogPre>
         <p>
