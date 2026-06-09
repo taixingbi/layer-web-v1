@@ -18,6 +18,9 @@ export const ROUTER_TRAIN_REPOS = {
 export const ROUTER_SFT_LORA_ID = "router-qwen2.5-7b-sft-v1.00";
 export const ROUTER_DPO_LORA_ID = "router-qwen2.5-7b-dpo-v1.00";
 
+/** Production adapter on orchestrator / vLLM (highest golden-eval accuracy). */
+export const ROUTER_PRODUCTION_MODEL = ROUTER_SFT_LORA_ID;
+
 export const ROUTER_DEFAULT_BASE_MODEL = "Qwen/Qwen2.5-1.5B-Instruct";
 export const ROUTER_DEFAULT_PROMPT_VERSION = "router-v2.00";
 

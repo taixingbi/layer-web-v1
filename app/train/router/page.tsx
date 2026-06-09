@@ -18,10 +18,7 @@ function RouterTrainContent() {
   const method = parseMethod(searchParams.get("method"));
 
   return (
-    <TrainShell
-      title="Intent Router"
-      subtitle="QLoRA supervised fine-tuning and direct preference optimization on golden CSVs."
-    >
+    <TrainShell title="Intent Router">
       <TrainAccessGate>
         <p className="admin-muted train-breadcrumb">
           <Link href="/train">Training</Link>

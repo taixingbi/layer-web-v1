@@ -11,6 +11,7 @@ export const webApiPaths = {
   },
   train: {
     access: "/api/train/access",
+    routerOverview: "/api/train/router/overview",
   },
   chat: `${V1}/chat`,
   feedback: `${V1}/feedback`,
