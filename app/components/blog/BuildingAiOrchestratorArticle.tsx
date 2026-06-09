@@ -18,7 +18,7 @@ const REPOS = {
   embed: "https://github.com/taixingbi/layer-gateway-embed-v1",
   mcpGithub: "https://github.com/taixingbi/layer-mcp-github-v1",
   k3s: "https://github.com/taixingbi/huntai-k3s",
-  routerEval: "https://github.com/taixingbi/layer-orchestrator-v1/tree/main/router-eval/golden-test",
+  routerEval: "https://github.com/taixingbi/layer-router-train-v1/tree/main/data/golden-test",
 } as const;
 
 export function BuildingAiOrchestratorArticle() {
@@ -310,7 +310,7 @@ data: {"type":"done","latency_ms":{"total":1370,"intent_router":{"total":142},
         <p>
           Routing quality is measured against golden datasets, not vibes. HuntAI ships a batch eval
           harness that calls <code>POST /v1/orchestrator/eval/router</code> for every row in CSV
-          suites under <code>router-eval/golden-test/data/</code>.
+          suites under <code>data/golden-test/data/</code>.
         </p>
         <BlogPre title="Golden test example">
           {`

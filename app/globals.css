@@ -2311,6 +2311,138 @@ body {
   background: #f8fafc;
 }
 
+/* Training hub (/train) */
+.train-product-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 768px) {
+  .train-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .train-product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.train-product-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.train-product-card--planned {
+  opacity: 0.85;
+}
+.train-product-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.train-product-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.train-product-card-meta {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+.train-product-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+.train-product-card-link {
+  font-size: 0.875rem;
+  color: #0f766e;
+  text-decoration: none;
+}
+.train-product-card-link:hover {
+  text-decoration: underline;
+}
+.train-product-card-disabled {
+  font-size: 0.875rem;
+}
+.train-method-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.train-method-tab {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  text-decoration: none;
+}
+.train-method-tab:hover {
+  background: #f8fafc;
+}
+.train-method-tab--active {
+  border-color: #99f6e4;
+  background: #ecfdf5;
+  color: #0f766e;
+}
+.train-pipeline-pre {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow-x: auto;
+}
+.train-command-block {
+  margin-top: 0.75rem;
+}
+.train-command-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.35rem;
+}
+.train-link-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.train-external-link {
+  font-size: 0.875rem;
+  color: #0f766e;
+  text-decoration: none;
+}
+.train-external-link:hover {
+  text-decoration: underline;
+}
+.train-kv-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+}
+.train-breadcrumb {
+  margin-bottom: 0.75rem;
+}
+.train-breadcrumb a {
+  color: #0f766e;
+  text-decoration: none;
+}
+.train-breadcrumb a:hover {
+  text-decoration: underline;
+}
+.train-footnote {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+}
+
 @media (prefers-color-scheme: dark) {
   .admin-page {
     background: #0a0a0a;
@@ -2344,5 +2476,24 @@ body {
   }
   .admin-code {
     background: #1f1f1f;
+  }
+  .train-product-card {
+    background: #171717;
+    border-color: #2f2f2f;
+  }
+  .train-method-tab {
+    background: #171717;
+    border-color: #2f2f2f;
+    color: #a1a1aa;
+  }
+  .train-method-tab--active {
+    background: #134e4a;
+    border-color: #115e59;
+    color: #5eead4;
+  }
+  .train-external-link,
+  .train-product-card-link,
+  .train-breadcrumb a {
+    color: #5eead4;
   }
 }

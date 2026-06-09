@@ -6,22 +6,16 @@ import Link from "next/link";
 
 import { BlogPre } from "@/components/blog/BlogPre";
 import { blogPostPath } from "@/lib/blog-posts";
+import {
+  ROUTER_DPO_LORA_ID,
+  ROUTER_PIPELINE_ASCII,
+  ROUTER_SFT_LORA_ID,
+  ROUTER_TRAIN_REPOS,
+} from "@/lib/train/router-constants";
 
-const REPOS = {
-  orchestrator: "https://github.com/taixingbi/layer-orchestrator-v1",
-  train: "https://github.com/taixingbi/layer-router-train-v1",
-  goldenTest:
-    "https://github.com/taixingbi/layer-orchestrator-v1/tree/main/router-eval/golden-test",
-  sftDataset:
-    "https://github.com/taixingbi/layer-orchestrator-v1/tree/main/router-eval/sft-router",
-  dpoDataset:
-    "https://github.com/taixingbi/layer-orchestrator-v1/tree/main/router-eval/dpo-router",
-  vllmDeploy:
-    "https://github.com/taixingbi/huntai-k3s/blob/main/docs/deploy-vllm-inference.md",
-} as const;
-
-const SFT_LORA_ID = "router-qwen2.5-7b-sft-v1.00";
-const DPO_LORA_ID = "router-qwen2.5-7b-dpo-v1.00";
+const REPOS = ROUTER_TRAIN_REPOS;
+const SFT_LORA_ID = ROUTER_SFT_LORA_ID;
+const DPO_LORA_ID = ROUTER_DPO_LORA_ID;
 
 const CHECKPOINT_DIR_PATTERN = "checkpoints/router-{method}-qwen2.5-*";
 
@@ -41,33 +35,7 @@ export function RouterSftDpoArticle() {
 
       <section>
         <h2>The pipeline at a glance</h2>
-        <BlogPre title="From gold labels to production LoRA">
-          {`
-golden-test/data/*.csv          (question, expected_route)
-        │
-        ├─► sft-router/build ──► train.jsonl + val.jsonl
-        │         │
-        │         ▼
-        │   layer-router-train-v1  (QLoRA SFT)
-        │         │
-        │         ▼
-        │   HF Hub → vLLM LoRA: router-qwen2.5-7b-sft-v1.00
-        │
-        └─► dpo-router/build ──► chosen/rejected pairs
-                  │
-                  ▼
-            layer-router-train-v1  (QLoRA DPO)
-                  │
-                  ▼
-            HF Hub → vLLM LoRA: router-qwen2.5-7b-dpo-v1.00
-        │
-        ▼
-POST /v1/orchestrator/eval/router  +  golden-test/run-router-eval.sh
-        │
-        ▼
-layer-orchestrator-v1 (ROUTER_MODEL env or router_model on eval)
-`.trim()}
-        </BlogPre>
+        <BlogPre title="From gold labels to production LoRA">{ROUTER_PIPELINE_ASCII}</BlogPre>
       </section>
 
       <section>
@@ -127,7 +95,7 @@ layer-orchestrator-v1 (ROUTER_MODEL env or router_model on eval)
         <p>
           Source of truth lives in{" "}
           <a href={REPOS.goldenTest} target="_blank" rel="noopener noreferrer">
-            router-eval/golden-test/data
+            data/golden-test/data
           </a>
           :
         </p>
@@ -185,11 +153,11 @@ layer-orchestrator-v1 (ROUTER_MODEL env or router_model on eval)
         <h2>SFT JSONL shape</h2>
         <p>
           <a href={REPOS.sftDataset} target="_blank" rel="noopener noreferrer">
-            router-eval/sft-router
+            data/output/sft
           </a>{" "}
           emits chat rows that mirror what the router sees at inference time:
         </p>
-        <BlogPre title="sft-router/output/train.jsonl (one line, abbreviated)">
+        <BlogPre title="output/sft/train.jsonl (one line, abbreviated)">
           {`
 {
   "messages": [
@@ -206,18 +174,18 @@ layer-orchestrator-v1 (ROUTER_MODEL env or router_model on eval)
 `.trim()}
         </BlogPre>
         <p>Build with:</p>
-        <BlogPre>{`bash router-eval/sft-router/run-build-sft.sh`}</BlogPre>
+        <BlogPre>{`python -m app.build sft`}</BlogPre>
       </section>
 
       <section>
         <h2>DPO JSONL shape</h2>
         <p>
           <a href={REPOS.dpoDataset} target="_blank" rel="noopener noreferrer">
-            router-eval/dpo-router
+            data/output/dpo
           </a>{" "}
           adds preference pairs—same prompt, better vs worse router JSON:
         </p>
-        <BlogPre title="dpo-router/output/train.jsonl (fields)">
+        <BlogPre title="output/dpo/train.jsonl (fields)">
           {`
 {
   "prompt": [ system + user messages ],
@@ -237,8 +205,8 @@ layer-orchestrator-v1 (ROUTER_MODEL env or router_model on eval)
           synthetic opposites:
         </p>
         <BlogPre>{`
-ROUTER_PROMPT_VERSION=router-v2.00 bash router-eval/golden-test/run-router-eval.sh
-bash router-eval/dpo-router/run-build-dpo.sh
+ROUTER_PROMPT_VERSION=router-v2.00 python -m app.eval
+python -m app.build dpo
 `.trim()}
         </BlogPre>
       </section>
@@ -255,13 +223,13 @@ bash router-eval/dpo-router/run-build-dpo.sh
         <BlogPre title="Train commands">
           {`
 # SFT
-python -m app.main --method sft
+python -m app.train.main --method sft
 
 # DPO (default)
-python -m app.main --method dpo
+python -m app.train.main --method dpo
 
 # 7B base + versioned Hub repo
-BASE_MODEL=Qwen/Qwen2.5-7B-Instruct HF_REPO_VERSION=1.00 TRAIN_METHOD=sft python -m app.main
+BASE_MODEL=Qwen/Qwen2.5-7B-Instruct HF_REPO_VERSION=1.00 TRAIN_METHOD=sft python -m app.train.main
 `.trim()}
         </BlogPre>
         <p>
@@ -338,12 +306,12 @@ Result:           PASS (route_match: true)
         <p>Full suite with separate result dirs per adapter:</p>
         <BlogPre>{`
 ROUTER_MODEL=router-qwen2.5-7b-sft-v1.00 \\
-RESULT_DIR=router-eval/golden-test/result/sft-v1.00 \\
-  bash router-eval/golden-test/run-router-eval.sh
+  python -m app.eval \\
+  --result-dir data/golden-test/result/sft-v1.00
 
 ROUTER_MODEL=router-qwen2.5-7b-dpo-v1.00 \\
-RESULT_DIR=router-eval/golden-test/result/dpo-v1.00 \\
-  bash router-eval/golden-test/run-router-eval.sh
+  python -m app.eval \\
+  --result-dir data/golden-test/result/dpo-v1.00
 `.trim()}
         </BlogPre>
         <p>

@@ -77,6 +77,9 @@ export default function AdminPage() {
             <button type="button" className="admin-nav-link admin-nav-link--active" aria-current="page">
               Admin
             </button>
+            <Link href="/train" className="admin-nav-link">
+              Train
+            </Link>
           </nav>
         </div>
       </header>
