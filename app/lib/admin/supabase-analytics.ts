@@ -88,7 +88,10 @@ export async function fetchRecentRequests(limit = 20): Promise<AdminRecentReques
     const meta = metadataObject(row);
     const route = typeof meta.route === "string" && meta.route.trim() ? meta.route.trim() : "unknown";
     const content = typeof row.content === "string" ? row.content : "";
-    const isError = content.startsWith("Error:") || content === "NOT_FOUND";
+    const isError =
+      content.startsWith("Error:") ||
+      content === "NOT_FOUND" ||
+      content === "I couldn't find that in the knowledge base.";
     return {
       at: formatTime(row.created_at),
       route,
@@ -136,7 +139,11 @@ export async function fetchRagHitRate(): Promise<number | null> {
   if (ragRows.length === 0) return null;
   const hits = ragRows.filter((row) => {
     const content = typeof row.content === "string" ? row.content.trim() : "";
-    return content !== "NOT_FOUND" && !content.startsWith("Error:");
+    return (
+      content !== "NOT_FOUND" &&
+      content !== "I couldn't find that in the knowledge base." &&
+      !content.startsWith("Error:")
+    );
   }).length;
   return Math.round((hits / ragRows.length) * 1000) / 10;
 }
