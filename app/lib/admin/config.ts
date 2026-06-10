@@ -141,27 +141,4 @@ export const adminConfig = {
   },
 
   lokiTimeoutMs: 15_000,
-
-  get argocdServerUrl(): string {
-    return fromEnv("ARGOCD_SERVER_URL");
-  },
-
-  get argocdToken(): string {
-    return fromEnv("ARGOCD_TOKEN");
-  },
-
-  get argocdUiUrl(): string {
-    return fromEnv("ARGOCD_UI_URL", "https://argocd.taixingai.com");
-  },
-
-  get argocdInsecureTls(): boolean {
-    const v = fromEnv("ARGOCD_INSECURE_TLS", "true").toLowerCase();
-    return v === "1" || v === "true" || v === "yes";
-  },
-
-  get argocdConfigured(): boolean {
-    return Boolean(this.argocdServerUrl && this.argocdToken);
-  },
-
-  argocdTimeoutMs: 10_000,
 };

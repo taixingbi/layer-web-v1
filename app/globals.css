@@ -2571,6 +2571,33 @@ body {
   word-break: break-all;
   margin-bottom: 0.25rem;
 }
+.admin-argocd-link-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+}
+.admin-argocd-app-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: #0f172a;
+  background: #f8fafc;
+}
+.admin-argocd-app-link:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+.admin-argocd-app-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
 
 /* Training hub (/train) */
 .train-product-grid {
