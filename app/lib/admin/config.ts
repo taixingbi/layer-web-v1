@@ -119,26 +119,4 @@ export const adminConfig = {
   get redisUrl(): string {
     return fromEnv("REDIS_URL").trim();
   },
-
-  get lokiQueryUrl(): string {
-    return fromEnv("LOKI_QUERY_URL").replace(/\/$/, "");
-  },
-
-  get lokiUsername(): string {
-    return fromEnv("LOKI_USERNAME");
-  },
-
-  get lokiReadToken(): string {
-    return fromEnv("LOKI_READ_TOKEN") || fromEnv("LOKI_API_KEY");
-  },
-
-  get lokiCluster(): string {
-    return fromEnv("LOKI_CLUSTER", "k3s");
-  },
-
-  get lokiConfigured(): boolean {
-    return Boolean(this.lokiQueryUrl && this.lokiUsername && this.lokiReadToken);
-  },
-
-  lokiTimeoutMs: 15_000,
 };

@@ -91,29 +91,3 @@ export type AdminOverviewPayload = {
     supabase: "ok" | "unconfigured" | "error";
   };
 };
-
-export type AdminLogEntry = {
-  ts: string;
-  tsNs: string;
-  level: string;
-  app: string;
-  pod?: string;
-  message: string;
-  requestId?: string;
-  sessionId?: string;
-  userId?: string;
-  traceId?: string;
-  route?: string;
-  latencyMs?: number | null;
-  raw: string;
-};
-
-export type AdminLogsPayload = {
-  fetchedAt: string;
-  source: "loki" | "unconfigured" | "error";
-  query: string;
-  service: { id: string; name: string; app: string; namespace: string } | null;
-  services: Array<{ id: string; name: string; app: string; namespace: string }>;
-  entries: AdminLogEntry[];
-  detail?: string | null;
-};

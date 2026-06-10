@@ -10,7 +10,7 @@ import {
   indexPromSamples,
   lookupPromSample,
 } from "@/lib/admin/gpu-metrics";
-import { buildLogql } from "@/lib/admin/loki";
+import { serviceLogExploreUrl } from "@/lib/admin/grafana-links";
 import { parsePromScalar, routeDistributionFromVector } from "@/lib/admin/prometheus";
 
 describe("isAdminProfile", () => {
@@ -82,29 +82,12 @@ describe("dcgmMibToGb", () => {
   });
 });
 
-describe("buildLogql", () => {
-  it("builds selector with cluster namespace app", () => {
-    const q = buildLogql({
-      namespace: "ai-dev",
-      app: "layer-orchestrator",
-      sinceMs: 900_000,
-    });
-    expect(q).toContain('cluster="k3s"');
-    expect(q).toContain('namespace="ai-dev"');
-    expect(q).toContain('app="layer-orchestrator"');
-    expect(q).toContain("| json");
-  });
-
-  it("adds level and search filters", () => {
-    const q = buildLogql({
-      namespace: "ai-dev",
-      app: "layer-rag-query",
-      level: "error",
-      search: "req_abc",
-      sinceMs: 900_000,
-    });
-    expect(q).toContain('level=~"ERROR|error"');
-    expect(q).toContain('|= "req_abc"');
+describe("serviceLogExploreUrl", () => {
+  it("builds Grafana Explore URL with LogQL selector", () => {
+    const url = serviceLogExploreUrl("layer-orchestrator");
+    expect(url).toContain("taixingbi.grafana.net/explore");
+    expect(url).toContain(encodeURIComponent('cluster="k3s"'));
+    expect(url).toContain(encodeURIComponent('app="layer-orchestrator"'));
   });
 });
 
