@@ -24,3 +24,11 @@ export const ARGOCD_DEV_APPS: Array<{ name: string; label: string }> = [
   { name: "observability", label: "Observability" },
   { name: "vllm-inference", label: "vLLM Inference" },
 ];
+
+export const ARGOCD_PROD_APPS: Array<{ name: string; label: string }> = [
+  { name: "web-prod", label: "Web" },
+  { name: "orchestrator-prod", label: "Orchestrator" },
+  { name: "rag-query-prod", label: "RAG Query" },
+  { name: "gateway-api-prod", label: "Gateway API" },
+  { name: "mcp-github-prod", label: "MCP GitHub" },
+];
