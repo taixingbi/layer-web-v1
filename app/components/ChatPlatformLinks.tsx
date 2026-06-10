@@ -11,7 +11,7 @@ import { webApiPaths } from "@/lib/web-api-paths";
 const linkClass =
   "px-2 py-1 rounded-md text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10";
 
-/** Chat header links: public Blog plus admin-only Train and Admin. */
+/** Chat header links: public Blog plus admin-only Admin hub. */
 export function ChatPlatformLinks() {
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -34,14 +34,9 @@ export function ChatPlatformLinks() {
         Blog
       </Link>
       {isAdmin ? (
-        <>
-          <Link href="/train" className={linkClass}>
-            Train
-          </Link>
-          <Link href="/admin" className={linkClass}>
-            Admin
-          </Link>
-        </>
+        <Link href="/admin" className={linkClass}>
+          Admin
+        </Link>
       ) : null}
     </nav>
   );

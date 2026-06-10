@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { PlatformSubnav } from "@/components/admin/PlatformSubnav";
 import { ChatBrand } from "@/components/ChatBrand";
 
 type Props = {
@@ -13,20 +13,7 @@ type Props = {
   actions?: ReactNode;
 };
 
-const ADMIN_NAV = [
-  { href: "/admin", label: "Overview", exact: true },
-  { href: "/admin/argocd", label: "ArgoCD" },
-  { href: "/admin/logs", label: "Logs" },
-];
-
-function navActive(pathname: string, href: string, exact?: boolean): boolean {
-  if (exact) return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
 export function AdminShell({ children, title, subtitle, actions }: Props) {
-  const pathname = usePathname();
-
   return (
     <div className="admin-page min-h-screen">
       <header className="admin-header">
@@ -40,27 +27,12 @@ export function AdminShell({ children, title, subtitle, actions }: Props) {
             <span className="admin-nav-link admin-nav-link--active" aria-current="page">
               Admin
             </span>
-            <Link href="/train" className="admin-nav-link">
-              Train
-            </Link>
           </nav>
         </div>
       </header>
 
       <main className="admin-main">
-        <div className="admin-subnav">
-          {ADMIN_NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`admin-subnav-link${
-                navActive(pathname, item.href, item.exact) ? " admin-subnav-link--active" : ""
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
+        <PlatformSubnav />
 
         <div className="admin-toolbar">
           <div>
