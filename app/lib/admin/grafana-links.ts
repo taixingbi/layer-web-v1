@@ -23,13 +23,13 @@ export function grafanaObservabilityUrl(path: string): string {
 export const GRAFANA_OBSERVABILITY_LINKS: GrafanaObservabilityLink[] = [
   {
     label: "Loki logs",
-    hint: "last 5m",
-    path: "/d/ta5v5f8/loki-logs?orgId=1&from=now-5m&to=now&timezone=browser",
-  },
-  {
-    label: "Loki logs",
     hint: "last 1h",
     path: "/d/ta5v5f8/loki-logs?orgId=1&from=now-1h&to=now&timezone=browser",
+  },
+  {
+    label: "vLLM Inference",
+    hint: "Qwen · 6h",
+    path: "/d/layer-vllm-inference/vllm-inference-qwen?orgId=1&from=now-6h&to=now&timezone=browser&refresh=30s",
   },
   {
     label: "vLLM Embedding",
