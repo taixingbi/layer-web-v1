@@ -2,15 +2,25 @@
 
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
-  ARGOCD_DEV_APPS,
-  ARGOCD_PROD_APPS,
+  ARGOCD_DEV_STACK_APPS,
+  ARGOCD_PROD_STACK_APPS,
+  ARGOCD_SHARED_APPS,
   argocdApplicationUrl,
   argocdUiBase,
+  type ArgoCdAppLink,
 } from "@/lib/admin/argocd-links";
 
-function ArgoCdAppList({ apps }: { apps: Array<{ name: string; label: string }> }) {
+function ArgoCdAppList({
+  apps,
+  stack,
+}: {
+  apps: ArgoCdAppLink[];
+  stack?: boolean;
+}) {
   return (
-    <ul className="admin-argocd-link-list">
+    <ul
+      className={`admin-argocd-link-list${stack ? " admin-argocd-link-list--stack" : ""}`}
+    >
       {apps.map((app) => (
         <li key={app.name}>
           <a
@@ -47,22 +57,30 @@ export function AdminArgoCdPage() {
       }
     >
       <div className="admin-dashboard">
-        <section className="admin-panel admin-panel--full">
-          <h2 className="admin-panel-title">Applications (dev)</h2>
-          <p className="admin-muted admin-inline-note">
-            Sync, health, diffs, and rollback live in Argo CD. Use the links below or open the full
-            dashboard.
-          </p>
-          <ArgoCdAppList apps={ARGOCD_DEV_APPS} />
-        </section>
+        <div className="admin-argocd-env-grid">
+          <section className="admin-panel">
+            <h2 className="admin-panel-title">Applications (dev)</h2>
+            <p className="admin-muted admin-inline-note">
+              Project <code className="admin-code">ai-dev</code>
+            </p>
+            <ArgoCdAppList apps={ARGOCD_DEV_STACK_APPS} stack />
+          </section>
+
+          <section className="admin-panel">
+            <h2 className="admin-panel-title">Applications (prod)</h2>
+            <p className="admin-muted admin-inline-note">
+              Project <code className="admin-code">ai-prod</code> — manual sync
+            </p>
+            <ArgoCdAppList apps={ARGOCD_PROD_STACK_APPS} stack />
+          </section>
+        </div>
 
         <section className="admin-panel admin-panel--full">
-          <h2 className="admin-panel-title">Applications (prod)</h2>
+          <h2 className="admin-panel-title">Shared</h2>
           <p className="admin-muted admin-inline-note">
-            Project <code className="admin-code">ai-prod</code> — manual sync; check OutOfSync before
-            promote.
+            Dev / platform workloads — no separate prod Argo CD Application.
           </p>
-          <ArgoCdAppList apps={ARGOCD_PROD_APPS} />
+          <ArgoCdAppList apps={ARGOCD_SHARED_APPS} />
         </section>
       </div>
     </AdminShell>

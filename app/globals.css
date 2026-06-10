@@ -2579,6 +2579,20 @@ body {
   gap: 0.5rem;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
 }
+.admin-argocd-link-list--stack {
+  grid-template-columns: 1fr;
+}
+.admin-argocd-env-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .admin-argocd-env-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .admin-argocd-app-link {
   display: flex;
   flex-direction: column;
