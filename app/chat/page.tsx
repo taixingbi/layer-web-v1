@@ -986,7 +986,7 @@ export default function ChatPage() {
             <ChatBrand />
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {!authUi.loading && isAuthenticated ? <ChatPlatformLinks /> : null}
+            {!authUi.loading ? <ChatPlatformLinks /> : null}
             {!authUi.loading && isAuthenticated ? (
               <ChatUserMenu onSignOut={handleSignOut} />
             ) : null}
