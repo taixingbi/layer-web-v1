@@ -37,6 +37,11 @@ export const GRAFANA_OBSERVABILITY_LINKS: GrafanaObservabilityLink[] = [
     path: "/d/layer-vllm-embedding/vllm-embedding-bge-m3?orgId=1&from=now-6h&to=now&timezone=browser&refresh=30s",
   },
   {
+    label: "vLLM Reranker",
+    hint: "6h",
+    path: "/d/layer-vllm-reranker/vllm-reranker?orgId=1&from=now-6h&to=now&timezone=browser&refresh=30s",
+  },
+  {
     label: "GPU (DCGM)",
     hint: "6h",
     path: "/d/layer-gpu-dcgm/gpu-dcgm?orgId=1&from=now-6h&to=now&timezone=browser&refresh=30s",
