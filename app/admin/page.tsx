@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
-import { ChatBrand } from "@/components/ChatBrand";
+import { AdminGate, AdminShell } from "@/components/admin/AdminShell";
 import { authFetch } from "@/lib/auth-fetch";
 import type { AdminOverviewPayload } from "@/lib/admin/types";
 import { webApiPaths } from "@/lib/web-api-paths";
@@ -65,54 +64,20 @@ export default function AdminPage() {
   }, [load]);
 
   return (
-    <div className="admin-page min-h-screen">
-      <header className="admin-header">
-        <div className="admin-header-inner">
-          <ChatBrand size="sm" layout="row" />
-          <span className="admin-header-title">Platform</span>
-          <nav className="admin-header-nav">
-            <Link href="/chat" className="admin-nav-link">
-              Chat
-            </Link>
-            <button type="button" className="admin-nav-link admin-nav-link--active" aria-current="page">
-              Admin
-            </button>
-            <Link href="/train" className="admin-nav-link">
-              Train
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="admin-main">
-        {loading && !data ? (
-          <p className="admin-muted">Loading dashboard…</p>
-        ) : forbidden ? (
-          <div className="admin-alert">
-            <h1 className="admin-alert-title">Admin access required</h1>
-            <p className="admin-muted">Your account does not have the admin role.</p>
-            <Link href="/chat" className="admin-btn-secondary">
-              Back to chat
-            </Link>
-          </div>
-        ) : error && !data ? (
-          <div className="admin-alert">
-            <h1 className="admin-alert-title">Unable to load dashboard</h1>
-            <p className="admin-muted">{error}</p>
-            {error === "Sign in required" ? (
-              <Link href="/login" className="admin-btn-secondary">
-                Sign in
-              </Link>
-            ) : (
-              <button type="button" className="admin-btn-secondary" onClick={() => void load()}>
-                Retry
-              </button>
-            )}
-          </div>
-        ) : data ? (
-          <AdminDashboard data={data} onRefresh={() => void load()} />
-        ) : null}
-      </main>
-    </div>
+    <AdminShell
+      title="Overview"
+      subtitle="Platform health, AI pipeline metrics, and recent activity."
+      actions={
+        data ? (
+          <button type="button" className="admin-btn-secondary" onClick={() => void load()}>
+            Refresh
+          </button>
+        ) : null
+      }
+    >
+      <AdminGate loading={loading && !data} forbidden={forbidden} error={error} onRetry={() => void load()}>
+        {data ? <AdminDashboard data={data} /> : null}
+      </AdminGate>
+    </AdminShell>
   );
 }

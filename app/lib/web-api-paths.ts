@@ -8,6 +8,9 @@ const V1 = "/api/v1";
 export const webApiPaths = {
   admin: {
     overview: "/api/admin/overview",
+    logs: "/api/admin/logs",
+    argocdApps: "/api/admin/argocd/apps",
+    argocdApp: (name: string) => `/api/admin/argocd/apps/${encodeURIComponent(name)}`,
   },
   train: {
     access: "/api/train/access",

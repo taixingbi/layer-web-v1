@@ -10,6 +10,7 @@ import {
   indexPromSamples,
   lookupPromSample,
 } from "@/lib/admin/gpu-metrics";
+import { buildLogql } from "@/lib/admin/loki";
 import { parsePromScalar, routeDistributionFromVector } from "@/lib/admin/prometheus";
 
 describe("isAdminProfile", () => {
@@ -78,6 +79,32 @@ describe("dcgmRawToMib", () => {
 describe("dcgmMibToGb", () => {
   it("converts MiB to GiB", () => {
     expect(dcgmMibToGb(20480)).toBe(20);
+  });
+});
+
+describe("buildLogql", () => {
+  it("builds selector with cluster namespace app", () => {
+    const q = buildLogql({
+      namespace: "ai-dev",
+      app: "layer-orchestrator",
+      sinceMs: 900_000,
+    });
+    expect(q).toContain('cluster="k3s"');
+    expect(q).toContain('namespace="ai-dev"');
+    expect(q).toContain('app="layer-orchestrator"');
+    expect(q).toContain("| json");
+  });
+
+  it("adds level and search filters", () => {
+    const q = buildLogql({
+      namespace: "ai-dev",
+      app: "layer-rag-query",
+      level: "error",
+      search: "req_abc",
+      sinceMs: 900_000,
+    });
+    expect(q).toContain('level=~"ERROR|error"');
+    expect(q).toContain('|= "req_abc"');
   });
 });
 

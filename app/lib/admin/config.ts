@@ -119,4 +119,49 @@ export const adminConfig = {
   get redisUrl(): string {
     return fromEnv("REDIS_URL").trim();
   },
+
+  get lokiQueryUrl(): string {
+    return fromEnv("LOKI_QUERY_URL").replace(/\/$/, "");
+  },
+
+  get lokiUsername(): string {
+    return fromEnv("LOKI_USERNAME");
+  },
+
+  get lokiReadToken(): string {
+    return fromEnv("LOKI_READ_TOKEN") || fromEnv("LOKI_API_KEY");
+  },
+
+  get lokiCluster(): string {
+    return fromEnv("LOKI_CLUSTER", "k3s");
+  },
+
+  get lokiConfigured(): boolean {
+    return Boolean(this.lokiQueryUrl && this.lokiUsername && this.lokiReadToken);
+  },
+
+  lokiTimeoutMs: 15_000,
+
+  get argocdServerUrl(): string {
+    return fromEnv("ARGOCD_SERVER_URL");
+  },
+
+  get argocdToken(): string {
+    return fromEnv("ARGOCD_TOKEN");
+  },
+
+  get argocdUiUrl(): string {
+    return fromEnv("ARGOCD_UI_URL", "https://argocd.taixingai.com");
+  },
+
+  get argocdInsecureTls(): boolean {
+    const v = fromEnv("ARGOCD_INSECURE_TLS", "true").toLowerCase();
+    return v === "1" || v === "true" || v === "yes";
+  },
+
+  get argocdConfigured(): boolean {
+    return Boolean(this.argocdServerUrl && this.argocdToken);
+  },
+
+  argocdTimeoutMs: 10_000,
 };

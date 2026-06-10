@@ -13,7 +13,7 @@ import type {
 
 type Props = {
   data: AdminOverviewPayload;
-  onRefresh: () => void;
+  onRefresh?: () => void;
 };
 
 function fmtNum(value: number | null | undefined, suffix = ""): string {
@@ -201,26 +201,18 @@ function RecentRequestsTable({ rows }: { rows: AdminRecentRequest[] }) {
   );
 }
 
-export function AdminDashboard({ data, onRefresh }: Props) {
+export function AdminDashboard({ data }: Props) {
   const { overview, services, router, rag, inference, gpu, recentRequests, feedback } = data;
 
   return (
     <div className="admin-dashboard">
-      <div className="admin-toolbar">
-        <div>
-          <h1 className="admin-title">HuntAI Platform</h1>
-          <p className="admin-subtitle">
-            Live infrastructure + product analytics
-            <span className="admin-source-tags">
-              <span className={`admin-tag admin-tag--${data.sources.prometheus}`}>Prometheus</span>
-              <span className={`admin-tag admin-tag--${data.sources.supabase}`}>Supabase</span>
-            </span>
-          </p>
-        </div>
-        <button type="button" className="admin-btn-secondary" onClick={onRefresh}>
-          Refresh
-        </button>
-      </div>
+      <p className="admin-subtitle admin-source-line">
+        Data sources
+        <span className="admin-source-tags">
+          <span className={`admin-tag admin-tag--${data.sources.prometheus}`}>Prometheus</span>
+          <span className={`admin-tag admin-tag--${data.sources.supabase}`}>Supabase</span>
+        </span>
+      </p>
 
       <div className="admin-kpi-grid">
         <KpiCard label="Users Online" value={fmtNum(overview.usersOnline)} />

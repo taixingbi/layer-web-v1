@@ -91,3 +91,74 @@ export type AdminOverviewPayload = {
     supabase: "ok" | "unconfigured" | "error";
   };
 };
+
+export type AdminLogEntry = {
+  ts: string;
+  tsNs: string;
+  level: string;
+  app: string;
+  pod?: string;
+  message: string;
+  requestId?: string;
+  sessionId?: string;
+  userId?: string;
+  traceId?: string;
+  route?: string;
+  latencyMs?: number | null;
+  raw: string;
+};
+
+export type AdminLogsPayload = {
+  fetchedAt: string;
+  source: "loki" | "unconfigured" | "error";
+  query: string;
+  service: { id: string; name: string; app: string; namespace: string } | null;
+  services: Array<{ id: string; name: string; app: string; namespace: string }>;
+  entries: AdminLogEntry[];
+  detail?: string | null;
+};
+
+export type ArgoCdSyncStatus = "Synced" | "OutOfSync" | "Unknown";
+export type ArgoCdHealthStatus =
+  | "Healthy"
+  | "Degraded"
+  | "Progressing"
+  | "Missing"
+  | "Suspended"
+  | "Unknown";
+
+export type AdminArgoCdAppSummary = {
+  name: string;
+  env: string;
+  sync: ArgoCdSyncStatus;
+  health: ArgoCdHealthStatus;
+  imageSha: string | null;
+  gitRevision: string | null;
+  lastDeploy: string | null;
+  lastDeployLabel: string | null;
+  overlay: string | null;
+  namespace: string | null;
+  uiUrl: string;
+};
+
+export type AdminArgoCdAppDetail = AdminArgoCdAppSummary & {
+  repoUrl: string | null;
+  targetRevision: string | null;
+  images: string[];
+  healthMessage: string | null;
+  syncRevision: string | null;
+  history: Array<{ id: number; deployedAt: string; revision: string }>;
+};
+
+export type AdminArgoCdOverview = {
+  fetchedAt: string;
+  source: "argocd" | "unconfigured" | "error";
+  apps: AdminArgoCdAppSummary[];
+  syncedCount: number;
+  healthyCount: number;
+  totalCount: number;
+  outOfSyncApps: string[];
+  lastSyncLabel: string | null;
+  uiBaseUrl?: string;
+  detail?: string | null;
+};
