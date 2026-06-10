@@ -3,6 +3,7 @@
  */
 
 import { adminConfig, adminServiceTargets, type AdminServiceTarget } from "@/lib/admin/config";
+import { probeRedisHealth } from "@/lib/admin/redis-health";
 import { probeSupabaseHealth } from "@/lib/admin/supabase-health";
 import type { AdminServiceHealth, ServiceStatus } from "@/lib/admin/types";
 
@@ -13,7 +14,10 @@ type ProbeResult = {
   detail: string | null;
 };
 
-async function fetchJson(url: string, timeoutMs: number): Promise<{ ok: boolean; data: Record<string, unknown> }> {
+async function fetchJson(
+  url: string,
+  timeoutMs: number,
+): Promise<{ ok: boolean; data: Record<string, unknown> }> {
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -52,21 +56,22 @@ function statusFromProbe(probe: ProbeResult, configured: boolean): ServiceStatus
 
 async function probeService(target: AdminServiceTarget): Promise<ProbeResult> {
   const base = target.baseUrl.replace(/\/$/, "");
+  const timeoutMs = target.timeoutMs ?? adminConfig.healthTimeoutMs;
   if (!base) {
     return { healthOk: false, readyOk: null, version: null, detail: "URL not configured" };
   }
 
   const healthPath = target.healthPath ?? "/health";
-  const health = await fetchJson(`${base}${healthPath}`, adminConfig.healthTimeoutMs);
+  const health = await fetchJson(`${base}${healthPath}`, timeoutMs);
   let readyOk: boolean | null = null;
   if (target.readyPath) {
-    const ready = await fetchJson(`${base}${target.readyPath}`, adminConfig.healthTimeoutMs);
+    const ready = await fetchJson(`${base}${target.readyPath}`, timeoutMs);
     readyOk = ready.ok;
   }
 
   let version = versionFromPayload(health.data);
   if (!version) {
-    const versionRes = await fetchJson(`${base}/version`, adminConfig.healthTimeoutMs);
+    const versionRes = await fetchJson(`${base}/version`, timeoutMs);
     if (versionRes.ok) {
       version = versionFromPayload(versionRes.data);
     }
@@ -90,7 +95,7 @@ async function probeService(target: AdminServiceTarget): Promise<ProbeResult> {
 /** Fan-out health checks for all configured admin service targets. */
 export async function fetchServiceHealth(): Promise<AdminServiceHealth[]> {
   const list = adminServiceTargets();
-  const [httpServices, supabase] = await Promise.all([
+  const [httpServices, redis, supabase] = await Promise.all([
     Promise.all(
       list.map(async (target) => {
         const probe = await probeService(target);
@@ -104,7 +109,8 @@ export async function fetchServiceHealth(): Promise<AdminServiceHealth[]> {
         } satisfies AdminServiceHealth;
       }),
     ),
+    probeRedisHealth(),
     probeSupabaseHealth(),
   ]);
-  return [...httpServices, supabase];
+  return [...httpServices, redis, supabase];
 }

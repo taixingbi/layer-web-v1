@@ -26,6 +26,8 @@ export type AdminServiceTarget = {
   /** Liveness path (default `/health`). Qdrant uses `/healthz`. */
   healthPath?: string;
   readyPath?: string;
+  /** Per-service probe timeout (orchestrator /ready can exceed 3s). */
+  timeoutMs?: number;
 };
 
 /** Optional upstream origins probed for service health (empty URL skips probe). */
@@ -37,6 +39,7 @@ export function adminServiceTargets(): AdminServiceTarget[] {
       name: "Orchestrator",
       baseUrl: fromEnv("ORCHESTRATOR_BASE_URL"),
       readyPath: "/ready",
+      timeoutMs: 8_000,
     },
     { id: "rag-query", name: "RAG Query", baseUrl: fromEnv("RAG_QUERY_BASE_URL"), readyPath: "/ready" },
     {
@@ -112,4 +115,8 @@ export const adminConfig = {
   healthTimeoutMs: 3_000,
   prometheusTimeoutMs: 5_000,
   supabaseTimeoutMs: 5_000,
+
+  get redisUrl(): string {
+    return fromEnv("REDIS_URL").trim();
+  },
 };
