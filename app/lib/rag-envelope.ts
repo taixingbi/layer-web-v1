@@ -12,6 +12,16 @@ export type RagRetrievalMeta = {
   confidence?: string;
 };
 
+export type RagSearchSummary = {
+  chunk_count?: number;
+  sources?: string[];
+};
+
+export type RagNotFoundMeta = {
+  search_summary?: RagSearchSummary;
+  result?: string;
+};
+
 export type RagEnvelope = {
   collection?: string;
   query?: {
@@ -25,7 +35,13 @@ export type RagEnvelope = {
     source?: string;
     chunk_id?: string;
   }>;
+  not_found?: RagNotFoundMeta;
 };
+
+export function ragNotFoundMeta(rag: RagEnvelope | null | undefined): RagNotFoundMeta | null {
+  if (!rag?.not_found || typeof rag.not_found !== "object") return null;
+  return rag.not_found;
+}
 
 export function asRagEnvelope(value: unknown): RagEnvelope | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;

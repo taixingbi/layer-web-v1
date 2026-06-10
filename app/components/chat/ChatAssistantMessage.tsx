@@ -5,9 +5,11 @@ import { AssistantMessageContent } from "@/components/chat/AssistantMessageConte
 import { AssistantMessageMeta } from "@/components/chat/AssistantMessageMeta";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
 import { StreamingCursor } from "@/components/chat/StreamingCursor";
+import { RagNotFoundPanel } from "@/components/chat/RagNotFoundPanel";
 import { assistantMessageLayout } from "@/lib/chat-assistant-layout";
 import type { ChatMessage } from "@/lib/chat-types";
-import { suggestedQuestionsChatLabel } from "@/lib/timeline-phase-labels";
+import { ragNotFoundMeta } from "@/lib/rag-envelope";
+import { suggestedQuestionsChatLabel, tryAskingChatLabel } from "@/lib/timeline-phase-labels";
 
 type Props = {
   msg: ChatMessage;
@@ -47,6 +49,8 @@ function ChatAssistantMessageInner({
     isStreaming,
   );
   const rewriteText = msg.rewrite?.trim() ?? "";
+  const notFound = ragNotFoundMeta(msg.rag);
+  const followUpLabel = notFound ? tryAskingChatLabel : suggestedQuestionsChatLabel;
 
   const debugMsg: ChatMessage = {
     ...msg,
@@ -65,8 +69,10 @@ function ChatAssistantMessageInner({
               </p>
             ) : null}
             {showThinking ? <ChatLoadingDots label={statusLabel} /> : null}
+            {showAnswer && notFound ? <RagNotFoundPanel notFound={notFound} /> : null}
             {showAnswer ? (
               <div className="chat-assistant-answer-text chat-assistant-answer-in">
+                {notFound ? <p className="chat-rag-not-found-result-label">Result</p> : null}
                 <AssistantMessageContent content={msg.content} />
                 {isStreaming ? <StreamingCursor /> : null}
               </div>
@@ -81,7 +87,7 @@ function ChatAssistantMessageInner({
                     className="chat-follow-up-meta-item chat-follow-up-meta-item--inline"
                   >
                     <span className="chat-rewrite-meta-label">
-                      {suggestedQuestionsChatLabel(1)}{" "}
+                      {followUpLabel(1)}{" "}
                     </span>
                     <span className="chat-rewrite-meta-query">
                       &ldquo;{msg.follow_up_questions![0]}&rdquo;
@@ -91,7 +97,7 @@ function ChatAssistantMessageInner({
                   <>
                     <p className="chat-rewrite-meta chat-follow-up-meta-label">
                       <span className="chat-rewrite-meta-label">
-                        {suggestedQuestionsChatLabel(msg.follow_up_questions!.length)}
+                        {followUpLabel(msg.follow_up_questions!.length)}
                       </span>
                     </p>
                     {msg.follow_up_questions!.map((q) => (

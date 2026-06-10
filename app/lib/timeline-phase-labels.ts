@@ -13,6 +13,11 @@ export function suggestedQuestionsChatLabel(count: number): string {
   return count === 1 ? "Suggested question:" : "Suggested questions:";
 }
 
+/** Label when RAG missed but suggests alternate questions from retrieved context. */
+export function tryAskingChatLabel(count: number): string {
+  return count === 1 ? "Try asking:" : "Try asking:";
+}
+
 export function chatPhaseLabel(nodeId: string): string {
   return nodeId.includes("github") ? PHASE_ANSWER_GENERATION : PHASE_RAG_ANSWER_GENERATION;
 }

@@ -533,6 +533,42 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+.chat-rag-not-found-summary {
+  margin: 0 0 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #f3f4f6;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #4b5563;
+}
+.chat-rag-not-found-heading {
+  margin: 0 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.chat-rag-not-found-line {
+  margin: 0;
+}
+.chat-rag-not-found-sources {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+.chat-rag-not-found-sources li {
+  margin: 0.1rem 0;
+}
+.chat-rag-not-found-result-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
 .chat-details-disclosure {
   width: 100%;
 }

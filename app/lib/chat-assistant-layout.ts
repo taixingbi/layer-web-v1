@@ -24,6 +24,7 @@ export function assistantMessageLayout(
     | "route"
     | "route_detail"
     | "follow_up_questions"
+    | "rag"
   >,
   isStreaming: boolean,
 ): AssistantLayoutFlags {
@@ -34,7 +35,13 @@ export function assistantMessageLayout(
     msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.usage,
   );
   const hasRoute = Boolean(msg.route || msg.route_detail);
-  const hasMeta = citeCount > 0 || showLatency || hasTrace || hasRoute;
+  const hasRagMiss = Boolean(
+    msg.rag &&
+      typeof msg.rag === "object" &&
+      msg.rag.not_found &&
+      typeof msg.rag.not_found === "object",
+  );
+  const hasMeta = citeCount > 0 || showLatency || hasTrace || hasRoute || hasRagMiss;
   const hasFollowUps = Boolean(msg.follow_up_questions?.length);
 
   return {
