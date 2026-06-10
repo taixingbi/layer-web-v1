@@ -10,7 +10,7 @@ import {
   indexPromSamples,
   lookupPromSample,
 } from "@/lib/admin/gpu-metrics";
-import { serviceLogExploreUrl } from "@/lib/admin/grafana-links";
+import { grafanaObservabilityUrl } from "@/lib/admin/grafana-links";
 import { parsePromScalar, routeDistributionFromVector } from "@/lib/admin/prometheus";
 
 describe("isAdminProfile", () => {
@@ -82,12 +82,14 @@ describe("dcgmMibToGb", () => {
   });
 });
 
-describe("serviceLogExploreUrl", () => {
-  it("builds Grafana Explore URL with LogQL selector", () => {
-    const url = serviceLogExploreUrl("layer-orchestrator");
-    expect(url).toContain("taixingbi.grafana.net/explore");
-    expect(url).toContain(encodeURIComponent('cluster="k3s"'));
-    expect(url).toContain(encodeURIComponent('app="layer-orchestrator"'));
+describe("grafanaObservabilityUrl", () => {
+  it("joins vendored dashboard path to Grafana base", () => {
+    const url = grafanaObservabilityUrl(
+      "/d/ta5v5f8/loki-logs?orgId=1&from=now-5m&to=now&timezone=browser",
+    );
+    expect(url).toBe(
+      "https://taixingbi.grafana.net/d/ta5v5f8/loki-logs?orgId=1&from=now-5m&to=now&timezone=browser",
+    );
   });
 });
 

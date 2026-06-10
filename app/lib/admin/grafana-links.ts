@@ -1,67 +1,44 @@
-/** Grafana Cloud deep links for admin logs page (UI only — no Loki API from HuntAI). */
+/** Vendored Grafana Cloud deep links for admin observability page (UI only). */
 
 export const DEFAULT_GRAFANA_BASE_URL = "https://taixingbi.grafana.net";
-export const DEFAULT_LOKI_DATASOURCE = "grafanacloud-logs";
+
+export type GrafanaObservabilityLink = {
+  label: string;
+  /** Path + query on the Grafana stack (or full https URL). */
+  path: string;
+  hint?: string;
+};
 
 export function grafanaUiBase(): string {
   const fromEnv = (process.env.NEXT_PUBLIC_GRAFANA_BASE_URL ?? "").trim();
   return (fromEnv || DEFAULT_GRAFANA_BASE_URL).replace(/\/$/, "");
 }
 
-function lokiDatasource(): string {
-  return (process.env.NEXT_PUBLIC_GRAFANA_LOKI_DATASOURCE ?? "").trim() || DEFAULT_LOKI_DATASOURCE;
+export function grafanaObservabilityUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${grafanaUiBase()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function logNamespace(): string {
-  return (process.env.NEXT_PUBLIC_ADMIN_LOG_NAMESPACE ?? "ai-dev").trim() || "ai-dev";
-}
-
-function logCluster(): string {
-  return (process.env.NEXT_PUBLIC_LOKI_CLUSTER ?? "k3s").trim() || "k3s";
-}
-
-export function grafanaDashboardUrl(uid: string): string {
-  return `${grafanaUiBase()}/d/${encodeURIComponent(uid)}`;
-}
-
-export function grafanaExploreLogqlUrl(expr: string, rangeFrom = "now-1h"): string {
-  const panes = {
-    huntai: {
-      datasource: lokiDatasource(),
-      queries: [{ refId: "A", expr, queryType: "range" }],
-      range: { from: rangeFrom, to: "now" },
-    },
-  };
-  const params = new URLSearchParams({
-    schemaVersion: "1",
-    panes: JSON.stringify(panes),
-    orgId: "1",
-  });
-  return `${grafanaUiBase()}/explore?${params.toString()}`;
-}
-
-export function serviceLogExploreUrl(app: string): string {
-  const cluster = logCluster();
-  const ns = logNamespace();
-  const expr = `{cluster="${cluster}",namespace="${ns}",app="${app}"} | json`;
-  return grafanaExploreLogqlUrl(expr);
-}
-
-export const GRAFANA_LOG_SERVICES: Array<{ label: string; app: string }> = [
-  { label: "Gateway API", app: "layer-gateway-api" },
-  { label: "Orchestrator", app: "layer-orchestrator" },
-  { label: "RAG Query", app: "layer-rag-query" },
-  { label: "Inference GW", app: "layer-gateway-inference" },
-  { label: "Embed GW", app: "layer-gateway-embedding" },
-  { label: "Reranker GW", app: "layer-gateway-reranker" },
-  { label: "Web", app: "layer-web" },
-  { label: "MCP GitHub", app: "layer-mcp-github" },
-];
-
-export const GRAFANA_DASHBOARDS: Array<{ label: string; uid: string }> = [
-  { label: "HTTP / gateway logs", uid: "layer-loki-http-logs" },
-  { label: "Inference", uid: "layer-vllm-inference" },
-  { label: "Embedding", uid: "layer-vllm-embedding" },
-  { label: "Reranker", uid: "layer-vllm-reranker" },
-  { label: "GPU (DCGM)", uid: "layer-gpu-dcgm" },
+/** Curated dashboards — paths copied from taixingbi.grafana.net. */
+export const GRAFANA_OBSERVABILITY_LINKS: GrafanaObservabilityLink[] = [
+  {
+    label: "Loki logs",
+    hint: "last 5m",
+    path: "/d/ta5v5f8/loki-logs?orgId=1&from=now-5m&to=now&timezone=browser",
+  },
+  {
+    label: "Loki logs",
+    hint: "last 1h",
+    path: "/d/ta5v5f8/loki-logs?orgId=1&from=now-1h&to=now&timezone=browser",
+  },
+  {
+    label: "vLLM Embedding",
+    hint: "BGE-M3 · 6h",
+    path: "/d/layer-vllm-embedding/vllm-embedding-bge-m3?orgId=1&from=now-6h&to=now&timezone=browser&refresh=30s",
+  },
+  {
+    label: "GPU (DCGM)",
+    hint: "6h",
+    path: "/d/layer-gpu-dcgm/gpu-dcgm?orgId=1&from=now-6h&to=now&timezone=browser&refresh=30s",
+  },
 ];

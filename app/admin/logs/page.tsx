@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { AdminLogsPage } from "@/components/admin/AdminLogsPage";
-
-export default function LogsAdminPage() {
-  return <AdminLogsPage />;
+/** Legacy path — Observability renamed from Logs. */
+export default function LogsRedirectPage() {
+  redirect("/admin/observability");
 }
