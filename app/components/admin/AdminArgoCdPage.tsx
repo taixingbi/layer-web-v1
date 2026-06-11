@@ -80,16 +80,6 @@ function CicdEnvToggle({
   );
 }
 
-function CicdPipelineLegend() {
-  return (
-    <div className="admin-cicd-pipeline-legend" aria-hidden>
-      <span className="admin-cicd-pipeline-legend__service" />
-      <span className="admin-cicd-pipeline-legend__col">GitHub Actions</span>
-      <span className="admin-cicd-pipeline-legend__col">Argo CD</span>
-    </div>
-  );
-}
-
 function CicdPipelineLinks({ app }: { app: ArgoCdAppLink }) {
   return (
     <div className="admin-argocd-pipeline-links">
@@ -98,20 +88,18 @@ function CicdPipelineLinks({ app }: { app: ArgoCdAppLink }) {
         target="_blank"
         rel="noopener noreferrer"
         className="admin-argocd-pipeline-link"
-        aria-label={`GitHub Actions for ${app.label}`}
-        title="GitHub Actions"
+        aria-label={`Build logs for ${app.label}`}
       >
-        Actions
+        Build Logs
       </a>
       <a
         href={argocdApplicationUrl(app.name)}
         target="_blank"
         rel="noopener noreferrer"
         className="admin-argocd-pipeline-link admin-argocd-pipeline-link--deploy"
-        aria-label={`Argo CD for ${app.label}`}
-        title="Argo CD"
+        aria-label={`Argo CD app for ${app.label}`}
       >
-        Argo
+        Argo App
       </a>
     </div>
   );
@@ -126,19 +114,10 @@ function CicdStackRow({ app }: { app: ArgoCdAppLink }) {
   );
 }
 
-function CicdSharedCard({
-  app,
-  monitor,
-  strip,
-}: {
-  app: ArgoCdAppLink;
-  monitor?: boolean;
-  strip?: boolean;
-}) {
+function CicdSharedCard({ app, monitor }: { app: ArgoCdAppLink; monitor?: boolean }) {
   const cardClass = [
     "admin-argocd-app-card",
     "admin-argocd-app-card--shared",
-    strip ? "admin-argocd-app-card--strip" : "",
     monitor ? "admin-argocd-app-card--monitor" : "",
   ]
     .filter(Boolean)
@@ -146,10 +125,8 @@ function CicdSharedCard({
 
   return (
     <div className={cardClass}>
-      <div className="admin-argocd-app-card-header">
-        <span className="admin-argocd-app-label">{app.label}</span>
-        <code className="admin-code">{app.githubRepo}</code>
-      </div>
+      <span className="admin-argocd-app-label">{app.label}</span>
+      <code className="admin-code admin-argocd-repo">{app.githubRepo}</code>
       <CicdPipelineLinks app={app} />
     </div>
   );
@@ -160,15 +137,18 @@ function WorkflowArrow() {
 }
 
 function CicdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
+  const lastLinearIndex = workflow.linear.length - 1;
+
   return (
     <div className="admin-argocd-workflow">
-      <CicdPipelineLegend />
-      {workflow.linear.map((app) => (
+      {workflow.linear.map((app, index) => (
         <div key={app.name} className="admin-argocd-workflow-step">
           <CicdStackRow app={app} />
-          <WorkflowArrow />
+          {index < lastLinearIndex ? <WorkflowArrow /> : null}
         </div>
       ))}
+
+      <WorkflowArrow />
 
       <div className="admin-argocd-workflow-step admin-argocd-workflow-step--branch">
         <div className="admin-argocd-workflow-branch-row">
@@ -176,34 +156,29 @@ function CicdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
             <CicdStackRow key={app.name} app={app} />
           ))}
         </div>
-        <WorkflowArrow />
       </div>
     </div>
   );
 }
 
-function CicdSharedGrid({
-  apps,
-  monitor,
-}: {
-  apps: ArgoCdAppLink[];
-  monitor?: boolean;
-}) {
+function CicdSharedGrid({ apps }: { apps: ArgoCdAppLink[] }) {
+  const monitorNames = new Set(ARGOCD_SHARED_MONITOR_APPS.map((app) => app.name));
+
   return (
-    <>
-      {!monitor ? <CicdPipelineLegend /> : null}
-      <ul
-        className={`admin-argocd-link-list${monitor ? " admin-argocd-link-list--monitor" : ""}`}
-      >
-        {apps.map((app) => (
-          <li key={app.name} className={monitor ? "admin-argocd-link-item--full" : undefined}>
-            <CicdSharedCard app={app} monitor={monitor} strip={monitor} />
-          </li>
-        ))}
-      </ul>
-    </>
+    <ul className="admin-argocd-link-list">
+      {apps.map((app) => (
+        <li key={app.name}>
+          <CicdSharedCard app={app} monitor={monitorNames.has(app.name)} />
+        </li>
+      ))}
+    </ul>
   );
 }
+
+const ARGOCD_SHARED_ALL_APPS: ArgoCdAppLink[] = [
+  ...ARGOCD_SHARED_PLATFORM_APPS,
+  ...ARGOCD_SHARED_MONITOR_APPS,
+];
 
 export function AdminArgoCdPage() {
   const uiBase = argocdUiBase();
@@ -244,21 +219,17 @@ export function AdminArgoCdPage() {
           <CicdWorkflowColumn key={env} workflow={config.workflow} />
         </section>
 
-        <div className="admin-argocd-funnel admin-argocd-funnel--single" aria-hidden>
-          <span className="admin-argocd-funnel-arrow" />
+        <div className="admin-argocd-funnel admin-argocd-funnel--single">
+          <span className="admin-argocd-funnel-label">depends on</span>
+          <span className="admin-argocd-funnel-arrow" aria-hidden />
         </div>
 
         <section className="admin-panel admin-argocd-shared-panel">
-          <h2 className="admin-panel-title">Shared</h2>
+          <h2 className="admin-panel-title">Shared platform</h2>
           <p className="admin-muted admin-inline-note">
-            Platform backends (gateways, vector store, vLLM) — dev / platform only.
+            Gateways, vector store, vLLM, and observability — dev / platform only.
           </p>
-          <CicdSharedGrid apps={ARGOCD_SHARED_PLATFORM_APPS} />
-
-          <p className="admin-muted admin-inline-note admin-argocd-monitor-note">
-            Monitoring (not on the request path)
-          </p>
-          <CicdSharedGrid apps={ARGOCD_SHARED_MONITOR_APPS} monitor />
+          <CicdSharedGrid apps={ARGOCD_SHARED_ALL_APPS} />
         </section>
       </div>
     </AdminShell>
