@@ -44,7 +44,7 @@ function CicdAppCard({
           rel="noopener noreferrer"
           className="admin-argocd-pipeline-link"
         >
-          Build
+          GitHub Actions
         </a>
         <a
           href={argocdApplicationUrl(app.name)}
@@ -52,7 +52,7 @@ function CicdAppCard({
           rel="noopener noreferrer"
           className="admin-argocd-pipeline-link admin-argocd-pipeline-link--deploy"
         >
-          Deploy
+          Argo CD
         </a>
       </div>
     </div>
@@ -111,7 +111,7 @@ export function AdminArgoCdPage() {
   return (
     <AdminShell
       title="CI/CD"
-      subtitle="GitHub Actions build → Argo CD deploy. Links only — no CI or GitOps API from HuntAI."
+      subtitle="GitHub Actions → Argo CD. Links only — no CI or GitOps API from HuntAI."
       actions={
         <a
           href={uiBase}

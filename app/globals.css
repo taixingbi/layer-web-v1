@@ -2674,9 +2674,9 @@ body {
   flex: 1;
   display: block;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 500;
-  padding: 0.3rem 0.6rem;
+  padding: 0.35rem 0.45rem;
   border: 1px solid #e2e8f0;
   border-radius: 999px;
   text-decoration: none;
