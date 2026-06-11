@@ -13,14 +13,23 @@ import {
   type ArgoCdStackWorkflow,
 } from "@/lib/admin/argocd-links";
 
-function CicdAppCard({ app, monitor }: { app: ArgoCdAppLink; monitor?: boolean }) {
+function CicdAppCard({
+  app,
+  monitor,
+  detail = "none",
+}: {
+  app: ArgoCdAppLink;
+  monitor?: boolean;
+  /** Stack columns: label only. Shared: show source repo. */
+  detail?: "none" | "repo";
+}) {
   return (
     <div
       className={`admin-argocd-app-card${monitor ? " admin-argocd-app-card--monitor" : ""}`}
     >
       <div className="admin-argocd-app-card-header">
         <span className="admin-argocd-app-label">{app.label}</span>
-        <code className="admin-code">{app.name}</code>
+        {detail === "repo" ? <code className="admin-code">{app.githubRepo}</code> : null}
       </div>
       <div className="admin-argocd-pipeline-links">
         <a
@@ -85,7 +94,7 @@ function CicdSharedGrid({
     <ul className="admin-argocd-link-list">
       {apps.map((app) => (
         <li key={app.name}>
-          <CicdAppCard app={app} monitor={monitor} />
+          <CicdAppCard app={app} monitor={monitor} detail="repo" />
         </li>
       ))}
     </ul>
