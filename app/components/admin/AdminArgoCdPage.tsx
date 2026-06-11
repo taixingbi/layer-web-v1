@@ -23,10 +23,16 @@ function CicdAppCard({
   /** Stack columns: label only. Shared: show source repo. */
   detail?: "none" | "repo";
 }) {
+  const cardClass = [
+    "admin-argocd-app-card",
+    detail === "repo" ? "admin-argocd-app-card--shared" : "",
+    monitor ? "admin-argocd-app-card--monitor" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div
-      className={`admin-argocd-app-card${monitor ? " admin-argocd-app-card--monitor" : ""}`}
-    >
+    <div className={cardClass}>
       <div className="admin-argocd-app-card-header">
         <span className="admin-argocd-app-label">{app.label}</span>
         {detail === "repo" ? <code className="admin-code">{app.githubRepo}</code> : null}
@@ -38,7 +44,7 @@ function CicdAppCard({
           rel="noopener noreferrer"
           className="admin-argocd-pipeline-link"
         >
-          Build →
+          Build
         </a>
         <a
           href={argocdApplicationUrl(app.name)}
@@ -46,7 +52,7 @@ function CicdAppCard({
           rel="noopener noreferrer"
           className="admin-argocd-pipeline-link admin-argocd-pipeline-link--deploy"
         >
-          Deploy →
+          Deploy
         </a>
       </div>
     </div>
@@ -54,11 +60,7 @@ function CicdAppCard({
 }
 
 function WorkflowArrow() {
-  return (
-    <span className="admin-argocd-workflow-arrow" aria-hidden>
-      ↓
-    </span>
-  );
+  return <span className="admin-argocd-workflow-arrow" aria-hidden />;
 }
 
 function CicdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
@@ -91,9 +93,11 @@ function CicdSharedGrid({
   monitor?: boolean;
 }) {
   return (
-    <ul className="admin-argocd-link-list">
+    <ul
+      className={`admin-argocd-link-list${monitor ? " admin-argocd-link-list--monitor" : ""}`}
+    >
       {apps.map((app) => (
-        <li key={app.name}>
+        <li key={app.name} className={monitor ? "admin-argocd-link-item--full" : undefined}>
           <CicdAppCard app={app} monitor={monitor} detail="repo" />
         </li>
       ))}
@@ -121,7 +125,7 @@ export function AdminArgoCdPage() {
     >
       <div className="admin-dashboard">
         <div className="admin-argocd-env-grid">
-          <section className="admin-panel">
+          <section className="admin-panel admin-panel--dev">
             <h2 className="admin-panel-title">Applications (dev)</h2>
             <p className="admin-muted admin-inline-note">
               Project <code className="admin-code">ai-dev</code> — push <code className="admin-code">dev</code>{" "}
@@ -130,7 +134,7 @@ export function AdminArgoCdPage() {
             <CicdWorkflowColumn workflow={ARGOCD_DEV_WORKFLOW} />
           </section>
 
-          <section className="admin-panel">
+          <section className="admin-panel admin-panel--prod">
             <h2 className="admin-panel-title">Applications (prod)</h2>
             <p className="admin-muted admin-inline-note">
               Project <code className="admin-code">ai-prod</code> — push <code className="admin-code">main</code>{" "}
@@ -141,8 +145,8 @@ export function AdminArgoCdPage() {
         </div>
 
         <div className="admin-argocd-funnel" aria-hidden>
-          <span className="admin-argocd-funnel-arrow">↓</span>
-          <span className="admin-argocd-funnel-arrow">↓</span>
+          <span className="admin-argocd-funnel-arrow" />
+          <span className="admin-argocd-funnel-arrow" />
         </div>
 
         <section className="admin-panel admin-panel--full">
