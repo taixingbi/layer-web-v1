@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
   ARGOCD_DEV_WORKFLOW,
@@ -12,6 +14,68 @@ import {
   type ArgoCdAppLink,
   type ArgoCdStackWorkflow,
 } from "@/lib/admin/argocd-links";
+
+type CicdEnv = "dev" | "prod";
+
+const CICD_ENV_CONFIG: Record<
+  CicdEnv,
+  {
+    workflow: ArgoCdStackWorkflow;
+    project: string;
+    branch: string;
+    note: string;
+    panelClass: string;
+    toggleClass: string;
+  }
+> = {
+  dev: {
+    workflow: ARGOCD_DEV_WORKFLOW,
+    project: "ai-dev",
+    branch: "dev",
+    note: "branch pins image",
+    panelClass: "admin-panel--dev",
+    toggleClass: "admin-cicd-env-toggle__btn--dev",
+  },
+  prod: {
+    workflow: ARGOCD_PROD_WORKFLOW,
+    project: "ai-prod",
+    branch: "main",
+    note: "· manual sync",
+    panelClass: "admin-panel--prod",
+    toggleClass: "admin-cicd-env-toggle__btn--prod",
+  },
+};
+
+function CicdEnvToggle({
+  env,
+  onChange,
+}: {
+  env: CicdEnv;
+  onChange: (env: CicdEnv) => void;
+}) {
+  return (
+    <div className="admin-cicd-env-toggle" role="tablist" aria-label="Environment">
+      {(["dev", "prod"] as const).map((key) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={env === key}
+          className={[
+            "admin-cicd-env-toggle__btn",
+            CICD_ENV_CONFIG[key].toggleClass,
+            env === key ? "admin-cicd-env-toggle__btn--active" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          onClick={() => onChange(key)}
+        >
+          {key === "dev" ? "Dev" : "Prod"}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function CicdAppCard({
   app,
@@ -107,6 +171,8 @@ function CicdSharedGrid({
 
 export function AdminArgoCdPage() {
   const uiBase = argocdUiBase();
+  const [env, setEnv] = useState<CicdEnv>("dev");
+  const config = CICD_ENV_CONFIG[env];
 
   return (
     <AdminShell
@@ -124,28 +190,19 @@ export function AdminArgoCdPage() {
       }
     >
       <div className="admin-dashboard">
-        <div className="admin-argocd-env-grid">
-          <section className="admin-panel admin-panel--dev">
-            <h2 className="admin-panel-title">Applications (dev)</h2>
-            <p className="admin-muted admin-inline-note">
-              Project <code className="admin-code">ai-dev</code> — push <code className="admin-code">dev</code>{" "}
-              branch pins image
-            </p>
-            <CicdWorkflowColumn workflow={ARGOCD_DEV_WORKFLOW} />
-          </section>
+        <section className={`admin-panel admin-argocd-stack-panel ${config.panelClass}`}>
+          <div className="admin-argocd-stack-header">
+            <h2 className="admin-panel-title">Applications</h2>
+            <CicdEnvToggle env={env} onChange={setEnv} />
+          </div>
+          <p className="admin-muted admin-inline-note">
+            Project <code className="admin-code">{config.project}</code> — push{" "}
+            <code className="admin-code">{config.branch}</code> {config.note}
+          </p>
+          <CicdWorkflowColumn key={env} workflow={config.workflow} />
+        </section>
 
-          <section className="admin-panel admin-panel--prod">
-            <h2 className="admin-panel-title">Applications (prod)</h2>
-            <p className="admin-muted admin-inline-note">
-              Project <code className="admin-code">ai-prod</code> — push <code className="admin-code">main</code>{" "}
-              · manual sync
-            </p>
-            <CicdWorkflowColumn workflow={ARGOCD_PROD_WORKFLOW} />
-          </section>
-        </div>
-
-        <div className="admin-argocd-funnel" aria-hidden>
-          <span className="admin-argocd-funnel-arrow" />
+        <div className="admin-argocd-funnel admin-argocd-funnel--single" aria-hidden>
           <span className="admin-argocd-funnel-arrow" />
         </div>
 
