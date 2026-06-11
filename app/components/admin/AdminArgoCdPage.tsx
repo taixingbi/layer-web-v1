@@ -25,6 +25,7 @@ const CICD_ENV_CONFIG: Record<
     branch: string;
     note: string;
     panelClass: string;
+    tintClass: string;
     toggleClass: string;
   }
 > = {
@@ -34,6 +35,7 @@ const CICD_ENV_CONFIG: Record<
     branch: "dev",
     note: "branch pins image",
     panelClass: "admin-panel--dev",
+    tintClass: "admin-argocd-stack-panel--dev",
     toggleClass: "admin-cicd-env-toggle__btn--dev",
   },
   prod: {
@@ -42,6 +44,7 @@ const CICD_ENV_CONFIG: Record<
     branch: "main",
     note: "· manual sync",
     panelClass: "admin-panel--prod",
+    tintClass: "admin-argocd-stack-panel--prod",
     toggleClass: "admin-cicd-env-toggle__btn--prod",
   },
 };
@@ -77,19 +80,65 @@ function CicdEnvToggle({
   );
 }
 
-function CicdAppCard({
+function CicdPipelineLegend() {
+  return (
+    <div className="admin-cicd-pipeline-legend" aria-hidden>
+      <span className="admin-cicd-pipeline-legend__service" />
+      <span className="admin-cicd-pipeline-legend__col">GitHub Actions</span>
+      <span className="admin-cicd-pipeline-legend__col">Argo CD</span>
+    </div>
+  );
+}
+
+function CicdPipelineLinks({ app }: { app: ArgoCdAppLink }) {
+  return (
+    <div className="admin-argocd-pipeline-links">
+      <a
+        href={githubActionsUrl(app.githubRepo, app.workflow)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="admin-argocd-pipeline-link"
+        aria-label={`GitHub Actions for ${app.label}`}
+        title="GitHub Actions"
+      >
+        Actions
+      </a>
+      <a
+        href={argocdApplicationUrl(app.name)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="admin-argocd-pipeline-link admin-argocd-pipeline-link--deploy"
+        aria-label={`Argo CD for ${app.label}`}
+        title="Argo CD"
+      >
+        Argo
+      </a>
+    </div>
+  );
+}
+
+function CicdStackRow({ app }: { app: ArgoCdAppLink }) {
+  return (
+    <div className="admin-argocd-app-card admin-argocd-app-card--stack-row">
+      <span className="admin-argocd-app-label">{app.label}</span>
+      <CicdPipelineLinks app={app} />
+    </div>
+  );
+}
+
+function CicdSharedCard({
   app,
   monitor,
-  detail = "none",
+  strip,
 }: {
   app: ArgoCdAppLink;
   monitor?: boolean;
-  /** Stack columns: label only. Shared: show source repo. */
-  detail?: "none" | "repo";
+  strip?: boolean;
 }) {
   const cardClass = [
     "admin-argocd-app-card",
-    detail === "repo" ? "admin-argocd-app-card--shared" : "",
+    "admin-argocd-app-card--shared",
+    strip ? "admin-argocd-app-card--strip" : "",
     monitor ? "admin-argocd-app-card--monitor" : "",
   ]
     .filter(Boolean)
@@ -99,26 +148,9 @@ function CicdAppCard({
     <div className={cardClass}>
       <div className="admin-argocd-app-card-header">
         <span className="admin-argocd-app-label">{app.label}</span>
-        {detail === "repo" ? <code className="admin-code">{app.githubRepo}</code> : null}
+        <code className="admin-code">{app.githubRepo}</code>
       </div>
-      <div className="admin-argocd-pipeline-links">
-        <a
-          href={githubActionsUrl(app.githubRepo, app.workflow)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="admin-argocd-pipeline-link"
-        >
-          GitHub Actions
-        </a>
-        <a
-          href={argocdApplicationUrl(app.name)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="admin-argocd-pipeline-link admin-argocd-pipeline-link--deploy"
-        >
-          Argo CD
-        </a>
-      </div>
+      <CicdPipelineLinks app={app} />
     </div>
   );
 }
@@ -130,9 +162,10 @@ function WorkflowArrow() {
 function CicdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
   return (
     <div className="admin-argocd-workflow">
+      <CicdPipelineLegend />
       {workflow.linear.map((app) => (
         <div key={app.name} className="admin-argocd-workflow-step">
-          <CicdAppCard app={app} />
+          <CicdStackRow app={app} />
           <WorkflowArrow />
         </div>
       ))}
@@ -140,7 +173,7 @@ function CicdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
       <div className="admin-argocd-workflow-step admin-argocd-workflow-step--branch">
         <div className="admin-argocd-workflow-branch-row">
           {workflow.branch.map((app) => (
-            <CicdAppCard key={app.name} app={app} />
+            <CicdStackRow key={app.name} app={app} />
           ))}
         </div>
         <WorkflowArrow />
@@ -157,15 +190,18 @@ function CicdSharedGrid({
   monitor?: boolean;
 }) {
   return (
-    <ul
-      className={`admin-argocd-link-list${monitor ? " admin-argocd-link-list--monitor" : ""}`}
-    >
-      {apps.map((app) => (
-        <li key={app.name} className={monitor ? "admin-argocd-link-item--full" : undefined}>
-          <CicdAppCard app={app} monitor={monitor} detail="repo" />
-        </li>
-      ))}
-    </ul>
+    <>
+      {!monitor ? <CicdPipelineLegend /> : null}
+      <ul
+        className={`admin-argocd-link-list${monitor ? " admin-argocd-link-list--monitor" : ""}`}
+      >
+        {apps.map((app) => (
+          <li key={app.name} className={monitor ? "admin-argocd-link-item--full" : undefined}>
+            <CicdSharedCard app={app} monitor={monitor} strip={monitor} />
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -179,25 +215,31 @@ export function AdminArgoCdPage() {
       title="CI/CD"
       subtitle="GitHub Actions → Argo CD. Links only — no CI or GitOps API from HuntAI."
       actions={
-        <a
-          href={uiBase}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="admin-btn-secondary"
-        >
-          Open Argo CD
-        </a>
+        <div className="admin-toolbar-actions">
+          <CicdEnvToggle env={env} onChange={setEnv} />
+          <a
+            href={uiBase}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="admin-btn-secondary"
+          >
+            Open Argo CD
+          </a>
+        </div>
       }
     >
-      <div className="admin-dashboard">
-        <section className={`admin-panel admin-argocd-stack-panel ${config.panelClass}`}>
+      <div className="admin-dashboard admin-argocd-layout">
+        <section
+          className={`admin-panel admin-argocd-stack-panel ${config.panelClass} ${config.tintClass}`}
+        >
           <div className="admin-argocd-stack-header">
-            <h2 className="admin-panel-title">Applications</h2>
-            <CicdEnvToggle env={env} onChange={setEnv} />
+            <h2 className="admin-panel-title">
+              Applications
+              <span className="admin-cicd-env-badge">{config.project}</span>
+            </h2>
           </div>
           <p className="admin-muted admin-inline-note">
-            Project <code className="admin-code">{config.project}</code> — push{" "}
-            <code className="admin-code">{config.branch}</code> {config.note}
+            Push <code className="admin-code">{config.branch}</code> {config.note}
           </p>
           <CicdWorkflowColumn key={env} workflow={config.workflow} />
         </section>
@@ -206,7 +248,7 @@ export function AdminArgoCdPage() {
           <span className="admin-argocd-funnel-arrow" />
         </div>
 
-        <section className="admin-panel admin-panel--full">
+        <section className="admin-panel admin-argocd-shared-panel">
           <h2 className="admin-panel-title">Shared</h2>
           <p className="admin-muted admin-inline-note">
             Platform backends (gateways, vector store, vLLM) — dev / platform only.

@@ -2571,21 +2571,83 @@ body {
   word-break: break-all;
   margin-bottom: 0.25rem;
 }
-.admin-argocd-stack-panel {
-  max-width: 28rem;
+.admin-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.admin-argocd-layout {
+  max-width: 42rem;
   margin: 0 auto;
   width: 100%;
 }
+.admin-argocd-stack-panel,
+.admin-argocd-shared-panel {
+  width: 100%;
+}
+.admin-argocd-stack-panel--dev {
+  background: linear-gradient(180deg, #f0fdf4 0%, #fff 2.5rem);
+}
+.admin-argocd-stack-panel--prod {
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 2.5rem);
+}
 .admin-argocd-stack-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 .admin-argocd-stack-header .admin-panel-title {
   margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.admin-cicd-env-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+.admin-panel--dev .admin-cicd-env-badge {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #15803d;
+}
+.admin-panel--prod .admin-cicd-env-badge {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #b45309;
+}
+.admin-cicd-pipeline-legend {
+  display: grid;
+  grid-template-columns: 1fr 4.25rem 4.25rem;
+  gap: 0.5rem;
+  align-items: end;
+  padding: 0 0.25rem 0.35rem;
+  margin-top: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.admin-cicd-pipeline-legend__col {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  text-align: center;
+}
+@keyframes admin-cicd-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .admin-cicd-env-toggle {
   display: inline-flex;
@@ -2631,30 +2693,34 @@ body {
 }
 .admin-argocd-link-list {
   list-style: none;
-  margin: 1rem 0 0;
+  margin: 0.5rem 0 0;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-@media (max-width: 900px) {
+@media (max-width: 720px) {
   .admin-argocd-link-list {
     grid-template-columns: 1fr;
   }
+}
+.admin-argocd-link-list--monitor {
+  grid-template-columns: 1fr;
+  margin-top: 0.5rem;
 }
 .admin-argocd-link-list--stack {
   grid-template-columns: 1fr;
 }
 .admin-argocd-link-item--full {
   grid-column: 1 / -1;
-  max-width: 20rem;
 }
 .admin-argocd-workflow {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0;
-  margin-top: 1rem;
+  margin-top: 0.25rem;
+  animation: admin-cicd-fade-in 0.15s ease;
 }
 .admin-argocd-workflow-step {
   display: flex;
@@ -2673,15 +2739,55 @@ body {
   background: #fff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
+.admin-argocd-app-card--stack-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+.admin-argocd-app-card--stack-row .admin-argocd-app-label {
+  min-width: 0;
+  flex: 1;
+}
+.admin-argocd-app-card--stack-row .admin-argocd-pipeline-links {
+  flex: 0 0 auto;
+  width: 9rem;
+}
 .admin-argocd-app-card--shared {
   background: #f8fafc;
   box-shadow: none;
+  gap: 0.4rem;
+  padding: 0.5rem 0.625rem;
+}
+.admin-argocd-app-card--strip {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+}
+.admin-argocd-app-card--strip .admin-argocd-app-card-header {
+  flex: 1;
+  min-width: 0;
+}
+.admin-argocd-app-card--strip .admin-argocd-pipeline-links {
+  flex: 0 0 auto;
+  width: 9rem;
 }
 .admin-argocd-app-card--monitor {
   border-style: dashed;
   background: #fff;
 }
 .admin-argocd-workflow-step .admin-argocd-app-card {
+  width: 100%;
+}
+.admin-argocd-workflow-branch-row .admin-argocd-app-card--stack-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+.admin-argocd-workflow-branch-row .admin-argocd-app-card--stack-row .admin-argocd-pipeline-links {
   width: 100%;
 }
 .admin-argocd-app-card-header {
@@ -2703,21 +2809,16 @@ body {
   white-space: nowrap;
 }
 .admin-argocd-pipeline-links {
-  display: flex;
-  gap: 0.5rem;
-}
-@media (max-width: 380px) {
-  .admin-argocd-pipeline-links {
-    flex-direction: column;
-  }
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
 }
 .admin-argocd-pipeline-link {
-  flex: 1;
   display: block;
   text-align: center;
   font-size: 0.6875rem;
-  font-weight: 500;
-  padding: 0.35rem 0.45rem;
+  font-weight: 600;
+  padding: 0.3rem 0.35rem;
   border: 1px solid #e2e8f0;
   border-radius: 999px;
   text-decoration: none;
@@ -2818,9 +2919,6 @@ body {
 }
 .admin-argocd-funnel--single {
   grid-template-columns: 1fr;
-  max-width: 28rem;
-  margin-left: auto;
-  margin-right: auto;
 }
 .admin-argocd-funnel-arrow {
   height: 1.75rem;
@@ -3282,6 +3380,33 @@ body {
     color: #fcd34d;
     background: #422006;
     border-color: #78350f;
+  }
+  .admin-argocd-stack-panel--dev {
+    background: linear-gradient(180deg, #134e4a 0%, #171717 2.5rem);
+  }
+  .admin-argocd-stack-panel--prod {
+    background: linear-gradient(180deg, #422006 0%, #171717 2.5rem);
+  }
+  .admin-cicd-env-badge {
+    background: #111;
+    border-color: #2f2f2f;
+    color: #a1a1aa;
+  }
+  .admin-panel--dev .admin-cicd-env-badge {
+    background: #134e4a;
+    border-color: #115e59;
+    color: #5eead4;
+  }
+  .admin-panel--prod .admin-cicd-env-badge {
+    background: #422006;
+    border-color: #78350f;
+    color: #fcd34d;
+  }
+  .admin-cicd-pipeline-legend {
+    border-bottom-color: #2f2f2f;
+  }
+  .admin-cicd-pipeline-legend__col {
+    color: #71717a;
   }
   .admin-argocd-app-card {
     background: #111;
