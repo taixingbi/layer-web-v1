@@ -22,8 +22,8 @@ export default function Home() {
               Sign in
             </Link>
           </div>
-          <Link href="/blog/building-an-ai-orchestrator" className="landing-blog-link">
-            Inside HuntAI&apos;s orchestrator →
+          <Link href="/blog" className="landing-blog-link">
+            HuntAI Blog →
           </Link>
         </div>
       </div>

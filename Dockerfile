@@ -1,6 +1,5 @@
-# syntax=docker/dockerfile:1
 # ---- Base ----
-FROM node:20-alpine AS base
+FROM public.ecr.aws/docker/library/node:20-alpine AS base
 # OpenSSL compatibility for some native deps; keep pnpm major aligned with package.json / CI (not @latest, which can pull pnpm 10+ and break frozen-lockfile in Buildx).
 RUN apk add --no-cache libc6-compat
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
@@ -20,7 +19,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 # ---- Runner ----
-FROM node:20-alpine AS runner
+FROM public.ecr.aws/docker/library/node:20-alpine AS runner
 WORKDIR /app
 
 ARG APP_VERSION=dev

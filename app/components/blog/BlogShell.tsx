@@ -22,9 +22,6 @@ export function BlogShell({ children }: Props) {
             <Link href="/blog" className="blog-nav-link">
               Blog
             </Link>
-            <Link href="/signup" className="landing-btn-secondary blog-nav-cta">
-              Try HuntAI
-            </Link>
           </nav>
         </div>
       </header>

@@ -2,8 +2,6 @@
  * Map latency timeline node ids to HuntAI GitHub repos (taixingbi org).
  */
 
-import type { LatencyTimelineNode } from "@/lib/latency-timeline";
-
 const GITHUB_ORG = "taixingbi";
 
 function repoUrl(repo: string): string {
@@ -39,7 +37,7 @@ export function timelineNodeRepoUrl(nodeId: string): string | null {
   if (nodeId.includes("rerank")) {
     return repoUrl("layer-gateway-reranker-v1");
   }
-  if (nodeId === "rag" || nodeId.startsWith("rag-")) {
+  if (nodeId === "rag_private_kb" || nodeId.startsWith("rag_private_kb-")) {
     return repoUrl("layer-rag-query-v1");
   }
   return null;
@@ -52,11 +50,13 @@ export function timelineNodeRepoName(nodeId: string): string | null {
   return url.split("/").pop() ?? null;
 }
 
+type TimelineNodeRef = { id: string; children: TimelineNodeRef[] };
+
 /** First timeline node per repo URL — only those rows should show a GitHub link. */
-export function firstRepoLinkNodeIds(nodes: LatencyTimelineNode[]): Set<string> {
+export function firstRepoLinkNodeIds(nodes: TimelineNodeRef[]): Set<string> {
   const seenUrls = new Set<string>();
   const ids = new Set<string>();
-  const walk = (list: LatencyTimelineNode[]) => {
+  const walk = (list: TimelineNodeRef[]) => {
     for (const n of list) {
       const url = timelineNodeRepoUrl(n.id);
       if (url && !seenUrls.has(url)) {

@@ -1,28 +1,30 @@
 "use client";
 
-import { normalizeCitationSpacing } from "@/lib/citation-content";
-
-/** Inline citation markers from the model, e.g. ``[1]``, ``[2]``. */
-const CITE_MARKER_RE = /(\[\d+\])/g;
+import { ChatMarkdown } from "@/components/chat/ChatMarkdown";
+import {
+  isCitationMarker,
+  splitAssistantMarkdownParts,
+} from "@/lib/assistant-markdown-parts";
 
 type Props = {
   content: string;
 };
 
 export function AssistantMessageContent({ content }: Props) {
-  const normalized = normalizeCitationSpacing(content);
-  const parts = normalized.split(CITE_MARKER_RE);
+  const parts = splitAssistantMarkdownParts(content);
   return (
-    <>
-      {parts.map((part, i) =>
-        /^\[\d+\]$/.test(part) ? (
-          <sup key={i} className="chat-cite-marker">
-            {part}
-          </sup>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
+    <div className="chat-md">
+      {parts.map((part, i) => {
+        if (!part) return null;
+        if (isCitationMarker(part)) {
+          return (
+            <sup key={i} className="chat-cite-marker">
+              {part}
+            </sup>
+          );
+        }
+        return <ChatMarkdown key={i} text={part} />;
+      })}
+    </div>
   );
 }

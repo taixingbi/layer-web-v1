@@ -3,6 +3,13 @@
  */
 
 import { gatewayTotalMs, isLatencyObject, latencyDisplayTotalMs, type LatencyObject } from "@/lib/chat-latency";
+import {
+  PHASE_ANSWER_GENERATION,
+  PHASE_QUERY_EMBEDDING,
+  PHASE_RAG_ANSWER_GENERATION,
+  PHASE_SUGGESTED_QUESTIONS,
+  PHASE_SUGGESTED_QUESTIONS_RERANK,
+} from "@/lib/timeline-phase-labels";
 
 export type LatencyTimelineNode = {
   id: string;
@@ -74,13 +81,21 @@ function gatewayApi(latency: LatencyObject): LatencyObject | undefined {
   return undefined;
 }
 
+/** Orchestrator tool id for private KB RAG (matches ``meta.route.tool`` / handler name). */
+const TOOL_RAG_PRIVATE_KB_ID = "rag_private_kb";
+const TOOL_RAG_PRIVATE_KB_LABEL = "Tool Rag Private KB";
+
+/** Orchestrator tool id for GitHub MCP search (handler ``github_search``). */
+const TOOL_GITHUB_SEARCH_ID = "github-search";
+const TOOL_GITHUB_SEARCH_LABEL = "Tool Github Search";
+
 function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): LatencyTimelineNode[] {
   const out: LatencyTimelineNode[] = [];
 
   const retrieval = rag.retrieval;
   if (isLatencyObject(retrieval)) {
     const pairs: Array<[string, string]> = [
-      ["embed", "Embed"],
+      ["embed", PHASE_QUERY_EMBEDDING],
       ["retrieve", "Retrieve"],
       ["rerank", "Rerank"],
     ];
@@ -94,23 +109,23 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   if (isLatencyObject(generation)) {
     const answer = readMs(generation.answer);
     if (answer != null && answer > 0) {
-      out.push(node(`${prefix}-generation-answer`, "Chat", answer, rootMs));
+      out.push(node(`${prefix}-generation-answer`, PHASE_RAG_ANSWER_GENERATION, answer, rootMs));
     }
     const followUp = readMs(generation.follow_up);
     if (followUp != null && followUp > 0) {
-      out.push(node(`${prefix}-generation-follow_up`, "Follow-up Chat", followUp, rootMs));
+      out.push(node(`${prefix}-generation-follow_up`, PHASE_SUGGESTED_QUESTIONS, followUp, rootMs));
     }
   }
 
   const service = rag.service;
   if (isLatencyObject(service)) {
     const pairs: Array<[string, string]> = [
-      ["embed", "Embed"],
+      ["embed", PHASE_QUERY_EMBEDDING],
       ["retrieve", "Retrieve"],
       ["chunk_rerank", "Rerank"],
-      ["chat", "Chat"],
-      ["follow_up_chat", "Follow-up Chat"],
-      ["follow_up_rerank", "Follow-up Rerank"],
+      ["chat", PHASE_RAG_ANSWER_GENERATION],
+      ["follow_up_chat", PHASE_SUGGESTED_QUESTIONS],
+      ["follow_up_rerank", PHASE_SUGGESTED_QUESTIONS_RERANK],
     ];
     for (const [key, label] of pairs) {
       const ms = readMs(service[key]);
@@ -119,18 +134,18 @@ function ragChildNodes(rag: LatencyObject, rootMs: number, prefix: string): Late
   }
 
   const flatPairs: Array<[string, string]> = [
-    ["embed", "Embed"],
+    ["embed", PHASE_QUERY_EMBEDDING],
     ["retrieve", "Retrieve"],
     ["rerank", "Rerank"],
     ["chunk_rerank", "Rerank"],
-    ["chat", "Chat"],
-    ["follow_up_chat", "Follow-up Chat"],
-    ["follow_up_rerank", "Follow-up Rerank"],
+    ["chat", PHASE_RAG_ANSWER_GENERATION],
+    ["follow_up_chat", PHASE_SUGGESTED_QUESTIONS],
+    ["follow_up_rerank", PHASE_SUGGESTED_QUESTIONS_RERANK],
   ];
   for (const [key, label] of flatPairs) {
     if (out.some((n) => n.label === label)) continue;
     const ms = readMs(rag[key]);
-    if (ms != null && ms > 0) out.push(node(`${prefix}-rag-${key}`, label, ms, rootMs));
+    if (ms != null && ms > 0) out.push(node(`${prefix}-${key}`, label, ms, rootMs));
   }
 
   return out;
@@ -160,8 +175,8 @@ function githubSearchChildNodes(
     ["github_readme", "README"],
     ["github_search", "Search"],
     ["retrieve_rerank", "Retrieve + Rerank"],
-    ["chat", "Chat"],
-    ["follow_up_chat", "Follow-up Chat"],
+    ["chat", PHASE_ANSWER_GENERATION],
+    ["follow_up_chat", PHASE_SUGGESTED_QUESTIONS],
   ]);
 }
 
@@ -203,16 +218,32 @@ function buildWorkflowDownstreamNodes(
     out.push(node("intent-router", "Router", router, rootMs));
   }
 
-  addDownstreamToolNode(out, workflow, rootMs, "rag", "rag", "RAG", ragChildNodes);
-  addDownstreamToolNode(out, workflow, rootMs, "tool_rag", "rag", "RAG", ragChildNodes);
+  addDownstreamToolNode(
+    out,
+    workflow,
+    rootMs,
+    "rag",
+    TOOL_RAG_PRIVATE_KB_ID,
+    TOOL_RAG_PRIVATE_KB_LABEL,
+    ragChildNodes,
+  );
+  addDownstreamToolNode(
+    out,
+    workflow,
+    rootMs,
+    "tool_rag",
+    TOOL_RAG_PRIVATE_KB_ID,
+    TOOL_RAG_PRIVATE_KB_LABEL,
+    ragChildNodes,
+  );
 
   addDownstreamToolNode(
     out,
     workflow,
     rootMs,
     "tool_github_search",
-    "github-search",
-    "GitHub Search",
+    TOOL_GITHUB_SEARCH_ID,
+    TOOL_GITHUB_SEARCH_LABEL,
     githubSearchChildNodes,
   );
   addDownstreamToolNode(
@@ -220,8 +251,8 @@ function buildWorkflowDownstreamNodes(
     workflow,
     rootMs,
     "github",
-    "github-search",
-    "GitHub Search",
+    TOOL_GITHUB_SEARCH_ID,
+    TOOL_GITHUB_SEARCH_LABEL,
     githubSearchChildNodes,
   );
 
@@ -304,8 +335,8 @@ const SLOWEST_SKIP_LABELS = new Set([
   "BFF Route",
   "Gateway",
   "Orchestrator",
-  "RAG",
-  "GitHub Search",
+  "Tool Rag Private KB",
+  "Tool Github Search",
   "Tavily Search",
 ]);
 
@@ -350,7 +381,7 @@ export function formatLatencyShort(totalMs: number): string {
 
 /** Compact slowest-op label for inline summaries. */
 export function shortSlowestLabel(label: string): string {
-  if (label === "Follow-up Chat") return "Follow-up";
+  if (label === PHASE_SUGGESTED_QUESTIONS) return "Suggested";
   if (label === "User Message Write") return "User write";
   if (label === "Assistant Message Write") return "Assistant write";
   return label;

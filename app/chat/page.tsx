@@ -14,6 +14,7 @@ import { ChatBrand } from "@/components/ChatBrand";
 import { ChatEmptyState } from "@/components/ChatEmptyState";
 import { ChatPrompt } from "@/components/ChatPrompt";
 import { ChatSidebar } from "@/components/ChatSidebar";
+import { ChatPlatformLinks } from "@/components/ChatPlatformLinks";
 import { ChatUserMenu } from "@/components/ChatUserMenu";
 import { errorMessageFromJsonBody } from "@/lib/api-error";
 import { authFetch } from "@/lib/auth-fetch";
@@ -554,6 +555,7 @@ export default function ChatPage() {
               citations?: ChatMessage["citations"];
               follow_up_questions?: string[];
               latency_ms?: Record<string, unknown>;
+              rag?: ChatMessage["rag"];
             })
           : {};
       if (typeof obj.conversation_id === "string") {
@@ -603,6 +605,7 @@ export default function ChatPage() {
                 ? { follow_up_questions: followUps }
                 : {}),
               ...(latency_ms ? { latency_ms } : {}),
+              ...(obj.rag ? { rag: obj.rag } : {}),
             };
           })
         );
@@ -982,9 +985,12 @@ export default function ChatPage() {
             </button>
             <ChatBrand />
           </div>
-          {!authUi.loading && isAuthenticated ? (
-            <ChatUserMenu onSignOut={handleSignOut} />
-          ) : null}
+          <div className="flex items-center gap-1 shrink-0">
+            {!authUi.loading ? <ChatPlatformLinks /> : null}
+            {!authUi.loading && isAuthenticated ? (
+              <ChatUserMenu onSignOut={handleSignOut} />
+            ) : null}
+          </div>
         </div>
       </header>
 

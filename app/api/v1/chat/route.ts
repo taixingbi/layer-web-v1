@@ -126,7 +126,7 @@ async function pumpGatewayUpstreamToClientEvents(
       } catch {
         /* ignore malformed route frames */
       }
-    } else if (ev === "token") {
+    } else if (ev === "answer_delta" || ev === "token") {
       const delta = tokenDeltaFromGatewayData(parsed.dataRaw);
       if (delta) {
         accumulated += delta;
@@ -159,6 +159,7 @@ async function pumpGatewayUpstreamToClientEvents(
       const routeDetail = done.route_detail;
       const routeSource = done.route_source;
       const usage = done.usage;
+      const rag = done.rag;
       if (logFields) {
         logWebEvent("stream_end", "INFO", {
           ...logFields,
@@ -226,6 +227,7 @@ async function pumpGatewayUpstreamToClientEvents(
         ...(routeDetail ? { route_detail: routeDetail } : {}),
         ...(routeSource ? { route_source: routeSource } : {}),
         ...(usage ? { usage } : {}),
+        ...(rag ? { rag } : {}),
       });
     }
   };

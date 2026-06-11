@@ -1,5 +1,5 @@
 /**
- * Translate layer-gateway-api-v1 SSE (`meta`, `token`, `error`, `done`) into the
+ * Translate layer-gateway-api-v1 SSE (`meta`, `answer_delta`, `error`, `done`) into the
  * shapes expected by `app/chat/page.tsx` (`status`, `result_chunk`, `error`, `stream_end`).
  */
 
@@ -139,6 +139,7 @@ export function donePayloadFromGatewayData(dataRaw: string): {
   route_source: string | null;
   usage: Record<string, unknown> | null;
   latency_ms: Record<string, unknown> | null;
+  rag: Record<string, unknown> | null;
 } {
   try {
     const obj = JSON.parse(dataRaw) as Record<string, unknown>;
@@ -168,6 +169,10 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       typeof obj.latency_ms === "object" && obj.latency_ms !== null && !Array.isArray(obj.latency_ms)
         ? (obj.latency_ms as Record<string, unknown>)
         : null;
+    const rag =
+      typeof obj.rag === "object" && obj.rag !== null && !Array.isArray(obj.rag)
+        ? (obj.rag as Record<string, unknown>)
+        : null;
     return {
       rewrite,
       citations,
@@ -179,6 +184,7 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       route_source,
       usage,
       latency_ms,
+      rag,
     };
   } catch {
     return {
@@ -192,6 +198,7 @@ export function donePayloadFromGatewayData(dataRaw: string): {
       route_source: null,
       usage: null,
       latency_ms: null,
+      rag: null,
     };
   }
 }

@@ -5,7 +5,11 @@ import { AssistantMessageContent } from "@/components/chat/AssistantMessageConte
 import { AssistantMessageMeta } from "@/components/chat/AssistantMessageMeta";
 import { ChatLoadingDots } from "@/components/chat/ChatLoadingDots";
 import { StreamingCursor } from "@/components/chat/StreamingCursor";
+import { RagNotFoundPanel } from "@/components/chat/RagNotFoundPanel";
+import { assistantMessageLayout } from "@/lib/chat-assistant-layout";
 import type { ChatMessage } from "@/lib/chat-types";
+import { ragNotFoundMeta } from "@/lib/rag-envelope";
+import { suggestedQuestionsChatLabel, tryAskingChatLabel } from "@/lib/timeline-phase-labels";
 
 type Props = {
   msg: ChatMessage;
@@ -40,18 +44,13 @@ function ChatAssistantMessageInner({
   onCopy,
   onRegenerate,
 }: Props) {
-  const showThinking = isStreaming && !msg.content.trim() && !msg.rewrite;
-  const showAnswer = !isStreaming || Boolean(msg.content.trim());
-  const citeCount = msg.citations?.length ?? 0;
-  const hasRewrite = Boolean(msg.rewrite?.trim());
-  const hasFollowUps = Boolean(msg.follow_up_questions?.length);
-  const showLatency = !isStreaming && Boolean(msg.latency_ms);
-  const hasTrace = Boolean(
-    msg.trace_id || msg.run_id || msg.request_id || msg.session_id || msg.usage,
+  const { showThinking, showAnswer, showDetails, showFollowUps } = assistantMessageLayout(
+    msg,
+    isStreaming,
   );
-  const hasRoute = Boolean(msg.route || msg.route_detail);
-  const showDetails =
-    hasRewrite || hasFollowUps || citeCount > 0 || showLatency || hasTrace || hasRoute;
+  const rewriteText = msg.rewrite?.trim() ?? "";
+  const notFound = ragNotFoundMeta(msg.rag);
+  const followUpLabel = notFound ? tryAskingChatLabel : suggestedQuestionsChatLabel;
 
   const debugMsg: ChatMessage = {
     ...msg,
@@ -62,19 +61,63 @@ function ChatAssistantMessageInner({
     <div className="flex w-full justify-start">
       <div className="chat-assistant-block w-full text-[15px] leading-relaxed">
         <div className="chat-assistant-sections">
-          <div className="whitespace-pre-wrap break-words chat-assistant-answer">
+          <div className="break-words chat-assistant-answer">
+            {rewriteText ? (
+              <p className="chat-rewrite-meta">
+                <span className="chat-rewrite-meta-label">Rewrite: </span>
+                <span className="chat-rewrite-meta-query">&ldquo;{rewriteText}&rdquo;</span>
+              </p>
+            ) : null}
             {showThinking ? <ChatLoadingDots label={statusLabel} /> : null}
+            {showAnswer && notFound ? <RagNotFoundPanel notFound={notFound} /> : null}
             {showAnswer ? (
-              <p className="chat-assistant-answer-text">
+              <div className="chat-assistant-answer-text chat-assistant-answer-in">
+                {notFound ? <p className="chat-rag-not-found-result-label">Result</p> : null}
                 <AssistantMessageContent content={msg.content} />
                 {isStreaming ? <StreamingCursor /> : null}
-              </p>
+              </div>
+            ) : null}
+            {showFollowUps ? (
+              <div className="chat-follow-up-meta">
+                {msg.follow_up_questions!.length === 1 ? (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => onFollowUp(msg.follow_up_questions![0])}
+                    className="chat-follow-up-meta-item chat-follow-up-meta-item--inline"
+                  >
+                    <span className="chat-rewrite-meta-label">
+                      {followUpLabel(1)}{" "}
+                    </span>
+                    <span className="chat-rewrite-meta-query">
+                      &ldquo;{msg.follow_up_questions![0]}&rdquo;
+                    </span>
+                  </button>
+                ) : (
+                  <>
+                    <p className="chat-rewrite-meta chat-follow-up-meta-label">
+                      <span className="chat-rewrite-meta-label">
+                        {followUpLabel(msg.follow_up_questions!.length)}
+                      </span>
+                    </p>
+                    {msg.follow_up_questions!.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => onFollowUp(q)}
+                        className="chat-follow-up-meta-item"
+                      >
+                        <span className="chat-rewrite-meta-query">&ldquo;{q}&rdquo;</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
             ) : null}
           </div>
 
-          {showDetails ? (
-            <AssistantMessageMeta msg={debugMsg} loading={loading} onFollowUp={onFollowUp} />
-          ) : null}
+          {showDetails ? <AssistantMessageMeta msg={debugMsg} /> : null}
 
           {!isStreaming && msg.content.trim() ? (
             <div className="chat-message-actions">

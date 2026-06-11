@@ -34,10 +34,12 @@ describe("timelineNodeRepoUrl", () => {
     expect(timelineNodeRepoUrl("github-search")).toBe(
       "https://github.com/taixingbi/layer-mcp-github-v1",
     );
-    expect(timelineNodeRepoUrl("rag-retrieval-embed")).toBe(
+    expect(timelineNodeRepoUrl("rag_private_kb-retrieval-embed")).toBe(
       "https://github.com/taixingbi/layer-gateway-embed-v1",
     );
-    expect(timelineNodeRepoUrl("rag")).toBe("https://github.com/taixingbi/layer-rag-query-v1");
+    expect(timelineNodeRepoUrl("rag_private_kb")).toBe(
+      "https://github.com/taixingbi/layer-rag-query-v1",
+    );
   });
 
   it("exposes repo slug for tooltips", () => {
@@ -56,8 +58,8 @@ describe("firstRepoLinkNodeIds", () => {
     expect(new Set(urls).size).toBe(urls.length);
     expect(linkIds.has("client")).toBe(true);
     expect(linkIds.has("gateway")).toBe(true);
-    expect(linkIds.has("rag")).toBe(true);
-    expect(linkIds.has("rag-retrieval-embed")).toBe(true);
+    expect(linkIds.has("rag_private_kb")).toBe(true);
+    expect(linkIds.has("rag_private_kb-retrieval-embed")).toBe(true);
     expect(linkIds.has("intent-router")).toBe(false);
   });
 });

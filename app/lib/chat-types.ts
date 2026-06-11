@@ -14,6 +14,8 @@ export type TokenUsageSlice = {
   total_tokens?: number;
 };
 
+import type { RagEnvelope } from "@/lib/rag-envelope";
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -33,6 +35,7 @@ export type ChatMessage = {
   citations?: ChatCitation[];
   follow_up_questions?: string[];
   latency_ms?: Record<string, unknown>;
+  rag?: RagEnvelope;
 };
 
 export type ChatStreamStatus = "thinking" | "searching_sql" | "cached" | "error" | null;

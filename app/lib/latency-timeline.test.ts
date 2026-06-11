@@ -39,7 +39,7 @@ describe("buildLatencyTimelineView", () => {
     expect(view).not.toBeNull();
     expect(view!.totalMs).toBe(4844);
     expect(view!.totalSecondsLabel).toBe("4.84s");
-    expect(view!.slowest[0]).toMatchObject({ rank: 1, label: "Follow-up Chat", ms: 1512 });
+    expect(view!.slowest[0]).toMatchObject({ rank: 1, label: "Suggested questions", ms: 1512 });
     expect(view!.slowest[1]).toMatchObject({ rank: 2, label: "Router", ms: 1371 });
     expect(view!.slowest[2]).toMatchObject({ rank: 3, label: "Storage", ms: 831 });
 
@@ -49,15 +49,15 @@ describe("buildLatencyTimelineView", () => {
     expect(gateway?.label).toBe("Gateway");
     const orchestrator = gateway?.children.find((c) => c.label === "Orchestrator");
     expect(orchestrator?.children.some((c) => c.label === "Workflow")).toBe(false);
-    expect(orchestrator?.children.some((c) => c.label === "RAG")).toBe(true);
+    expect(orchestrator?.children.some((c) => c.label === "Tool Rag Private KB")).toBe(true);
 
     const followUp = orchestrator?.children
-      .find((c) => c.label === "RAG")
-      ?.children.find((c) => c.label === "Follow-up Chat");
+      .find((c) => c.label === "Tool Rag Private KB")
+      ?.children.find((c) => c.label === "Suggested questions");
     expect(followUp?.rank).toBe(1);
   });
 
-  it("shows GitHub Search downstream instead of Workflow wrapper", () => {
+  it("shows Tool Github Search downstream instead of Workflow wrapper", () => {
     const body = {
       ...gatewayBody,
       orchestrator: {
@@ -76,9 +76,9 @@ describe("buildLatencyTimelineView", () => {
     };
     const view = buildLatencyTimelineView({ gateway_api: body, total: 5000 });
     const orch = view!.tree[0].children[0]?.children.find((c) => c.label === "Orchestrator");
-    expect(orch?.children.map((c) => c.label)).toEqual(["Router", "GitHub Search"]);
-    const github = orch?.children.find((c) => c.label === "GitHub Search");
-    expect(github?.children.some((c) => c.label === "Chat")).toBe(true);
+    expect(orch?.children.map((c) => c.label)).toEqual(["Router", "Tool Github Search"]);
+    const github = orch?.children.find((c) => c.label === "Tool Github Search");
+    expect(github?.children.some((c) => c.label === "Answer generation")).toBe(true);
   });
 
   it("supports gateway-only metadata from history", () => {
@@ -92,8 +92,8 @@ describe("buildLatencyTimelineView", () => {
 
 describe("formatTimelineLine", () => {
   it("formats a ranked slowest line", () => {
-    const line = formatTimelineLine("Follow-up Chat", 1512, 31, { rank: 1 });
-    expect(line).toContain("Follow-up Chat");
+    const line = formatTimelineLine("Suggested questions", 1512, 31, { rank: 1 });
+    expect(line).toContain("Suggested questions");
     expect(line).toContain("1512 ms (31%)");
     expect(line).toContain("[#1]");
   });
@@ -108,7 +108,7 @@ describe("formatTimelineSeconds", () => {
 
 describe("shortSlowestLabel", () => {
   it("shortens labels for compact summary", () => {
-    expect(shortSlowestLabel("Follow-up Chat")).toBe("Follow-up");
+    expect(shortSlowestLabel("Suggested questions")).toBe("Suggested");
     expect(shortSlowestLabel("Router")).toBe("Router");
   });
 });
