@@ -2582,6 +2582,70 @@ body {
 .admin-argocd-link-list--stack {
   grid-template-columns: 1fr;
 }
+.admin-argocd-workflow {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 1rem;
+}
+.admin-argocd-workflow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.admin-argocd-workflow-step .admin-argocd-app-link {
+  width: 100%;
+}
+.admin-argocd-workflow-step--branch {
+  width: 100%;
+}
+.admin-argocd-workflow-branch-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+}
+@media (max-width: 520px) {
+  .admin-argocd-workflow-branch-row {
+    grid-template-columns: 1fr;
+  }
+}
+.admin-argocd-workflow-arrow {
+  color: #94a3b8;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.15rem 0 0.35rem;
+}
+.admin-argocd-funnel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: -0.25rem 0 0;
+}
+.admin-argocd-funnel-arrow {
+  display: block;
+  text-align: center;
+  color: #64748b;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+@media (max-width: 900px) {
+  .admin-argocd-funnel {
+    grid-template-columns: 1fr;
+  }
+  .admin-argocd-funnel-arrow:not(:first-child) {
+    display: none;
+  }
+}
+.admin-argocd-app-link--monitor {
+  border-style: dashed;
+  background: #fff;
+}
+.admin-argocd-monitor-note {
+  margin-top: 1.25rem;
+}
 .admin-argocd-env-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

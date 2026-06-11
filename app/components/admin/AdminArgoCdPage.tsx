@@ -2,32 +2,76 @@
 
 import { AdminShell } from "@/components/admin/AdminShell";
 import {
-  ARGOCD_DEV_STACK_APPS,
-  ARGOCD_PROD_STACK_APPS,
-  ARGOCD_SHARED_APPS,
+  ARGOCD_DEV_WORKFLOW,
+  ARGOCD_PROD_WORKFLOW,
+  ARGOCD_SHARED_MONITOR_APPS,
+  ARGOCD_SHARED_PLATFORM_APPS,
   argocdApplicationUrl,
   argocdUiBase,
   type ArgoCdAppLink,
+  type ArgoCdStackWorkflow,
 } from "@/lib/admin/argocd-links";
 
-function ArgoCdAppList({
+function ArgoCdAppLinkCard({ app }: { app: ArgoCdAppLink }) {
+  return (
+    <a
+      href={argocdApplicationUrl(app.name)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="admin-argocd-app-link"
+    >
+      <span className="admin-argocd-app-label">{app.label}</span>
+      <code className="admin-code">{app.name}</code>
+    </a>
+  );
+}
+
+function WorkflowArrow() {
+  return (
+    <span className="admin-argocd-workflow-arrow" aria-hidden>
+      ↓
+    </span>
+  );
+}
+
+function ArgoCdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
+  return (
+    <div className="admin-argocd-workflow">
+      {workflow.linear.map((app) => (
+        <div key={app.name} className="admin-argocd-workflow-step">
+          <ArgoCdAppLinkCard app={app} />
+          <WorkflowArrow />
+        </div>
+      ))}
+
+      <div className="admin-argocd-workflow-step admin-argocd-workflow-step--branch">
+        <div className="admin-argocd-workflow-branch-row">
+          {workflow.branch.map((app) => (
+            <ArgoCdAppLinkCard key={app.name} app={app} />
+          ))}
+        </div>
+        <WorkflowArrow />
+      </div>
+    </div>
+  );
+}
+
+function ArgoCdSharedGrid({
   apps,
-  stack,
+  monitor,
 }: {
   apps: ArgoCdAppLink[];
-  stack?: boolean;
+  monitor?: boolean;
 }) {
   return (
-    <ul
-      className={`admin-argocd-link-list${stack ? " admin-argocd-link-list--stack" : ""}`}
-    >
+    <ul className="admin-argocd-link-list">
       {apps.map((app) => (
         <li key={app.name}>
           <a
             href={argocdApplicationUrl(app.name)}
             target="_blank"
             rel="noopener noreferrer"
-            className="admin-argocd-app-link"
+            className={`admin-argocd-app-link${monitor ? " admin-argocd-app-link--monitor" : ""}`}
           >
             <span className="admin-argocd-app-label">{app.label}</span>
             <code className="admin-code">{app.name}</code>
@@ -61,9 +105,9 @@ export function AdminArgoCdPage() {
           <section className="admin-panel">
             <h2 className="admin-panel-title">Applications (dev)</h2>
             <p className="admin-muted admin-inline-note">
-              Project <code className="admin-code">ai-dev</code>
+              Project <code className="admin-code">ai-dev</code> — request flow top to bottom
             </p>
-            <ArgoCdAppList apps={ARGOCD_DEV_STACK_APPS} stack />
+            <ArgoCdWorkflowColumn workflow={ARGOCD_DEV_WORKFLOW} />
           </section>
 
           <section className="admin-panel">
@@ -71,16 +115,26 @@ export function AdminArgoCdPage() {
             <p className="admin-muted admin-inline-note">
               Project <code className="admin-code">ai-prod</code> — manual sync
             </p>
-            <ArgoCdAppList apps={ARGOCD_PROD_STACK_APPS} stack />
+            <ArgoCdWorkflowColumn workflow={ARGOCD_PROD_WORKFLOW} />
           </section>
+        </div>
+
+        <div className="admin-argocd-funnel" aria-hidden>
+          <span className="admin-argocd-funnel-arrow">↓</span>
+          <span className="admin-argocd-funnel-arrow">↓</span>
         </div>
 
         <section className="admin-panel admin-panel--full">
           <h2 className="admin-panel-title">Shared</h2>
           <p className="admin-muted admin-inline-note">
-            Dev / platform workloads — no separate prod Argo CD Application.
+            Platform backends (gateways, vector store, vLLM) — dev / platform only.
           </p>
-          <ArgoCdAppList apps={ARGOCD_SHARED_APPS} />
+          <ArgoCdSharedGrid apps={ARGOCD_SHARED_PLATFORM_APPS} />
+
+          <p className="admin-muted admin-inline-note admin-argocd-monitor-note">
+            Monitoring (not on the request path)
+          </p>
+          <ArgoCdSharedGrid apps={ARGOCD_SHARED_MONITOR_APPS} monitor />
         </section>
       </div>
     </AdminShell>
