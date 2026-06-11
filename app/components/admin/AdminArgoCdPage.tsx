@@ -18,23 +18,28 @@ function CicdAppCard({ app, monitor }: { app: ArgoCdAppLink; monitor?: boolean }
     <div
       className={`admin-argocd-app-card${monitor ? " admin-argocd-app-card--monitor" : ""}`}
     >
-      <a
-        href={argocdApplicationUrl(app.name)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="admin-argocd-app-link"
-      >
+      <div className="admin-argocd-app-card-header">
         <span className="admin-argocd-app-label">{app.label}</span>
         <code className="admin-code">{app.name}</code>
-      </a>
-      <a
-        href={githubActionsUrl(app.githubRepo, app.workflow)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="admin-argocd-app-ci-link"
-      >
-        Actions →
-      </a>
+      </div>
+      <div className="admin-argocd-pipeline-links">
+        <a
+          href={githubActionsUrl(app.githubRepo, app.workflow)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="admin-argocd-pipeline-link"
+        >
+          Build →
+        </a>
+        <a
+          href={argocdApplicationUrl(app.name)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="admin-argocd-pipeline-link admin-argocd-pipeline-link--deploy"
+        >
+          Deploy →
+        </a>
+      </div>
     </div>
   );
 }
