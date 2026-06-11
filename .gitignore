@@ -25,6 +25,10 @@
 .DS_Store
 *.pem
 
+# python (local tooling only — not a Python app)
+.venv/
+venv/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
