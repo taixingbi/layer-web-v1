@@ -1,4 +1,4 @@
-/** Shared Platform header + admin sub-navigation (Overview, Train, ArgoCD, Observability). */
+/** Shared Platform header + admin sub-navigation (Overview, Train, CI/CD, Observability). */
 
 export type PlatformSubNavItem = {
   href: string;
@@ -9,7 +9,7 @@ export type PlatformSubNavItem = {
 export const PLATFORM_SUB_NAV: PlatformSubNavItem[] = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/train", label: "Train" },
-  { href: "/admin/argocd", label: "ArgoCD" },
+  { href: "/admin/argocd", label: "CI/CD" },
   { href: "/admin/observability", label: "Observability" },
 ];
 

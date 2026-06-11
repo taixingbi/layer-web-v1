@@ -8,21 +8,34 @@ import {
   ARGOCD_SHARED_PLATFORM_APPS,
   argocdApplicationUrl,
   argocdUiBase,
+  githubActionsUrl,
   type ArgoCdAppLink,
   type ArgoCdStackWorkflow,
 } from "@/lib/admin/argocd-links";
 
-function ArgoCdAppLinkCard({ app }: { app: ArgoCdAppLink }) {
+function CicdAppCard({ app, monitor }: { app: ArgoCdAppLink; monitor?: boolean }) {
   return (
-    <a
-      href={argocdApplicationUrl(app.name)}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="admin-argocd-app-link"
+    <div
+      className={`admin-argocd-app-card${monitor ? " admin-argocd-app-card--monitor" : ""}`}
     >
-      <span className="admin-argocd-app-label">{app.label}</span>
-      <code className="admin-code">{app.name}</code>
-    </a>
+      <a
+        href={argocdApplicationUrl(app.name)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="admin-argocd-app-link"
+      >
+        <span className="admin-argocd-app-label">{app.label}</span>
+        <code className="admin-code">{app.name}</code>
+      </a>
+      <a
+        href={githubActionsUrl(app.githubRepo, app.workflow)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="admin-argocd-app-ci-link"
+      >
+        Actions →
+      </a>
+    </div>
   );
 }
 
@@ -34,12 +47,12 @@ function WorkflowArrow() {
   );
 }
 
-function ArgoCdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
+function CicdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
   return (
     <div className="admin-argocd-workflow">
       {workflow.linear.map((app) => (
         <div key={app.name} className="admin-argocd-workflow-step">
-          <ArgoCdAppLinkCard app={app} />
+          <CicdAppCard app={app} />
           <WorkflowArrow />
         </div>
       ))}
@@ -47,7 +60,7 @@ function ArgoCdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
       <div className="admin-argocd-workflow-step admin-argocd-workflow-step--branch">
         <div className="admin-argocd-workflow-branch-row">
           {workflow.branch.map((app) => (
-            <ArgoCdAppLinkCard key={app.name} app={app} />
+            <CicdAppCard key={app.name} app={app} />
           ))}
         </div>
         <WorkflowArrow />
@@ -56,7 +69,7 @@ function ArgoCdWorkflowColumn({ workflow }: { workflow: ArgoCdStackWorkflow }) {
   );
 }
 
-function ArgoCdSharedGrid({
+function CicdSharedGrid({
   apps,
   monitor,
 }: {
@@ -67,15 +80,7 @@ function ArgoCdSharedGrid({
     <ul className="admin-argocd-link-list">
       {apps.map((app) => (
         <li key={app.name}>
-          <a
-            href={argocdApplicationUrl(app.name)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`admin-argocd-app-link${monitor ? " admin-argocd-app-link--monitor" : ""}`}
-          >
-            <span className="admin-argocd-app-label">{app.label}</span>
-            <code className="admin-code">{app.name}</code>
-          </a>
+          <CicdAppCard app={app} monitor={monitor} />
         </li>
       ))}
     </ul>
@@ -87,8 +92,8 @@ export function AdminArgoCdPage() {
 
   return (
     <AdminShell
-      title="ArgoCD"
-      subtitle="GitOps deploy status — opens the Argo CD UI (no in-cluster API from HuntAI)."
+      title="CI/CD"
+      subtitle="GitHub Actions build → Argo CD deploy. Links only — no CI or GitOps API from HuntAI."
       actions={
         <a
           href={uiBase}
@@ -105,17 +110,19 @@ export function AdminArgoCdPage() {
           <section className="admin-panel">
             <h2 className="admin-panel-title">Applications (dev)</h2>
             <p className="admin-muted admin-inline-note">
-              Project <code className="admin-code">ai-dev</code> — request flow top to bottom
+              Project <code className="admin-code">ai-dev</code> — push <code className="admin-code">dev</code>{" "}
+              branch pins image
             </p>
-            <ArgoCdWorkflowColumn workflow={ARGOCD_DEV_WORKFLOW} />
+            <CicdWorkflowColumn workflow={ARGOCD_DEV_WORKFLOW} />
           </section>
 
           <section className="admin-panel">
             <h2 className="admin-panel-title">Applications (prod)</h2>
             <p className="admin-muted admin-inline-note">
-              Project <code className="admin-code">ai-prod</code> — manual sync
+              Project <code className="admin-code">ai-prod</code> — push <code className="admin-code">main</code>{" "}
+              · manual sync
             </p>
-            <ArgoCdWorkflowColumn workflow={ARGOCD_PROD_WORKFLOW} />
+            <CicdWorkflowColumn workflow={ARGOCD_PROD_WORKFLOW} />
           </section>
         </div>
 
@@ -129,12 +136,12 @@ export function AdminArgoCdPage() {
           <p className="admin-muted admin-inline-note">
             Platform backends (gateways, vector store, vLLM) — dev / platform only.
           </p>
-          <ArgoCdSharedGrid apps={ARGOCD_SHARED_PLATFORM_APPS} />
+          <CicdSharedGrid apps={ARGOCD_SHARED_PLATFORM_APPS} />
 
           <p className="admin-muted admin-inline-note admin-argocd-monitor-note">
             Monitoring (not on the request path)
           </p>
-          <ArgoCdSharedGrid apps={ARGOCD_SHARED_MONITOR_APPS} monitor />
+          <CicdSharedGrid apps={ARGOCD_SHARED_MONITOR_APPS} monitor />
         </section>
       </div>
     </AdminShell>

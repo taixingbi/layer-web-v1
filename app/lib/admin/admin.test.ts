@@ -10,6 +10,7 @@ import {
   indexPromSamples,
   lookupPromSample,
 } from "@/lib/admin/gpu-metrics";
+import { githubActionsUrl } from "@/lib/admin/argocd-links";
 import { grafanaObservabilityUrl } from "@/lib/admin/grafana-links";
 import { parsePromScalar, routeDistributionFromVector } from "@/lib/admin/prometheus";
 
@@ -79,6 +80,20 @@ describe("dcgmRawToMib", () => {
 describe("dcgmMibToGb", () => {
   it("converts MiB to GiB", () => {
     expect(dcgmMibToGb(20480)).toBe(20);
+  });
+});
+
+describe("githubActionsUrl", () => {
+  it("builds workflow URL for service repo", () => {
+    expect(githubActionsUrl("layer-web-v1")).toBe(
+      "https://github.com/taixingbi/layer-web-v1/actions/workflows/docker-push.yml",
+    );
+  });
+
+  it("supports huntai-k3s ci workflow", () => {
+    expect(githubActionsUrl("huntai-k3s", "ci.yaml")).toBe(
+      "https://github.com/taixingbi/huntai-k3s/actions/workflows/ci.yaml",
+    );
   });
 });
 

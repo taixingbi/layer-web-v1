@@ -2595,8 +2595,28 @@ body {
   align-items: center;
   gap: 0.35rem;
 }
-.admin-argocd-workflow-step .admin-argocd-app-link {
+.admin-argocd-app-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
   width: 100%;
+}
+.admin-argocd-app-card--monitor .admin-argocd-app-link {
+  border-style: dashed;
+  background: #fff;
+}
+.admin-argocd-workflow-step .admin-argocd-app-card {
+  width: 100%;
+}
+.admin-argocd-app-ci-link {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-decoration: none;
+  padding: 0 0.25rem 0.15rem;
+}
+.admin-argocd-app-ci-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }
 .admin-argocd-workflow-step--branch {
   width: 100%;
@@ -2638,10 +2658,6 @@ body {
   .admin-argocd-funnel-arrow:not(:first-child) {
     display: none;
   }
-}
-.admin-argocd-app-link--monitor {
-  border-style: dashed;
-  background: #fff;
 }
 .admin-argocd-monitor-note {
   margin-top: 1.25rem;
