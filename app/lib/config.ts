@@ -9,6 +9,13 @@ function fromEnv(name: string, fallback: string): string {
   return trimmed || fallback;
 }
 
+function boolEnv(name: string, fallback = false): boolean {
+  const v = process.env[name];
+  if (v == null || v === "") return fallback;
+  const normalized = v.split("#")[0].trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
 function intEnv(name: string, fallback: number, max: number): number {
   const v = process.env[name];
   if (v == null || v === "") return fallback;
@@ -42,5 +49,15 @@ export const config = {
   /** Public web origin (no trailing slash). Must match gateway FRONTEND_URL and Supabase Site URL. */
   get appUrl(): string {
     return fromEnv("APP_URL", "").replace(/\/$/, "");
+  },
+
+  /** Allow unsigned visitors to use /chat (BFF uses guestChatBearerToken server-side). */
+  get chatAllowGuest(): boolean {
+    return boolEnv("CHAT_ALLOW_GUEST", false);
+  },
+
+  /** Shared secret forwarded to gateway when guest chat is enabled (never sent to the browser). */
+  get guestChatBearerToken(): string {
+    return fromEnv("GUEST_CHAT_BEARER_TOKEN", "");
   },
 };

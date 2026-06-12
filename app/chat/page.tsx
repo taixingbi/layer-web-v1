@@ -4,6 +4,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { ChatAssistantMessage } from "@/components/chat/ChatAssistantMessage";
@@ -49,7 +50,8 @@ export default function ChatPage() {
     loading: boolean;
     hasCookie: boolean;
     hasStorage: boolean;
-  }>({ loading: true, hasCookie: false, hasStorage: false });
+    guestAllowed: boolean;
+  }>({ loading: true, hasCookie: false, hasStorage: false, guestAllowed: false });
   const [status, setStatus] = useState<ChatStreamStatus>(null);
   const [thumbsUp, setThumbsUp] = useState<Set<string>>(new Set());
   const [thumbsDown, setThumbsDown] = useState<Set<string>>(new Set());
@@ -99,14 +101,19 @@ export default function ChatPage() {
       /* storage blocked */
     }
     void authFetch(webApiPaths.auth.me)
-      .then((r) => r.json() as Promise<{ signedIn?: boolean }>)
+      .then((r) => r.json() as Promise<{ signedIn?: boolean; guestChatAllowed?: boolean }>)
       .then((j) => {
         if (!alive) return;
-        setAuthUi({ loading: false, hasCookie: Boolean(j.signedIn), hasStorage });
+        setAuthUi({
+          loading: false,
+          hasCookie: Boolean(j.signedIn),
+          hasStorage,
+          guestAllowed: Boolean(j.guestChatAllowed),
+        });
       })
       .catch(() => {
         if (!alive) return;
-        setAuthUi({ loading: false, hasCookie: false, hasStorage });
+        setAuthUi({ loading: false, hasCookie: false, hasStorage, guestAllowed: false });
       });
     return () => {
       alive = false;
@@ -114,6 +121,8 @@ export default function ChatPage() {
   }, []);
 
   const isAuthenticated = authUi.hasCookie || authUi.hasStorage;
+  const canUseChat = isAuthenticated || authUi.guestAllowed;
+  const isGuest = !isAuthenticated && authUi.guestAllowed;
 
   const refreshConversations = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -197,9 +206,9 @@ export default function ChatPage() {
   }, [authUi.loading, isAuthenticated]);
 
   useEffect(() => {
-    if (authUi.loading || isAuthenticated) return;
+    if (authUi.loading || isAuthenticated || authUi.guestAllowed) return;
     router.replace("/login?next=/chat");
-  }, [authUi.loading, isAuthenticated, router]);
+  }, [authUi.loading, isAuthenticated, authUi.guestAllowed, router]);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -642,7 +651,7 @@ export default function ChatPage() {
   ) => {
     const text = userMessage.trim();
     if (!text || loading) return;
-    if (!authUi.hasCookie && !authUi.hasStorage) {
+    if (!canUseChat) {
       router.push("/login?next=/chat");
       return;
     }
@@ -859,8 +868,7 @@ export default function ChatPage() {
     handleSSEEvent,
     beginStreamingAssistant,
     clearStreamingAssistant,
-    authUi.hasCookie,
-    authUi.hasStorage,
+    canUseChat,
     router,
     applyConversationId,
   ]);
@@ -942,7 +950,7 @@ export default function ChatPage() {
   const hasThread = messages.length > 0;
   const showHero = !hasThread && !threadLoading;
 
-  if (!authUi.loading && !isAuthenticated) {
+  if (!authUi.loading && !canUseChat) {
     return (
       <div className="flex flex-col h-screen items-center justify-center bg-white dark:bg-[#0d0d0d] text-gray-500">
         <p>Redirecting to sign in…</p>
@@ -952,7 +960,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-white dark:bg-[#0d0d0d] text-[#0d0d0d] dark:text-[#ececec]">
-      {sidebarOpen ? (
+      {!isGuest && sidebarOpen ? (
         <button
           type="button"
           className="md:hidden fixed inset-0 z-30 bg-black/40"
@@ -960,33 +968,45 @@ export default function ChatPage() {
           onClick={() => setSidebarOpen(false)}
         />
       ) : null}
-      <ChatSidebar
-        conversations={conversations}
-        activeId={activeConversationId}
-        loadingList={conversationsLoading}
-        loadingThread={threadLoading || loading}
-        onNewChat={startNewChat}
-        onSelect={(id) => void loadConversation(id)}
-        className={`${sidebarOpen ? "flex fixed inset-y-0 left-0 z-40" : "hidden"} md:flex md:relative md:z-0`}
-      />
+      {!isGuest ? (
+        <ChatSidebar
+          conversations={conversations}
+          activeId={activeConversationId}
+          loadingList={conversationsLoading}
+          loadingThread={threadLoading || loading}
+          onNewChat={startNewChat}
+          onSelect={(id) => void loadConversation(id)}
+          className={`${sidebarOpen ? "flex fixed inset-y-0 left-0 z-40" : "hidden"} md:flex md:relative md:z-0`}
+        />
+      ) : null}
       <div className="chat-main flex flex-col flex-1 min-w-0 h-full">
       <header className="chat-header shrink-0 py-2.5 px-3 sm:px-4">
         <div className="flex items-center justify-between gap-3 w-full max-w-[52rem] mx-auto">
           <div className="flex items-center gap-2 min-w-0">
-            <button
-              type="button"
-              className="md:hidden p-2 -ml-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10"
-              aria-label="Open chat history"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-                <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
-              </svg>
-            </button>
+            {!isGuest ? (
+              <button
+                type="button"
+                className="md:hidden p-2 -ml-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10"
+                aria-label="Open chat history"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+                </svg>
+              </button>
+            ) : null}
             <ChatBrand />
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {!authUi.loading ? <ChatPlatformLinks /> : null}
+            {!authUi.loading && isGuest ? (
+              <Link
+                href="/login?next=/chat"
+                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              >
+                Sign in
+              </Link>
+            ) : null}
             {!authUi.loading && isAuthenticated ? (
               <ChatUserMenu onSignOut={handleSignOut} />
             ) : null}
