@@ -11,6 +11,7 @@ import {
 import { passwordResetRedirectUrl } from "@/lib/app-url";
 import { gatewayPaths } from "@/lib/gateway-paths";
 import { webApiPaths } from "@/lib/web-api-paths";
+import { messageFromGatewayBody } from "@/lib/gateway-error-message";
 import { gatewayJson } from "@/lib/gateway-proxy";
 
 /** POST body: ``{ email }`` → gateway ``/v1/auth/forgot-password`` with ``redirect_to``. */
@@ -98,11 +99,23 @@ export async function POST(req: NextRequest) {
     },
   );
 
+  if (!upstream.ok) {
+    const gatewayError = messageFromGatewayBody(upstream.data);
+    logPasswordResetSendLink({
+      email,
+      reset_link_target: resolved_redirect_to,
+      step: "gateway_rejected",
+      level: "WARN",
+      error: gatewayError ?? `HTTP ${upstream.status}`,
+    });
+    return NextResponse.json(upstream.data, { status: upstream.status });
+  }
+
   logPasswordResetSendLink({
     email,
     reset_link_target: resolved_redirect_to,
-    step: upstream.ok ? "email_triggered" : "gateway_rejected",
-    level: upstream.ok ? "INFO" : "WARN",
+    step: "email_triggered",
+    level: "INFO",
   });
 
   const responseBody: Record<string, unknown> = {
