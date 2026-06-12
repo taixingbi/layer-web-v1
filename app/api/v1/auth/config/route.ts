@@ -11,10 +11,6 @@ import { passwordResetRedirectUrl, resolvePublicAppUrl } from "@/lib/app-url";
  * GET — Site URL and redirect URL for Supabase Dashboard configuration.
  */
 export async function GET(req: NextRequest) {
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json({});
-  }
-
   const siteUrl = resolvePublicAppUrl(req);
   const resetPasswordRedirectUrl = passwordResetRedirectUrl(req);
   return NextResponse.json({
@@ -22,9 +18,15 @@ export async function GET(req: NextRequest) {
     resetPasswordRedirectUrl,
     supabaseSetup: {
       siteUrl,
-      redirectUrls: [resetPasswordRedirectUrl],
+      redirectUrls: [
+        resetPasswordRedirectUrl,
+        ...(process.env.ADDITIONAL_AUTH_REDIRECT_URLS || "")
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean),
+      ],
       note:
-        "In Supabase Dashboard → Authentication → URL configuration, set Site URL and add the redirect URL exactly. Then request a new reset email.",
+        "In Supabase Dashboard → Authentication → URL configuration, set Site URL and add every redirect URL exactly. Then request a new reset email.",
     },
   });
 }
