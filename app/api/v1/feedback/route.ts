@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid feedback payload" }, { status: 400 });
   }
 
-  const token = resolveGatewayBearer(req);
+  const token = resolveGatewayBearer(req, { allowGuestFallback: true });
   if (!token) {
     logWebEvent("request_complete", "WARN", {
       ...baseLog,

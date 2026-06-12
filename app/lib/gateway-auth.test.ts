@@ -38,4 +38,22 @@ describe("resolveGatewayBearer", () => {
     const req = new NextRequest(`http://localhost${webApiPaths.chat}`);
     expect(resolveGatewayBearer(req)).toBe("");
   });
+
+  it("uses guest bearer when allowGuestFallback and env are set", () => {
+    const prevAllow = process.env.CHAT_ALLOW_GUEST;
+    const prevToken = process.env.GUEST_CHAT_BEARER_TOKEN;
+    process.env.CHAT_ALLOW_GUEST = "true";
+    process.env.GUEST_CHAT_BEARER_TOKEN = "guest-service-token";
+    try {
+      const req = new NextRequest(`http://localhost${webApiPaths.chat}`);
+      expect(resolveGatewayBearer(req, { allowGuestFallback: true })).toBe(
+        "guest-service-token",
+      );
+    } finally {
+      if (prevAllow === undefined) delete process.env.CHAT_ALLOW_GUEST;
+      else process.env.CHAT_ALLOW_GUEST = prevAllow;
+      if (prevToken === undefined) delete process.env.GUEST_CHAT_BEARER_TOKEN;
+      else process.env.GUEST_CHAT_BEARER_TOKEN = prevToken;
+    }
+  });
 });

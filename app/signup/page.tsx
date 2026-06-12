@@ -29,8 +29,8 @@ export default function SignupPage() {
           </Link>
         </p>
         <p className="text-center text-sm">
-          <Link href="/" className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-            ← Home
+          <Link href="/chat" className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            ← Back to chat
           </Link>
         </p>
       </div>

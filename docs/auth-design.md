@@ -12,7 +12,7 @@ Run the gateway with **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`**. Each user s
 
 - **Browser login:** **`POST /api/v1/auth/login`** or **`POST /api/v1/auth/signup`** proxy to the gateway and set cookies via [`app/lib/auth-session.ts`](../app/lib/auth-session.ts) (`layer_access_token`, `layer_refresh_token`).
 - **Optional dev override:** `sessionStorage.layer_bearer_token` in [`app/chat/page.tsx`](../app/chat/page.tsx) adds `Authorization: Bearer …` and **overrides** the session cookie when set.
-- **No shared server bearer:** the BFF does not fall back to a global env token; unsigned requests get **401** before calling the gateway.
+- **Guest chat (optional, dev):** when `CHAT_ALLOW_GUEST=true` and `GUEST_CHAT_BEARER_TOKEN` is set, unsigned `/api/v1/chat` uses the server-only guest bearer (matches gateway `GUEST_CHAT_SERVICE_TOKEN`). Signed-in users still use their session cookie.
 
 ---
 
@@ -22,7 +22,8 @@ Run the gateway with **`SUPABASE_URL`** and **`SUPABASE_ANON_KEY`**. Each user s
 
 1. Inbound `Authorization: Bearer <token>` if present.
 2. Else httpOnly **`layer_access_token`** cookie ([`auth-cookie.ts`](../app/lib/auth-cookie.ts)).
-3. Else empty → chat/feedback return **401** (“Sign in at /login”).
+3. Else (chat/feedback only, when `CHAT_ALLOW_GUEST`) server **`GUEST_CHAT_BEARER_TOKEN`**.
+4. Else empty → **401** (“Sign in at /login”).
 
 ---
 

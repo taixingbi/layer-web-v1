@@ -296,7 +296,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing message" }, { status: 400 });
   }
 
-  const token = resolveGatewayBearer(req);
+  const token = resolveGatewayBearer(req, { allowGuestFallback: true });
   if (!token) {
     logWebEvent("request_complete", "WARN", {
       ...baseLog,

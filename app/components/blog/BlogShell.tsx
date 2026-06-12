@@ -15,7 +15,7 @@ export function BlogShell({ children }: Props) {
     <div className="blog-page min-h-screen">
       <header className="blog-header">
         <div className="blog-header-inner">
-          <Link href="/" className="blog-brand-link" aria-label="HuntAI home">
+          <Link href="/chat" className="blog-brand-link" aria-label="HuntAI chat">
             <ChatBrand size="sm" layout="row" />
           </Link>
           <nav className="blog-nav" aria-label="Blog navigation">
@@ -28,8 +28,8 @@ export function BlogShell({ children }: Props) {
       <main className="blog-main">{children}</main>
       <footer className="blog-footer">
         <p>
-          <Link href="/" className="blog-footer-link">
-            HuntAI
+          <Link href="/chat" className="blog-footer-link">
+            Chat
           </Link>
           {" · "}
           <Link href="/blog" className="blog-footer-link">
