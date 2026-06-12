@@ -1,32 +1,10 @@
 /**
- * Product landing page: brand, value prop, and auth entry points.
+ * Root route: chat is the product entry (guest or signed-in).
  */
 
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { ChatBrand } from "@/components/ChatBrand";
-
-/** Root route: HuntAI marketing hub. */
+/** Send visitors straight to the chat experience. */
 export default function Home() {
-  return (
-    <div className="landing-page min-h-screen flex flex-col items-center justify-center px-6 py-16">
-      <div className="landing-hero w-full max-w-lg flex flex-col items-center text-center gap-8">
-        <ChatBrand size="lg" layout="stacked" />
-
-        <div className="flex flex-col items-stretch sm:items-center gap-3 w-full sm:w-auto pt-2">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <Link href="/signup" className="landing-btn-secondary">
-              Sign up
-            </Link>
-            <Link href="/login" className="landing-btn-ghost">
-              Sign in
-            </Link>
-          </div>
-          <Link href="/blog" className="landing-blog-link">
-            HuntAI Blog →
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+  redirect("/chat");
 }

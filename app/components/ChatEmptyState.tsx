@@ -13,14 +13,21 @@ const STARTER_PROMPTS = [
 type ChatEmptyStateProps = {
   onPick: (text: string) => void;
   disabled?: boolean;
+  /** Unsigned visitor with guest chat enabled (no saved history). */
+  guest?: boolean;
 };
 
-export function ChatEmptyState({ onPick, disabled }: ChatEmptyStateProps) {
+export function ChatEmptyState({ onPick, disabled, guest = false }: ChatEmptyStateProps) {
   return (
     <div className="chat-empty-state w-full max-w-2xl mx-auto text-center px-4 mb-8">
       <ChatBrand size="md" className="justify-center mb-6" />
+      <h1 className="text-lg sm:text-xl font-semibold text-[#0d0d0d] dark:text-[#ececec] mb-2">
+        What can I help you with?
+      </h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
-        Ask about Taixing&apos;s resume, work experience, visa status, compensation…
+        {guest
+          ? "Ask about public knowledge — no account required. Sign in to save conversations and access more."
+          : "Ask about Taixing\u2019s resume, work experience, visa status, compensation\u2026"}
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {STARTER_PROMPTS.map((prompt) => (

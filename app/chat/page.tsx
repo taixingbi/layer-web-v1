@@ -1005,12 +1005,20 @@ export default function ChatPage() {
           <div className="flex items-center gap-1 shrink-0">
             {!authUi.loading ? <ChatPlatformLinks /> : null}
             {!authUi.loading && isGuest ? (
-              <Link
-                href="/login?next=/chat"
-                className="text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              >
-                Sign in
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/signup"
+                  className="text-sm font-medium px-3 py-1.5 rounded-lg border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950/40 transition-colors"
+                >
+                  Sign up
+                </Link>
+                <Link
+                  href="/login?next=/chat"
+                  className="text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                >
+                  Sign in
+                </Link>
+              </div>
             ) : null}
             {!authUi.loading && isAuthenticated ? (
               <ChatUserMenu onSignOut={handleSignOut} />
@@ -1021,7 +1029,7 @@ export default function ChatPage() {
 
       {showHero ? (
         <div className="flex-1 flex flex-col items-center justify-center min-h-0 px-4 pb-6 overflow-y-auto">
-          <ChatEmptyState onPick={handleStarterPick} disabled={loading} />
+          <ChatEmptyState onPick={handleStarterPick} disabled={loading} guest={isGuest} />
           <ChatPrompt
             mode="hero"
             value={input}
