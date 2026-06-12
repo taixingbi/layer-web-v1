@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 import { ChatBrand } from "@/components/ChatBrand";
 import { authFetch } from "@/lib/auth-fetch";
+import { forgotPasswordErrorMessage } from "@/lib/gateway-error-message";
 import { webApiPaths } from "@/lib/web-api-paths";
 
 const SUCCESS_MESSAGE =
@@ -57,25 +58,13 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: email.trim() }),
       });
       const data = (await res.json()) as {
-        detail?: string;
+        detail?: unknown;
         message?: string;
         error?: string;
       };
 
       if (!res.ok) {
-        const msg =
-          typeof data.detail === "string"
-            ? data.detail
-            : typeof data.error === "string"
-              ? data.error
-              : null;
-        if (res.status >= 500 || res.status === 502) {
-          setError(msg ?? "Something went wrong. Please try again later.");
-        } else if (res.status === 400) {
-          setError(msg ?? "Enter a valid email address.");
-        } else {
-          setSubmitted(true);
-        }
+        setError(forgotPasswordErrorMessage(res.status, data));
         return;
       }
 
