@@ -221,7 +221,12 @@ export default function ChatPage() {
     } catch {
       /* ignore */
     }
-    setAuthUi({ loading: false, hasCookie: false, hasStorage: false });
+    setAuthUi((prev) => ({
+      loading: false,
+      hasCookie: false,
+      hasStorage: false,
+      guestAllowed: prev.guestAllowed,
+    }));
   }, []);
 
   const lastAssistantId = useMemo(
