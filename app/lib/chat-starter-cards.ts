@@ -1,0 +1,31 @@
+/** Recruiter-focused quick-start cards on empty /chat (click sends full prompt). */
+
+export type ChatStarterCard = {
+  id: string;
+  title: string;
+  prompt: string;
+};
+
+/** Ordered for HR / hiring manager browse path (highest intent first). */
+export const RECRUITER_STARTER_CARDS: readonly ChatStarterCard[] = [
+  {
+    id: "work-authorization",
+    title: "Work Authorization",
+    prompt: "Does Taixing require visa sponsorship?",
+  },
+  {
+    id: "ai-infrastructure",
+    title: "AI Infrastructure",
+    prompt: "Summarize his Kubernetes and platform engineering experience.",
+  },
+  {
+    id: "huntai-platform",
+    title: "HuntAI Platform",
+    prompt: "Explain the architecture and technologies behind HuntAI.",
+  },
+  {
+    id: "leadership",
+    title: "Leadership & Collaboration",
+    prompt: "Tell me about Taixing's leadership and cross-functional experience.",
+  },
+] as const;
