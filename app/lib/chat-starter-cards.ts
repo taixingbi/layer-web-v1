@@ -24,8 +24,8 @@ export const RECRUITER_STARTER_CARDS: readonly ChatStarterCard[] = [
     prompt: "Explain the architecture and technologies behind HuntAI.",
   },
   {
-    id: "leadership",
-    title: "Leadership & Collaboration",
-    prompt: "Tell me about Taixing's leadership and cross-functional experience.",
+    id: "project-ownership-impact",
+    title: "Project Ownership & Impact",
+    prompt: "Describe Taixing's project ownership and measurable impact.",
   },
 ] as const;
