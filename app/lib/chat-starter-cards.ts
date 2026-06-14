@@ -16,7 +16,7 @@ export const RECRUITER_STARTER_CARDS: readonly ChatStarterCard[] = [
   {
     id: "ai-infrastructure",
     title: "AI Infrastructure",
-    prompt: "Summarize his Kubernetes and platform engineering experience.",
+    prompt: "Summarize Taixing's Kubernetes and platform engineering experience.",
   },
   {
     id: "huntai-platform",
