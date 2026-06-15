@@ -22,37 +22,68 @@ export function ResumePdfLink({ className = linkClass }: { className?: string })
       target="_blank"
       rel="noopener noreferrer"
       className={className}
+      aria-label="Download resume PDF"
     >
       Resume
     </a>
   );
 }
-
-/** Chat header links: Resume (all breakpoints) plus Blog / Admin on sm+. */
 export function ChatPlatformLinks() {
+  const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    void authFetch(webApiPaths.profile)
-      .then((r) => (r.ok ? (r.json() as Promise<Profile>) : null))
-      .then((data) => {
-        if (alive) setIsAdmin(isAdminProfile(data));
+
+    void authFetch(webApiPaths.auth.me)
+      .then((r) => (r.ok ? (r.json() as Promise<{ signedIn?: boolean }>) : { signedIn: false }))
+      .then(async (me) => {
+        if (!alive) return;
+        const loggedIn = Boolean(me.signedIn);
+        setSignedIn(loggedIn);
+
+        if (!loggedIn) {
+          setIsAdmin(false);
+          setAuthReady(true);
+          return;
+        }
+
+        const profileRes = await authFetch(webApiPaths.profile);
+        if (!alive) return;
+        if (profileRes.ok) {
+          const profile = (await profileRes.json()) as Profile;
+          setIsAdmin(isAdminProfile(profile));
+        } else {
+          setIsAdmin(false);
+        }
+        setAuthReady(true);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (alive) {
+          setSignedIn(false);
+          setIsAdmin(false);
+          setAuthReady(true);
+        }
+      });
+
     return () => {
       alive = false;
     };
   }, []);
 
+  const showUpload = authReady && signedIn && isAdmin;
+  const showDownload = authReady && !showUpload;
+
   return (
     <nav className="flex items-center gap-1 text-sm" aria-label="Platform">
-      {isAdmin ? <ResumeAdminUploadLink /> : <ResumePdfLink />}
+      {showUpload ? <ResumeAdminUploadLink /> : null}
+      {showDownload ? <ResumePdfLink /> : null}
       <div className="hidden sm:flex items-center gap-1">
         <Link href="/blog" className={linkClass}>
           Blog
         </Link>
-        {isAdmin ? (
+        {showUpload ? (
           <Link href="/admin" className={linkClass}>
             Admin
           </Link>
