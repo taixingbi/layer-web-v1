@@ -16,7 +16,7 @@ describe("RECRUITER_STARTER_CARDS", () => {
   it("has five distinct cards with prompts", () => {
     expect(RECRUITER_STARTER_CARDS).toHaveLength(5);
     const ids = RECRUITER_STARTER_CARDS.map((c) => c.id);
-    expect(new Set(ids).size).toBe(4);
+    expect(new Set(ids).size).toBe(5);
     for (const card of RECRUITER_STARTER_CARDS) {
       expect(card.title.trim()).not.toBe("");
       expect(card.prompt.trim()).not.toBe("");
