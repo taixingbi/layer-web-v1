@@ -65,7 +65,11 @@ export function ResumeAdminUploadLink({ className = linkClass }: { className?: s
   }, []);
 
   const label =
-    status === "uploading" ? "Uploading…" : status === "ok" ? "Resume ✓" : "Resume";
+    status === "uploading"
+      ? "Uploading…"
+      : status === "ok"
+        ? "Uploaded ✓"
+        : "Upload resume";
 
   return (
     <>
@@ -74,7 +78,7 @@ export function ResumeAdminUploadLink({ className = linkClass }: { className?: s
         className={className}
         onClick={openPicker}
         disabled={status === "uploading"}
-        title="Upload resume PDF"
+        title="Upload resume (PDF)"
         aria-live="polite"
       >
         {label}
