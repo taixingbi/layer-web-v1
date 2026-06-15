@@ -8,8 +8,13 @@ describe("RECRUITER_STARTER_CARDS", () => {
     expect(RECRUITER_STARTER_CARDS[0]?.prompt).toMatch(/visa sponsorship/i);
   });
 
-  it("has four distinct cards with prompts", () => {
-    expect(RECRUITER_STARTER_CARDS).toHaveLength(4);
+  it("includes resume download after work authorization", () => {
+    expect(RECRUITER_STARTER_CARDS[1]?.id).toBe("resume-download");
+    expect(RECRUITER_STARTER_CARDS[1]?.prompt).toMatch(/download.*resume/i);
+  });
+
+  it("has five distinct cards with prompts", () => {
+    expect(RECRUITER_STARTER_CARDS).toHaveLength(5);
     const ids = RECRUITER_STARTER_CARDS.map((c) => c.id);
     expect(new Set(ids).size).toBe(4);
     for (const card of RECRUITER_STARTER_CARDS) {
