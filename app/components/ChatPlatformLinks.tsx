@@ -28,8 +28,6 @@ export function ResumePdfLink({ className = linkClass }: { className?: string })
     </a>
   );
 }
-
-/** Chat header links: guest download, admin upload (signed-in only), Blog / Admin on sm+. */
 export function ChatPlatformLinks() {
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
