@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { authFetch } from "@/lib/auth-fetch";
 import { isAdminProfile } from "@/lib/is-admin-profile";
+import { ResumeAdminUploadLink } from "@/components/ResumeAdminUploadLink";
 import { RESUME_PDF_FILENAME, resumePdfPath } from "@/lib/resume-url";
 import type { Profile } from "@/lib/profile";
 import { webApiPaths } from "@/lib/web-api-paths";
@@ -46,7 +47,7 @@ export function ChatPlatformLinks() {
 
   return (
     <nav className="flex items-center gap-1 text-sm" aria-label="Platform">
-      <ResumePdfLink />
+      {isAdmin ? <ResumeAdminUploadLink /> : <ResumePdfLink />}
       <div className="hidden sm:flex items-center gap-1">
         <Link href="/blog" className={linkClass}>
           Blog

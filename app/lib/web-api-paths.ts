@@ -8,6 +8,7 @@ const V1 = "/api/v1";
 export const webApiPaths = {
   admin: {
     overview: "/api/admin/overview",
+    resume: "/api/admin/resume",
   },
   train: {
     access: "/api/train/access",
