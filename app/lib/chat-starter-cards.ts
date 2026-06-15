@@ -14,6 +14,11 @@ export const RECRUITER_STARTER_CARDS: readonly ChatStarterCard[] = [
     prompt: "Does Taixing require visa sponsorship?",
   },
   {
+    id: "resume-download",
+    title: "Resume Download",
+    prompt: "Where can I download Taixing Bi's resume?",
+  },
+  {
     id: "ai-infrastructure",
     title: "AI Infrastructure",
     prompt: "Summarize Taixing's Kubernetes and platform engineering experience.",

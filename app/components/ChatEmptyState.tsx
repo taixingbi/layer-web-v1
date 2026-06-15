@@ -6,6 +6,7 @@
 
 import { ChatBrand } from "@/components/ChatBrand";
 import { RECRUITER_STARTER_CARDS } from "@/lib/chat-starter-cards";
+import { RESUME_PDF_FILENAME, resumePdfPath } from "@/lib/resume-url";
 
 type ChatEmptyStateProps = {
   onPick: (text: string) => void;
@@ -24,6 +25,17 @@ export function ChatEmptyState({ onPick, disabled, guest = false }: ChatEmptySta
       <p className="text-sm sm:text-[0.9375rem] text-gray-600 dark:text-gray-400 mb-2 max-w-lg mx-auto leading-relaxed">
         Recruiters can explore experience, projects, work authorization, and AI infrastructure
         expertise.
+      </p>
+      <p className="mb-6 max-w-md mx-auto">
+        <a
+          href={resumePdfPath()}
+          download={RESUME_PDF_FILENAME}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="chat-resume-download"
+        >
+          Download resume (PDF)
+        </a>
       </p>
       {guest ? (
         <p className="text-xs text-gray-500 dark:text-gray-500 mb-6 max-w-md mx-auto">
