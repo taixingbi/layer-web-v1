@@ -17,4 +17,7 @@ export const gatewayPaths = {
     resetPassword: "/v1/auth/reset-password",
     changePassword: "/v1/auth/change-password",
   },
+  admin: {
+    guestHistory: "/v1/admin/guest-history",
+  },
 } as const;

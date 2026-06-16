@@ -8,6 +8,7 @@ export type PlatformSubNavItem = {
 
 export const PLATFORM_SUB_NAV: PlatformSubNavItem[] = [
   { href: "/admin", label: "Overview", exact: true },
+  { href: "/admin/guest-history", label: "Guest history" },
   { href: "/train", label: "Train" },
   { href: "/admin/argocd", label: "CI/CD" },
   { href: "/admin/observability", label: "Observability" },
