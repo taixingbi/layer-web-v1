@@ -32,6 +32,7 @@ export default function AdminGuestHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -81,9 +82,18 @@ export default function AdminGuestHistoryPage() {
       title="Guest history"
       subtitle="Read-only audit stream for visitor chat sessions."
       actions={
-        <button type="button" className="admin-btn-secondary" onClick={() => void load()}>
-          Refresh
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="admin-btn-secondary"
+            onClick={() => setShowDetails((prev) => !prev)}
+          >
+            {showDetails ? "Hide details" : "Show details"}
+          </button>
+          <button type="button" className="admin-btn-secondary" onClick={() => void load()}>
+            Refresh
+          </button>
+        </div>
       }
     >
       <AdminGate loading={loading} forbidden={forbidden} error={error} onRetry={() => void load()}>
@@ -96,11 +106,12 @@ export default function AdminGuestHistoryPage() {
                 <tr>
                   <th>Time</th>
                   <th>Prompt</th>
+                  <th>Answer</th>
                   <th>Route</th>
-                  <th>Latency</th>
-                  <th>Session</th>
-                  <th>Trace</th>
-                  <th>IP</th>
+                  {showDetails ? <th>Latency</th> : null}
+                  {showDetails ? <th>Session</th> : null}
+                  {showDetails ? <th>Trace</th> : null}
+                  {showDetails ? <th>IP</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -108,11 +119,12 @@ export default function AdminGuestHistoryPage() {
                   <tr key={row.id ?? `${row.created_at ?? "t"}-${idx}`}>
                     <td>{row.created_at ?? "—"}</td>
                     <td>{row.prompt?.trim() ? row.prompt : "—"}</td>
+                    <td>{row.answer_preview?.trim() ? row.answer_preview : "—"}</td>
                     <td>{row.route?.trim() ? row.route : "—"}</td>
-                    <td>{latencyMs(row.latency_ms)}</td>
-                    <td>{row.session_id?.trim() ? row.session_id : "—"}</td>
-                    <td>{row.trace_id?.trim() ? row.trace_id : "—"}</td>
-                    <td>{row.client_ip?.trim() ? row.client_ip : "—"}</td>
+                    {showDetails ? <td>{latencyMs(row.latency_ms)}</td> : null}
+                    {showDetails ? <td>{row.session_id?.trim() ? row.session_id : "—"}</td> : null}
+                    {showDetails ? <td>{row.trace_id?.trim() ? row.trace_id : "—"}</td> : null}
+                    {showDetails ? <td>{row.client_ip?.trim() ? row.client_ip : "—"}</td> : null}
                   </tr>
                 ))}
               </tbody>
