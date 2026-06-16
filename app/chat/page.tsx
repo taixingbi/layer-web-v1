@@ -75,6 +75,7 @@ export default function ChatPage() {
   /** Browser fetch start for ``mergeClientLatency`` on stream_end / JSON. */
   const clientChatT0Ref = useRef<number | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
+  const prevIsGuestRef = useRef(false);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -123,6 +124,21 @@ export default function ChatPage() {
   const isAuthenticated = authUi.hasCookie || authUi.hasStorage;
   const canUseChat = isAuthenticated || authUi.guestAllowed;
   const isGuest = !isAuthenticated && authUi.guestAllowed;
+
+  useEffect(() => {
+    const wasGuest = prevIsGuestRef.current;
+    if (wasGuest && isAuthenticated) {
+      setMessages([]);
+      setActiveConversationId(null);
+      persistActiveConversationId(null);
+      try {
+        sessionStorage.removeItem("layer_chat_session_id");
+      } catch {
+        /* storage blocked */
+      }
+    }
+    prevIsGuestRef.current = isGuest;
+  }, [isAuthenticated, isGuest]);
 
   const refreshConversations = useCallback(async () => {
     if (!isAuthenticated) return;
