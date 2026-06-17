@@ -24,6 +24,8 @@ export async function probeSupabaseHealth(): Promise<AdminServiceHealth> {
       name: "Supabase",
       status: "unknown",
       detail: "SUPABASE_URL or service key not configured",
+      summary: "SUPABASE_URL or service key not configured",
+      probeResponse: null,
     };
   }
 
@@ -35,6 +37,8 @@ export async function probeSupabaseHealth(): Promise<AdminServiceHealth> {
 
   let authOk = false;
   let restOk = false;
+  let authStatus = 0;
+  let restStatus = 0;
   let detail: string | null = null;
 
   try {
@@ -54,6 +58,8 @@ export async function probeSupabaseHealth(): Promise<AdminServiceHealth> {
     ]);
     authOk = authRes.ok;
     restOk = restRes.ok;
+    authStatus = authRes.status;
+    restStatus = restRes.status;
     if (!authOk && !restOk) {
       detail = `auth ${authRes.status}, rest ${restRes.status}`;
     } else if (!restOk) {
@@ -65,10 +71,23 @@ export async function probeSupabaseHealth(): Promise<AdminServiceHealth> {
     detail = err instanceof Error ? err.message : String(err);
   }
 
+  const status = supabaseStatus(configured, restOk, authOk);
+
   return {
     id: "supabase",
     name: "Supabase",
-    status: supabaseStatus(configured, restOk, authOk),
+    status,
     detail,
+    summary: detail,
+    probeResponse: {
+      health: {
+        auth_ok: authOk,
+        auth_status: authStatus,
+        rest_ok: restOk,
+        rest_status: restStatus,
+        ...(detail ? { detail } : {}),
+      },
+      meta: { healthOk: restOk && authOk, readyOk: null },
+    },
   };
 }

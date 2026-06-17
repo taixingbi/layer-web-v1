@@ -2,13 +2,28 @@
 
 export type ServiceStatus = "healthy" | "degraded" | "unhealthy" | "unknown";
 
+/** Health/readiness probe bodies returned to the admin UI inspect panel. */
+export type AdminServiceProbeResponse = {
+  health?: Record<string, unknown>;
+  ready?: Record<string, unknown>;
+  meta?: {
+    healthOk?: boolean;
+    readyOk?: boolean | null;
+  };
+};
+
 export type AdminServiceHealth = {
   id: string;
   name: string;
   status: ServiceStatus;
   version?: string | null;
   p50Ms?: number | null;
+  /** @deprecated prefer summary — kept for backwards compatibility */
   detail?: string | null;
+  /** One-line hover hint (failures or dependency summary). */
+  summary?: string | null;
+  /** Full probe JSON for click-to-inspect. */
+  probeResponse?: AdminServiceProbeResponse | null;
 };
 
 export type AdminOverviewKpis = {

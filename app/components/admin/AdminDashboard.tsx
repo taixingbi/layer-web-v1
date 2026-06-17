@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 
 import type {
   AdminGpuDevice,
@@ -64,18 +64,97 @@ function Panel({ title, children, className = "" }: { title: string; children: R
   );
 }
 
-function ServiceHealthList({ services }: { services: AdminServiceHealth[] }) {
+function ServiceHealthInspectModal({
+  service,
+  onClose,
+}: {
+  service: AdminServiceHealth;
+  onClose: () => void;
+}) {
+  const json = JSON.stringify(service.probeResponse ?? { note: "No probe payload" }, null, 2);
+
+  const copy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+    } catch {
+      /* ignore */
+    }
+  }, [json]);
+
   return (
-    <ul className="admin-health-list">
-      {services.map((svc) => (
-        <li key={svc.id} className="admin-health-row">
-          <span className="admin-health-name">{svc.name}</span>
-          <span className={statusClass(svc.status)} title={svc.detail ?? undefined}>
-            {statusIcon(svc.status)}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="admin-health-inspect-backdrop" role="presentation" onClick={onClose}>
+      <div
+        className="admin-health-inspect-panel"
+        role="dialog"
+        aria-labelledby="admin-health-inspect-title"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="admin-health-inspect-header">
+          <div>
+            <h3 id="admin-health-inspect-title" className="admin-health-inspect-title">
+              {service.name}
+            </h3>
+            <p className="admin-health-inspect-subtitle">
+              {statusIcon(service.status)} {service.status}
+              {service.summary ? ` — ${service.summary}` : ""}
+            </p>
+          </div>
+          <div className="admin-health-inspect-actions">
+            <button type="button" className="admin-btn-secondary" onClick={() => void copy()}>
+              Copy JSON
+            </button>
+            <button type="button" className="admin-btn-secondary" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
+        <pre className="admin-health-inspect-pre">{json}</pre>
+      </div>
+    </div>
+  );
+}
+
+function ServiceHealthList({ services }: { services: AdminServiceHealth[] }) {
+  const [inspect, setInspect] = useState<AdminServiceHealth | null>(null);
+
+  return (
+    <>
+      <ul className="admin-health-list">
+        {services.map((svc) => {
+          const hint = svc.summary ?? svc.detail ?? undefined;
+          const clickable = Boolean(svc.probeResponse);
+          return (
+            <li key={svc.id} className="admin-health-row">
+              {clickable ? (
+                <button
+                  type="button"
+                  className="admin-health-name admin-health-name--btn"
+                  title={hint}
+                  onClick={() => setInspect(svc)}
+                >
+                  {svc.name}
+                </button>
+              ) : (
+                <span className="admin-health-name" title={hint}>
+                  {svc.name}
+                </span>
+              )}
+              <button
+                type="button"
+                className={`${statusClass(svc.status)} admin-health-status-btn`}
+                title={hint ?? (clickable ? "View probe response" : undefined)}
+                disabled={!clickable}
+                onClick={() => clickable && setInspect(svc)}
+              >
+                {statusIcon(svc.status)}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {inspect ? <ServiceHealthInspectModal service={inspect} onClose={() => setInspect(null)} /> : null}
+    </>
   );
 }
 
