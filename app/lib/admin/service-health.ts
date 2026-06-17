@@ -4,20 +4,30 @@
 
 import { adminConfig, adminServiceTargets, type AdminServiceTarget } from "@/lib/admin/config";
 import { probeRedisHealth } from "@/lib/admin/redis-health";
+import {
+  summarizeServiceProbe,
+} from "@/lib/admin/service-health-summary";
 import { probeSupabaseHealth } from "@/lib/admin/supabase-health";
-import type { AdminServiceHealth, ServiceStatus } from "@/lib/admin/types";
+import type { AdminServiceHealth, AdminServiceProbeResponse, ServiceStatus } from "@/lib/admin/types";
+
+type FetchJsonResult = {
+  ok: boolean;
+  status: number;
+  data: Record<string, unknown>;
+};
 
 type ProbeResult = {
   healthOk: boolean;
   readyOk: boolean | null;
   version: string | null;
   detail: string | null;
+  healthBody: Record<string, unknown> | null;
+  readyBody: Record<string, unknown> | null;
+  summary: string | null;
+  probeResponse: AdminServiceProbeResponse | null;
 };
 
-async function fetchJson(
-  url: string,
-  timeoutMs: number,
-): Promise<{ ok: boolean; data: Record<string, unknown> }> {
+async function fetchJson(url: string, timeoutMs: number): Promise<FetchJsonResult> {
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -30,12 +40,16 @@ async function fetchJson(
       try {
         data = JSON.parse(text) as Record<string, unknown>;
       } catch {
-        data = { raw: text.slice(0, 120) };
+        data = { raw: text.slice(0, 500) };
       }
     }
-    return { ok: res.ok, data };
+    return { ok: res.ok, status: res.status, data };
   } catch (err) {
-    return { ok: false, data: { error: err instanceof Error ? err.message : String(err) } };
+    return {
+      ok: false,
+      status: 0,
+      data: { error: err instanceof Error ? err.message : String(err) },
+    };
   }
 }
 
@@ -54,19 +68,38 @@ function statusFromProbe(probe: ProbeResult, configured: boolean): ServiceStatus
   return "unhealthy";
 }
 
+function healthDetailFromBody(data: Record<string, unknown>): string | null {
+  if (typeof data.error === "string" && data.error.trim()) return data.error.trim();
+  if (typeof data.detail === "string" && data.detail.trim()) return data.detail.trim();
+  return null;
+}
+
 async function probeService(target: AdminServiceTarget): Promise<ProbeResult> {
   const base = target.baseUrl.replace(/\/$/, "");
   const timeoutMs = target.timeoutMs ?? adminConfig.healthTimeoutMs;
   if (!base) {
-    return { healthOk: false, readyOk: null, version: null, detail: "URL not configured" };
+    return {
+      healthOk: false,
+      readyOk: null,
+      version: null,
+      detail: "URL not configured",
+      healthBody: null,
+      readyBody: null,
+      summary: "URL not configured",
+      probeResponse: null,
+    };
   }
 
   const healthPath = target.healthPath ?? "/health";
   const health = await fetchJson(`${base}${healthPath}`, timeoutMs);
   let readyOk: boolean | null = null;
+  let readyBody: Record<string, unknown> | null = null;
+  let readyStatus = 0;
   if (target.readyPath) {
     const ready = await fetchJson(`${base}${target.readyPath}`, timeoutMs);
     readyOk = ready.ok;
+    readyBody = ready.data;
+    readyStatus = ready.status;
   }
 
   let version = versionFromPayload(health.data);
@@ -77,18 +110,32 @@ async function probeService(target: AdminServiceTarget): Promise<ProbeResult> {
     }
   }
 
-  const detail =
-    typeof health.data.error === "string"
-      ? health.data.error
-      : typeof health.data.detail === "string"
-        ? health.data.detail
-        : null;
+  const detail = healthDetailFromBody(health.data);
+  const summary = summarizeServiceProbe({
+    healthOk: health.ok,
+    readyOk,
+    healthDetail: detail,
+    healthBody: health.data,
+    readyBody,
+  });
+
+  const probeResponse: AdminServiceProbeResponse = {
+    health: { ...health.data, _http_status: health.status },
+    ...(readyBody
+      ? { ready: { ...readyBody, _http_status: readyStatus || (readyOk ? 200 : 503) } }
+      : {}),
+    meta: { healthOk: health.ok, readyOk },
+  };
 
   return {
     healthOk: health.ok,
     readyOk,
     version,
     detail,
+    healthBody: health.data,
+    readyBody,
+    summary,
+    probeResponse,
   };
 }
 
@@ -105,7 +152,9 @@ export async function fetchServiceHealth(): Promise<AdminServiceHealth[]> {
           name: target.name,
           status: statusFromProbe(probe, configured),
           version: probe.version,
-          detail: probe.detail,
+          detail: probe.summary ?? probe.detail,
+          summary: probe.summary,
+          probeResponse: probe.probeResponse,
         } satisfies AdminServiceHealth;
       }),
     ),

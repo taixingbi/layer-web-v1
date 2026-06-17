@@ -62,6 +62,8 @@ export async function probeRedisHealth(): Promise<AdminServiceHealth> {
       name: "Redis",
       status: "unknown",
       detail: "REDIS_URL not configured",
+      summary: "REDIS_URL not configured",
+      probeResponse: null,
     };
   }
 
@@ -72,24 +74,42 @@ export async function probeRedisHealth(): Promise<AdminServiceHealth> {
       name: "Redis",
       status: "unhealthy",
       detail: "Invalid REDIS_URL",
+      summary: "Invalid REDIS_URL",
+      probeResponse: { health: { error: "Invalid REDIS_URL" }, meta: { healthOk: false } },
     };
   }
 
   try {
     const ok = await redisPing(endpoint.host, endpoint.port, adminConfig.healthTimeoutMs);
     const status: ServiceStatus = ok ? "healthy" : "unhealthy";
+    const summary = ok ? null : "PING failed";
     return {
       id: "redis",
       name: "Redis",
       status,
-      detail: ok ? null : "PING failed",
+      detail: summary,
+      summary,
+      probeResponse: {
+        health: {
+          command: "PING",
+          endpoint: `${endpoint.host}:${endpoint.port}`,
+          ok,
+        },
+        meta: { healthOk: ok, readyOk: null },
+      },
     };
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     return {
       id: "redis",
       name: "Redis",
       status: "unhealthy",
-      detail: err instanceof Error ? err.message : String(err),
+      detail: msg,
+      summary: msg,
+      probeResponse: {
+        health: { command: "PING", error: msg },
+        meta: { healthOk: false },
+      },
     };
   }
 }
