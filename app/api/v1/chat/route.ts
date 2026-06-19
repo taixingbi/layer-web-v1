@@ -4,6 +4,7 @@
 
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { gatewayClientIpHeaders } from "@/lib/client-ip";
 import { config } from "@/lib/config";
 import { mergeGatewayLatencyWithBff } from "@/lib/chat-latency";
 import { msSince } from "@/lib/timing";
@@ -322,6 +323,7 @@ export async function POST(req: NextRequest) {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
     Accept: "text/event-stream",
+    ...gatewayClientIpHeaders(req),
   };
   if (sessionId) headers["X-Session-Id"] = sessionId;
   if (conversationId && typeof conversationId === "string" && conversationId.trim()) {
