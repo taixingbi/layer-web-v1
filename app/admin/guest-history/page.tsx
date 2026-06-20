@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { AdminGate, AdminShell } from "@/components/admin/AdminShell";
 import { authFetch } from "@/lib/auth-fetch";
+import { formatGuestHistoryLatency } from "@/lib/guest-history-latency";
 import { webApiPaths } from "@/lib/web-api-paths";
 
 type GuestEvent = {
@@ -26,7 +27,6 @@ function latencyMs(v: GuestEvent["latency_ms"]): string {
   if (typeof total === "number" && Number.isFinite(total)) return `${Math.round(total)}ms`;
   return "—";
 }
-
 export default function AdminGuestHistoryPage() {
   const [events, setEvents] = useState<GuestEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,7 +121,7 @@ export default function AdminGuestHistoryPage() {
                     <td>{row.prompt?.trim() ? row.prompt : "—"}</td>
                     <td>{row.answer_preview?.trim() ? row.answer_preview : "—"}</td>
                     <td>{row.route?.trim() ? row.route : "—"}</td>
-                    {showDetails ? <td>{latencyMs(row.latency_ms)}</td> : null}
+                    {showDetails ? <td>{formatGuestHistoryLatency(row.latency_ms)}</td> : null}
                     {showDetails ? <td>{row.session_id?.trim() ? row.session_id : "—"}</td> : null}
                     {showDetails ? <td>{row.trace_id?.trim() ? row.trace_id : "—"}</td> : null}
                     {showDetails ? <td>{row.client_ip?.trim() ? row.client_ip : "—"}</td> : null}
