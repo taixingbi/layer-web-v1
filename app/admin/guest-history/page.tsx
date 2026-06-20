@@ -21,6 +21,12 @@ type GuestEvent = {
 
 type GuestHistoryResponse = { events?: GuestEvent[] };
 
+function latencyMs(v: GuestEvent["latency_ms"]): string {
+  if (!v || typeof v !== "object") return "—";
+  const total = (v as { total_ms?: unknown }).total_ms;
+  if (typeof total === "number" && Number.isFinite(total)) return `${Math.round(total)}ms`;
+  return "—";
+}
 export default function AdminGuestHistoryPage() {
   const [events, setEvents] = useState<GuestEvent[]>([]);
   const [loading, setLoading] = useState(true);
