@@ -75,7 +75,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BASE="public.ecr.aws/docker/library/node:20-alpine"
+          BASE="public.ecr.aws/docker/library/node:22-alpine"
           for attempt in 1 2 3 4 5; do
             if docker pull "$BASE"; then exit 0; fi
             echo "pull failed (attempt $attempt), retrying in 20s..."
