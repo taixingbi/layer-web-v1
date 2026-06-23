@@ -1773,6 +1773,7 @@ body {
 .blog-checklist,
 .blog-list-cross,
 .blog-list-check,
+.blog-list-ordered,
 .blog-link-list {
   margin: 0.75rem 0 1rem;
   padding-left: 1.25rem;
@@ -1784,6 +1785,9 @@ body {
 .blog-list-check li {
   margin-bottom: 0.35rem;
   list-style: "✅ ";
+}
+.blog-list-ordered li {
+  margin-bottom: 0.35rem;
 }
 .blog-link-list {
   list-style: none;
