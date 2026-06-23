@@ -14,6 +14,16 @@ export type BlogPostMeta = {
 
 export const BLOG_POSTS: BlogPostMeta[] = [
   {
+    slug: "gpu-llm-serving-kubernetes",
+    title: "Building a Production-Ready GPU LLM Serving Platform on Kubernetes",
+    description:
+      "EKS, Karpenter, vLLM, Prometheus, and KEDA — queue-first autoscaling signals, production hardening, and a Terraform reference repo for Qwen on G5.",
+    publishedAt: "2026-06-17",
+    updatedAt: "2026-06-17",
+    tags: ["EKS", "vLLM", "Karpenter", "KEDA", "GPU inference", "Prometheus"],
+    readingTimeMinutes: 10,
+  },
+  {
     slug: "building-an-ai-orchestrator",
     title: "From Prompt to Response: Inside HuntAI's Orchestrator",
     description:
