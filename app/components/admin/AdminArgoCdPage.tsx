@@ -22,6 +22,9 @@ const ARGOCD_SHARED_ALL_APPS: ArgoCdAppLink[] = [
   ...ARGOCD_SHARED_MONITOR_APPS,
 ];
 
+const SHARED_PLATFORM_NOTE =
+  "Gateways, vector store, vLLM, and observability — ai-dev only.";
+
 const CICD_ENV_CONFIG: Record<
   CicdEnv,
   {
@@ -32,8 +35,6 @@ const CICD_ENV_CONFIG: Record<
     panelClass: string;
     tintClass: string;
     toggleClass: string;
-    sharedApps: ArgoCdAppLink[] | null;
-    sharedNote: string | null;
   }
 > = {
   dev: {
@@ -44,8 +45,6 @@ const CICD_ENV_CONFIG: Record<
     panelClass: "admin-panel--dev",
     tintClass: "admin-argocd-stack-panel--dev",
     toggleClass: "admin-cicd-env-toggle__btn--dev",
-    sharedApps: ARGOCD_SHARED_ALL_APPS,
-    sharedNote: "Gateways, vector store, vLLM, and observability — ai-dev only.",
   },
   prod: {
     workflow: ARGOCD_PROD_WORKFLOW,
@@ -55,8 +54,6 @@ const CICD_ENV_CONFIG: Record<
     panelClass: "admin-panel--prod",
     tintClass: "admin-argocd-stack-panel--prod",
     toggleClass: "admin-cicd-env-toggle__btn--prod",
-    sharedApps: null,
-    sharedNote: null,
   },
 };
 
@@ -68,13 +65,14 @@ function CicdEnvToggle({
   onChange: (env: CicdEnv) => void;
 }) {
   return (
-    <div className="admin-cicd-env-toggle" role="tablist" aria-label="Environment">
+    <div className="admin-cicd-env-toggle" role="tablist" aria-label="Argo CD project">
       {(["dev", "prod"] as const).map((key) => (
         <button
           key={key}
           type="button"
           role="tab"
           aria-selected={env === key}
+          aria-label={`${CICD_ENV_CONFIG[key].project} applications`}
           className={[
             "admin-cicd-env-toggle__btn",
             CICD_ENV_CONFIG[key].toggleClass,
@@ -84,7 +82,7 @@ function CicdEnvToggle({
             .join(" ")}
           onClick={() => onChange(key)}
         >
-          {key === "dev" ? "Dev" : "Prod"}
+          {CICD_ENV_CONFIG[key].project}
         </button>
       ))}
     </div>
@@ -215,42 +213,27 @@ export function AdminArgoCdPage() {
           className={`admin-panel admin-argocd-stack-panel ${config.panelClass} ${config.tintClass}`}
         >
           <div className="admin-argocd-stack-header">
-            <h2 className="admin-panel-title">
-              Applications
-              <span className="admin-cicd-env-badge">{config.project}</span>
-            </h2>
+            <h2 className="admin-panel-title">Applications</h2>
           </div>
           <p className="admin-muted admin-inline-note">
             Push <code className="admin-code">{config.branch}</code> {config.note}
           </p>
-          {env === "prod" ? (
-            <p className="admin-muted admin-inline-note">
-              Shared gateways, Qdrant, and vLLM run in <code className="admin-code">ai-dev</code> — switch
-              to Dev for platform links.
-            </p>
-          ) : null}
           <CicdWorkflowColumn workflow={config.workflow} />
         </section>
 
-        {config.sharedApps ? (
-          <>
-            <div className="admin-argocd-funnel admin-argocd-funnel--single">
-              <span className="admin-argocd-funnel-label">depends on</span>
-              <span className="admin-argocd-funnel-arrow" aria-hidden />
-            </div>
+        <div className="admin-argocd-funnel admin-argocd-funnel--single">
+          <span className="admin-argocd-funnel-label">depends on</span>
+          <span className="admin-argocd-funnel-arrow" aria-hidden />
+        </div>
 
-            <section className="admin-panel admin-argocd-shared-panel admin-panel--dev">
-              <h2 className="admin-panel-title">
-                Shared platform
-                <span className="admin-cicd-env-badge">ai-dev</span>
-              </h2>
-              {config.sharedNote ? (
-                <p className="admin-muted admin-inline-note">{config.sharedNote}</p>
-              ) : null}
-              <CicdSharedGrid apps={config.sharedApps} />
-            </section>
-          </>
-        ) : null}
+        <section className="admin-panel admin-argocd-shared-panel admin-panel--dev">
+          <h2 className="admin-panel-title">
+            Shared platform
+            <span className="admin-cicd-env-badge">ai-dev</span>
+          </h2>
+          <p className="admin-muted admin-inline-note">{SHARED_PLATFORM_NOTE}</p>
+          <CicdSharedGrid apps={ARGOCD_SHARED_ALL_APPS} />
+        </section>
       </div>
     </AdminShell>
   );
