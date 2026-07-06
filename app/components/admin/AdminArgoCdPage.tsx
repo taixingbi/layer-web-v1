@@ -14,8 +14,7 @@ import {
   type ArgoCdAppLink,
   type ArgoCdStackWorkflow,
 } from "@/lib/admin/argocd-links";
-
-type CicdEnv = "dev" | "prod";
+import { cicdEnvFromHostname, type CicdDeployEnv } from "@/lib/admin/cicd-env";
 
 const ARGOCD_SHARED_ALL_APPS: ArgoCdAppLink[] = [
   ...ARGOCD_SHARED_PLATFORM_APPS,
@@ -26,7 +25,7 @@ const SHARED_PLATFORM_NOTE =
   "Gateways, vector store, vLLM, and observability — ai-dev only.";
 
 const CICD_ENV_CONFIG: Record<
-  CicdEnv,
+  CicdDeployEnv,
   {
     workflow: ArgoCdStackWorkflow;
     project: string;
@@ -34,7 +33,6 @@ const CICD_ENV_CONFIG: Record<
     note: string;
     panelClass: string;
     tintClass: string;
-    toggleClass: string;
   }
 > = {
   dev: {
@@ -44,7 +42,6 @@ const CICD_ENV_CONFIG: Record<
     note: "branch pins image",
     panelClass: "admin-panel--dev",
     tintClass: "admin-argocd-stack-panel--dev",
-    toggleClass: "admin-cicd-env-toggle__btn--dev",
   },
   prod: {
     workflow: ARGOCD_PROD_WORKFLOW,
@@ -53,40 +50,14 @@ const CICD_ENV_CONFIG: Record<
     note: "· manual sync",
     panelClass: "admin-panel--prod",
     tintClass: "admin-argocd-stack-panel--prod",
-    toggleClass: "admin-cicd-env-toggle__btn--prod",
   },
 };
 
-function CicdEnvToggle({
-  env,
-  onChange,
-}: {
-  env: CicdEnv;
-  onChange: (env: CicdEnv) => void;
-}) {
-  return (
-    <div className="admin-cicd-env-toggle" role="tablist" aria-label="Argo CD project">
-      {(["dev", "prod"] as const).map((key) => (
-        <button
-          key={key}
-          type="button"
-          role="tab"
-          aria-selected={env === key}
-          aria-label={`${CICD_ENV_CONFIG[key].project} applications`}
-          className={[
-            "admin-cicd-env-toggle__btn",
-            CICD_ENV_CONFIG[key].toggleClass,
-            env === key ? "admin-cicd-env-toggle__btn--active" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          onClick={() => onChange(key)}
-        >
-          {CICD_ENV_CONFIG[key].project}
-        </button>
-      ))}
-    </div>
+function useCicdDeployEnv(): CicdDeployEnv {
+  const [env] = useState<CicdDeployEnv>(() =>
+    typeof window !== "undefined" ? cicdEnvFromHostname(window.location.hostname) : "dev",
   );
+  return env;
 }
 
 function CicdPipelineLinks({ app }: { app: ArgoCdAppLink }) {
@@ -186,7 +157,7 @@ function CicdSharedGrid({ apps }: { apps: ArgoCdAppLink[] }) {
 
 export function AdminArgoCdPage() {
   const uiBase = argocdUiBase();
-  const [env, setEnv] = useState<CicdEnv>("dev");
+  const env = useCicdDeployEnv();
   const config = CICD_ENV_CONFIG[env];
 
   return (
@@ -194,26 +165,25 @@ export function AdminArgoCdPage() {
       title="CI/CD"
       subtitle="GitHub Actions → Argo CD. Links only — no CI or GitOps API from HuntAI."
       actions={
-        <div className="admin-toolbar-actions">
-          <CicdEnvToggle env={env} onChange={setEnv} />
-          <a
-            href={uiBase}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="admin-btn-secondary"
-          >
-            Open Argo CD
-          </a>
-        </div>
+        <a
+          href={uiBase}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="admin-btn-secondary"
+        >
+          Open Argo CD
+        </a>
       }
     >
       <div className="admin-dashboard admin-argocd-layout">
         <section
-          key={env}
           className={`admin-panel admin-argocd-stack-panel ${config.panelClass} ${config.tintClass}`}
         >
           <div className="admin-argocd-stack-header">
-            <h2 className="admin-panel-title">Applications</h2>
+            <h2 className="admin-panel-title">
+              Applications
+              <span className="admin-cicd-env-badge">{config.project}</span>
+            </h2>
           </div>
           <p className="admin-muted admin-inline-note">
             Push <code className="admin-code">{config.branch}</code> {config.note}
