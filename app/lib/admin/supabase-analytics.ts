@@ -4,6 +4,7 @@
 
 import { adminConfig } from "@/lib/admin/config";
 import { aggregateRagMetricsFromMetaRows } from "@/lib/admin/supabase-rag-metrics";
+import { supabaseGet, type SupabaseRow } from "@/lib/admin/supabase-rest";
 import type {
   AdminFeedbackSection,
   AdminRecentRequest,
@@ -20,37 +21,6 @@ const FEEDBACK_REASON_LABELS: Record<string, string> = {
   style_tone: "Style / tone",
   other: "Other",
 };
-
-type SupabaseRow = Record<string, unknown>;
-
-function supabaseAuthHeaders(key: string): Record<string, string> {
-  const headers: Record<string, string> = {
-    apikey: key,
-    Accept: "application/json",
-  };
-  // New sb_secret_* keys are not JWTs; Bearer must be omitted.
-  if (key.startsWith("eyJ")) {
-    headers.Authorization = `Bearer ${key}`;
-  }
-  return headers;
-}
-
-async function supabaseGet(path: string): Promise<SupabaseRow[] | null> {
-  const base = adminConfig.supabaseUrl;
-  const key = adminConfig.supabaseServiceKey;
-  if (!base || !key) return null;
-  try {
-    const res = await fetch(`${base}/rest/v1/${path}`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(adminConfig.supabaseTimeoutMs),
-      headers: supabaseAuthHeaders(key),
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as SupabaseRow[];
-  } catch {
-    return null;
-  }
-}
 
 function metadataObject(row: SupabaseRow): Record<string, unknown> {
   const meta = row.metadata;

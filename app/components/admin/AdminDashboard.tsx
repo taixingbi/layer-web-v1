@@ -21,6 +21,23 @@ function fmtNum(value: number | null | undefined, suffix = ""): string {
   return `${value}${suffix}`;
 }
 
+function fmtPct(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${Math.round(value * 1000) / 10}%`;
+}
+
+function fmtDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function fmtShaPrefix(sha: string | null | undefined): string {
+  if (!sha) return "—";
+  return sha.length > 8 ? `${sha.slice(0, 8)}…` : sha;
+}
+
 function fmtMs(ms: number | null | undefined): string {
   if (ms == null) return "—";
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
@@ -61,6 +78,112 @@ function Panel({ title, children, className = "" }: { title: string; children: R
       <h2 className="admin-panel-title">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function RagLivePanel({ rag }: { rag: AdminOverviewPayload["rag"] }) {
+  return (
+    <Panel title="RAG — Live">
+      {rag.source === "supabase" ? (
+        <p className="admin-muted admin-inline-note">Live traffic (Supabase, 24h)</p>
+      ) : rag.source === "prometheus" ? (
+        <p className="admin-muted admin-inline-note">Prometheus (5m rate)</p>
+      ) : (
+        <p className="admin-muted admin-inline-note">No live RAG telemetry</p>
+      )}
+      <dl className="admin-dl">
+        <div>
+          <dt>Retrieval P50</dt>
+          <dd>{fmtMs(rag.retrievalP50Ms)}</dd>
+        </div>
+        <div>
+          <dt>Embed P50</dt>
+          <dd>{fmtMs(rag.embedP50Ms)}</dd>
+        </div>
+        <div>
+          <dt>Rerank P50</dt>
+          <dd>{fmtMs(rag.rerankP50Ms)}</dd>
+        </div>
+        <div>
+          <dt>Context size</dt>
+          <dd>{fmtNum(rag.contextSize)}</dd>
+        </div>
+        <div>
+          <dt>Hit rate</dt>
+          <dd>{rag.hitRate != null ? `${rag.hitRate}%` : "—"}</dd>
+        </div>
+      </dl>
+    </Panel>
+  );
+}
+
+function RagEvalPanel({ ragEval }: { ragEval: AdminOverviewPayload["ragEval"] }) {
+  const hasRun = ragEval.source === "supabase" && ragEval.runId != null;
+  return (
+    <Panel title="RAG — Gold eval">
+      {hasRun ? (
+        <p className="admin-muted admin-inline-note">
+          Latest run ({ragEval.env}
+          {ragEval.collectionBase ? ` · ${ragEval.collectionBase}` : ""})
+        </p>
+      ) : (
+        <p className="admin-muted admin-inline-note">
+          No eval runs in Supabase (run <code className="admin-code">run_eval --record-supabase</code>)
+        </p>
+      )}
+      <dl className="admin-dl">
+        <div>
+          <dt>MRR (rerank)</dt>
+          <dd>{fmtPct(ragEval.mrrRerank)}</dd>
+        </div>
+        <div>
+          <dt>Recall@5</dt>
+          <dd>{fmtPct(ragEval.recallAt5Rerank)}</dd>
+        </div>
+        <div>
+          <dt>NDCG@5</dt>
+          <dd>{fmtPct(ragEval.ndcgAt5Rerank)}</dd>
+        </div>
+        <div>
+          <dt>LLM judge</dt>
+          <dd>{fmtPct(ragEval.llmJudgeScoreMean)}</dd>
+        </div>
+        <div>
+          <dt>Latency P50</dt>
+          <dd>{fmtMs(ragEval.latencyMsP50)}</dd>
+        </div>
+        <div>
+          <dt>Latency P95</dt>
+          <dd>{fmtMs(ragEval.latencyMsP95)}</dd>
+        </div>
+        <div>
+          <dt>Rows evaluated</dt>
+          <dd>{fmtNum(ragEval.rowsEvaluated)}</dd>
+        </div>
+        <div>
+          <dt>Pass</dt>
+          <dd>
+            {ragEval.pass == null ? (
+              "—"
+            ) : (
+              <span className={`admin-pill admin-pill--${ragEval.pass ? "success" : "error"}`}>
+                {ragEval.pass ? "pass" : "fail"}
+              </span>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Last run</dt>
+          <dd>{fmtDateTime(ragEval.evaluatedAt)}</dd>
+        </div>
+        <div>
+          <dt>Gold SHA</dt>
+          <dd>
+            <code className="admin-code">{fmtShaPrefix(ragEval.goldDatasetSha256)}</code>
+          </dd>
+        </div>
+      </dl>
+    </Panel>
   );
 }
 
@@ -281,7 +404,7 @@ function RecentRequestsTable({ rows }: { rows: AdminRecentRequest[] }) {
 }
 
 export function AdminDashboard({ data }: Props) {
-  const { overview, services, router, rag, inference, gpu, recentRequests, feedback } = data;
+  const { overview, services, router, rag, ragEval, inference, gpu, recentRequests, feedback } = data;
 
   return (
     <div className="admin-dashboard">
@@ -338,35 +461,10 @@ export function AdminDashboard({ data }: Props) {
           <h3 className="admin-section-label">Route distribution</h3>
           <RouteDistribution distribution={router.distribution} />
         </Panel>
-        <Panel title="RAG Metrics">
-          {rag.source === "supabase" ? (
-            <p className="admin-muted admin-inline-note">Live traffic (Supabase, 24h)</p>
-          ) : rag.source === "prometheus" ? (
-            <p className="admin-muted admin-inline-note">Prometheus (5m rate)</p>
-          ) : null}
-          <dl className="admin-dl">
-            <div>
-              <dt>Retrieval P50</dt>
-              <dd>{fmtMs(rag.retrievalP50Ms)}</dd>
-            </div>
-            <div>
-              <dt>Embed P50</dt>
-              <dd>{fmtMs(rag.embedP50Ms)}</dd>
-            </div>
-            <div>
-              <dt>Rerank P50</dt>
-              <dd>{fmtMs(rag.rerankP50Ms)}</dd>
-            </div>
-            <div>
-              <dt>Context size</dt>
-              <dd>{fmtNum(rag.contextSize)}</dd>
-            </div>
-            <div>
-              <dt>Hit rate</dt>
-              <dd>{rag.hitRate != null ? `${rag.hitRate}%` : "—"}</dd>
-            </div>
-          </dl>
-        </Panel>
+        <div className="admin-rag-column">
+          <RagLivePanel rag={rag} />
+          <RagEvalPanel ragEval={ragEval} />
+        </div>
       </div>
 
       <div className="admin-row admin-row--half">

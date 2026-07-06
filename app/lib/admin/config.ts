@@ -116,6 +116,11 @@ export const adminConfig = {
     return fromEnv("ADMIN_INFERENCE_RUNTIME", "vLLM");
   },
 
+  /** Env label for ``rag_eval_runs`` (``dev`` / ``prod``). */
+  get ragEvalEnv(): string {
+    return fromEnv("ADMIN_RAG_EVAL_ENV", "prod");
+  },
+
   healthTimeoutMs: 3_000,
   prometheusTimeoutMs: 5_000,
   supabaseTimeoutMs: 5_000,
