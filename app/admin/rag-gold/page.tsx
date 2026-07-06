@@ -30,7 +30,6 @@ function AdminRagGoldPageInner() {
   const [forbidden, setForbidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [showAnswerCol, setShowAnswerCol] = useState(false);
 
   const offset = (page - 1) * GOLD_ROWS_DEFAULT_LIMIT;
 
@@ -140,13 +139,6 @@ function AdminRagGoldPageInner() {
               GitHub
             </a>
           ) : null}
-          <button
-            type="button"
-            className="admin-btn-secondary"
-            onClick={() => setShowAnswerCol((prev) => !prev)}
-          >
-            {showAnswerCol ? "Hide answers" : "Show answers"}
-          </button>
           <button type="button" className="admin-btn-secondary" onClick={() => void load()}>
             Refresh
           </button>
@@ -190,8 +182,8 @@ function AdminRagGoldPageInner() {
                       <tr>
                         <th>#</th>
                         <th>Question</th>
-                        {showAnswerCol ? <th>Gold answer</th> : null}
-                        <th>Expected</th>
+                        <th>Expected answer</th>
+                        <th>Behavior</th>
                         <th>Bucket</th>
                         <th>Must contain</th>
                         <th>Source</th>
@@ -209,11 +201,9 @@ function AdminRagGoldPageInner() {
                           >
                             <td>{offset + idx + 1}</td>
                             <td className="admin-gold-cell-question">{row.question}</td>
-                            {showAnswerCol ? (
-                              <td className="admin-gold-cell-answer">
-                                {row.answer ? truncate(row.answer, 200) : "—"}
-                              </td>
-                            ) : null}
+                            <td className="admin-gold-cell-answer">
+                              {row.answer ? (expanded ? row.answer : truncate(row.answer, 240)) : "—"}
+                            </td>
                             <td>
                               {row.expectedBehavior ? (
                                 <span className="admin-pill admin-pill--unknown">{row.expectedBehavior}</span>
