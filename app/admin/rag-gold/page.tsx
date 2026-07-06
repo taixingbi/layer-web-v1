@@ -158,7 +158,7 @@ function AdminRagGoldPageInner() {
           <p className="admin-muted">
             Open a dataset from{" "}
             <Link href="/admin" className="admin-link">
-              Admin overview
+              Dashboard overview
             </Link>{" "}
             → RAG Gold eval cards.
           </p>

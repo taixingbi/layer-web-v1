@@ -85,7 +85,7 @@ export function ChatPlatformLinks() {
         </Link>
         {showUpload ? (
           <Link href="/admin" className={linkClass}>
-            Admin
+            Dashboard
           </Link>
         ) : null}
       </div>

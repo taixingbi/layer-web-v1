@@ -132,7 +132,7 @@ export function ChatUserMenu({ onSignOut }: ChatUserMenuProps) {
                 onClick={close}
                 className="block px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/5"
               >
-                Admin
+                Dashboard
               </Link>
             </>
           ) : null}
