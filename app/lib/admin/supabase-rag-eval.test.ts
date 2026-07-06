@@ -60,5 +60,7 @@ describe("emptyRagEvalMetrics", () => {
     expect(out.source).toBe("unavailable");
     expect(out.env).toBe("prod");
     expect(out.runId).toBeNull();
+    expect(out.goldDataset.env).toBe("prod");
+    expect(out.goldDataset.repoUrl).toContain("data_prod");
   });
 });

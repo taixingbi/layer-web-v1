@@ -25,7 +25,7 @@ export function AdminShell({ children, title, subtitle, actions }: Props) {
               Chat
             </Link>
             <span className="admin-nav-link admin-nav-link--active" aria-current="page">
-              Admin
+              Dashboard
             </span>
           </nav>
         </div>

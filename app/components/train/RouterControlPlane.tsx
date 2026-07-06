@@ -370,7 +370,7 @@ python -m app.build dpo`}</CommandBlock>
           </li>
           <li>
             <Link href="/admin" className="train-external-link">
-              Admin dashboard →
+              Dashboard →
             </Link>
           </li>
         </ul>

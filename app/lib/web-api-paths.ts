@@ -10,6 +10,7 @@ export const webApiPaths = {
     overview: "/api/admin/overview",
     resume: "/api/admin/resume",
     guestHistory: "/api/admin/guest-history",
+    ragGold: "/api/admin/rag-gold",
   },
   train: {
     access: "/api/train/access",

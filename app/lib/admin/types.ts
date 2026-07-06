@@ -73,6 +73,28 @@ export type AdminRagEvalMetrics = {
   gitSha: string | null;
   evalPackageVersion: string | null;
   notes: string | null;
+  goldDataset: AdminGoldDatasetCatalog;
+};
+
+export type AdminGoldDatasetFile = {
+  name: string;
+  label: string;
+  description: string;
+  bucket: string;
+  bytes: number | null;
+  rows: number | null;
+  url: string;
+  sha256: string | null;
+  usedInLastRun: boolean;
+};
+
+export type AdminGoldDatasetCatalog = {
+  source: "github" | "run_meta" | "unavailable";
+  env: string;
+  repoUrl: string;
+  files: AdminGoldDatasetFile[];
+  totalBytes: number | null;
+  totalRows: number | null;
 };
 
 export type AdminInferenceWorkload = {

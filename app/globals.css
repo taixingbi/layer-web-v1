@@ -2779,6 +2779,195 @@ body {
   background: #fffbeb;
   color: #b45309;
 }
+.admin-cicd-env-badge--dev {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #15803d;
+}
+.admin-cicd-env-badge--prod {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #b45309;
+}
+.admin-gold-section {
+  margin: 0.75rem 0 1rem;
+  padding: 0.875rem;
+  border-radius: 0.625rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+.admin-gold-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.admin-gold-header-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.admin-gold-header-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+.admin-gold-header-stat {
+  font-size: 0.75rem;
+}
+.admin-gold-repo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.admin-gold-repo-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  text-decoration: none;
+}
+.admin-gold-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+@media (min-width: 520px) {
+  .admin-gold-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.admin-gold-card {
+  display: block;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  border-left-width: 3px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.admin-gold-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.admin-gold-card--easy_single_hop { border-left-color: #22c55e; }
+.admin-gold-card--multi_hop { border-left-color: #3b82f6; }
+.admin-gold-card--paraphrase { border-left-color: #a855f7; }
+.admin-gold-card--negative { border-left-color: #f59e0b; }
+.admin-gold-card--full { border-left-color: #64748b; }
+.admin-gold-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.2rem;
+}
+.admin-gold-card-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+.admin-gold-card-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.admin-gold-card-desc {
+  margin: 0 0 0.45rem;
+  font-size: 0.6875rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+.admin-gold-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+.admin-gold-empty {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+.admin-gold-viewer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+.admin-gold-search {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+.admin-gold-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.admin-table--gold tbody tr {
+  cursor: pointer;
+}
+.admin-table--gold tbody tr:hover {
+  background: #f8fafc;
+}
+.admin-gold-row--expanded {
+  background: #eff6ff !important;
+}
+.admin-gold-cell-question {
+  max-width: 22rem;
+  white-space: normal;
+  line-height: 1.35;
+}
+.admin-gold-cell-answer {
+  max-width: 18rem;
+  white-space: pre-wrap;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+.admin-gold-cell-tags {
+  max-width: 14rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+.admin-dl--metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem 1rem;
+}
+@media (min-width: 520px) {
+  .admin-dl--metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 @keyframes admin-cicd-fade-in {
   from {
     opacity: 0;
