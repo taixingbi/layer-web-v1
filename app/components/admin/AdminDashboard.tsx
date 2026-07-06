@@ -339,6 +339,11 @@ export function AdminDashboard({ data }: Props) {
           <RouteDistribution distribution={router.distribution} />
         </Panel>
         <Panel title="RAG Metrics">
+          {rag.source === "supabase" ? (
+            <p className="admin-muted admin-inline-note">Live traffic (Supabase, 24h)</p>
+          ) : rag.source === "prometheus" ? (
+            <p className="admin-muted admin-inline-note">Prometheus (5m rate)</p>
+          ) : null}
           <dl className="admin-dl">
             <div>
               <dt>Retrieval P50</dt>

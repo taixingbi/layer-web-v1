@@ -74,7 +74,11 @@ export const adminConfig = {
   },
 
   get supabaseServiceKey(): string {
-    return fromEnv("SUPABASE_SERVICE_KEY") || fromEnv("SUPABASE_SERVICE_ROLE_KEY");
+    return (
+      fromEnv("SUPABASE_SECRET_KEY") ||
+      fromEnv("SUPABASE_SERVICE_KEY") ||
+      fromEnv("SUPABASE_SERVICE_ROLE_KEY")
+    );
   },
 
   /** Shared secret for non-interactive admin API access. */

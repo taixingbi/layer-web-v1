@@ -51,10 +51,10 @@ export async function buildAdminOverview(): Promise<AdminOverviewPayload> {
       distributionSource: routerDistributionSource,
     },
     rag: {
-      retrievalP50Ms: prom.rag.retrievalP50Ms ?? null,
-      embedP50Ms: prom.rag.embedP50Ms ?? null,
-      rerankP50Ms: prom.rag.rerankP50Ms ?? null,
-      contextSize: prom.rag.contextSize ?? null,
+      retrievalP50Ms: prom.rag.retrievalP50Ms ?? supa.ragPatch.retrievalP50Ms ?? null,
+      embedP50Ms: prom.rag.embedP50Ms ?? supa.ragPatch.embedP50Ms ?? null,
+      rerankP50Ms: prom.rag.rerankP50Ms ?? supa.ragPatch.rerankP50Ms ?? null,
+      contextSize: prom.rag.contextSize ?? supa.ragPatch.contextSize ?? null,
       hitRate: supa.ragPatch.hitRate ?? prom.rag.hitRate ?? null,
       source:
         prom.rag.source === "prometheus"

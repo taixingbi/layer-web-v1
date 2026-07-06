@@ -3,6 +3,7 @@
  */
 
 import { adminConfig } from "@/lib/admin/config";
+import { aggregateRagMetricsFromMetaRows } from "@/lib/admin/supabase-rag-metrics";
 import type {
   AdminFeedbackSection,
   AdminRecentRequest,
@@ -22,6 +23,18 @@ const FEEDBACK_REASON_LABELS: Record<string, string> = {
 
 type SupabaseRow = Record<string, unknown>;
 
+function supabaseAuthHeaders(key: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    apikey: key,
+    Accept: "application/json",
+  };
+  // New sb_secret_* keys are not JWTs; Bearer must be omitted.
+  if (key.startsWith("eyJ")) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+  return headers;
+}
+
 async function supabaseGet(path: string): Promise<SupabaseRow[] | null> {
   const base = adminConfig.supabaseUrl;
   const key = adminConfig.supabaseServiceKey;
@@ -30,11 +43,7 @@ async function supabaseGet(path: string): Promise<SupabaseRow[] | null> {
     const res = await fetch(`${base}/rest/v1/${path}`, {
       cache: "no-store",
       signal: AbortSignal.timeout(adminConfig.supabaseTimeoutMs),
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        Accept: "application/json",
-      },
+      headers: supabaseAuthHeaders(key),
     });
     if (!res.ok) return null;
     return (await res.json()) as SupabaseRow[];
@@ -122,6 +131,32 @@ export async function fetchRouteDistributionFromSupabase(): Promise<Record<strin
     out[route] = Math.round((count / total) * 1000) / 10;
   }
   return out;
+}
+
+/** RAG phase P50s from assistant message metadata (last 24h, RAG routes). */
+export async function fetchRagPhaseMetricsFromSupabase(): Promise<Partial<AdminRagMetrics>> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const sinceParam = encodeURIComponent(since);
+  const [messageRows, eventRows] = await Promise.all([
+    supabaseGet(
+      `messages?select=metadata&role=eq.assistant&created_at=gte.${sinceParam}&order=created_at.desc&limit=500`,
+    ),
+    supabaseGet(
+      `chat_events?select=route,latency_ms&created_at=gte.${sinceParam}&order=created_at.desc&limit=500`,
+    ),
+  ]);
+
+  const combined = [...(messageRows ?? [])];
+  for (const row of eventRows ?? []) {
+    combined.push({
+      metadata: {
+        route: row.route,
+        latency_ms: row.latency_ms,
+      },
+    });
+  }
+
+  return aggregateRagMetricsFromMetaRows(combined);
 }
 
 /** RAG hit rate: share of assistant answers that are not NOT_FOUND (last 24h). */
@@ -220,12 +255,19 @@ export async function fetchSupabaseBundle(): Promise<SupabaseBundle> {
   }
 
   try {
-    const [recentRequests, distribution, hitRate, feedback] = await Promise.all([
+    const [recentRequests, distribution, hitRate, ragPhases, feedback] = await Promise.all([
       fetchRecentRequests(),
       fetchRouteDistributionFromSupabase(),
       fetchRagHitRate(),
+      fetchRagPhaseMetricsFromSupabase(),
       fetchFeedbackStats(),
     ]);
+    const ragPatch: Partial<AdminRagMetrics> = {
+      ...ragPhases,
+      hitRate: hitRate ?? ragPhases.hitRate ?? null,
+      source:
+        ragPhases.source === "supabase" || hitRate != null ? "supabase" : "unavailable",
+    };
     return {
       source: "ok",
       recentRequests,
@@ -234,10 +276,7 @@ export async function fetchSupabaseBundle(): Promise<SupabaseBundle> {
         distribution,
         distributionSource: Object.keys(distribution).length ? "supabase" : "unavailable",
       },
-      ragPatch: {
-        hitRate,
-        source: hitRate != null ? "supabase" : "unavailable",
-      },
+      ragPatch,
     };
   } catch {
     return {
