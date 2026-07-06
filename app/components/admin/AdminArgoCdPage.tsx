@@ -17,6 +17,11 @@ import {
 
 type CicdEnv = "dev" | "prod";
 
+const ARGOCD_SHARED_ALL_APPS: ArgoCdAppLink[] = [
+  ...ARGOCD_SHARED_PLATFORM_APPS,
+  ...ARGOCD_SHARED_MONITOR_APPS,
+];
+
 const CICD_ENV_CONFIG: Record<
   CicdEnv,
   {
@@ -27,6 +32,8 @@ const CICD_ENV_CONFIG: Record<
     panelClass: string;
     tintClass: string;
     toggleClass: string;
+    sharedApps: ArgoCdAppLink[] | null;
+    sharedNote: string | null;
   }
 > = {
   dev: {
@@ -37,6 +44,8 @@ const CICD_ENV_CONFIG: Record<
     panelClass: "admin-panel--dev",
     tintClass: "admin-argocd-stack-panel--dev",
     toggleClass: "admin-cicd-env-toggle__btn--dev",
+    sharedApps: ARGOCD_SHARED_ALL_APPS,
+    sharedNote: "Gateways, vector store, vLLM, and observability — ai-dev only.",
   },
   prod: {
     workflow: ARGOCD_PROD_WORKFLOW,
@@ -46,6 +55,8 @@ const CICD_ENV_CONFIG: Record<
     panelClass: "admin-panel--prod",
     tintClass: "admin-argocd-stack-panel--prod",
     toggleClass: "admin-cicd-env-toggle__btn--prod",
+    sharedApps: null,
+    sharedNote: null,
   },
 };
 
@@ -175,11 +186,6 @@ function CicdSharedGrid({ apps }: { apps: ArgoCdAppLink[] }) {
   );
 }
 
-const ARGOCD_SHARED_ALL_APPS: ArgoCdAppLink[] = [
-  ...ARGOCD_SHARED_PLATFORM_APPS,
-  ...ARGOCD_SHARED_MONITOR_APPS,
-];
-
 export function AdminArgoCdPage() {
   const uiBase = argocdUiBase();
   const [env, setEnv] = useState<CicdEnv>("dev");
@@ -205,6 +211,7 @@ export function AdminArgoCdPage() {
     >
       <div className="admin-dashboard admin-argocd-layout">
         <section
+          key={env}
           className={`admin-panel admin-argocd-stack-panel ${config.panelClass} ${config.tintClass}`}
         >
           <div className="admin-argocd-stack-header">
@@ -216,21 +223,34 @@ export function AdminArgoCdPage() {
           <p className="admin-muted admin-inline-note">
             Push <code className="admin-code">{config.branch}</code> {config.note}
           </p>
-          <CicdWorkflowColumn key={env} workflow={config.workflow} />
+          {env === "prod" ? (
+            <p className="admin-muted admin-inline-note">
+              Shared gateways, Qdrant, and vLLM run in <code className="admin-code">ai-dev</code> — switch
+              to Dev for platform links.
+            </p>
+          ) : null}
+          <CicdWorkflowColumn workflow={config.workflow} />
         </section>
 
-        <div className="admin-argocd-funnel admin-argocd-funnel--single">
-          <span className="admin-argocd-funnel-label">depends on</span>
-          <span className="admin-argocd-funnel-arrow" aria-hidden />
-        </div>
+        {config.sharedApps ? (
+          <>
+            <div className="admin-argocd-funnel admin-argocd-funnel--single">
+              <span className="admin-argocd-funnel-label">depends on</span>
+              <span className="admin-argocd-funnel-arrow" aria-hidden />
+            </div>
 
-        <section className="admin-panel admin-argocd-shared-panel">
-          <h2 className="admin-panel-title">Shared platform</h2>
-          <p className="admin-muted admin-inline-note">
-            Gateways, vector store, vLLM, and observability — dev / platform only.
-          </p>
-          <CicdSharedGrid apps={ARGOCD_SHARED_ALL_APPS} />
-        </section>
+            <section className="admin-panel admin-argocd-shared-panel admin-panel--dev">
+              <h2 className="admin-panel-title">
+                Shared platform
+                <span className="admin-cicd-env-badge">ai-dev</span>
+              </h2>
+              {config.sharedNote ? (
+                <p className="admin-muted admin-inline-note">{config.sharedNote}</p>
+              ) : null}
+              <CicdSharedGrid apps={config.sharedApps} />
+            </section>
+          </>
+        ) : null}
       </div>
     </AdminShell>
   );

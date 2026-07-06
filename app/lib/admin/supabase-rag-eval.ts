@@ -3,13 +3,14 @@
  */
 
 import { adminConfig } from "@/lib/admin/config";
+import { fetchGoldDatasetCatalog, goldDatasetRepoUrl } from "@/lib/admin/rag-gold-dataset";
 import { supabaseGet, type SupabaseRow } from "@/lib/admin/supabase-rest";
 import type { AdminRagEvalMetrics } from "@/lib/admin/types";
 
 const RAG_EVAL_SELECT =
   "id,created_at,env,collection_base,rows_loaded,rows_evaluated,pass," +
   "mrr_rerank,recall_at_5_rerank,ndcg_at_5_rerank,llm_judge_score_mean," +
-  "latency_ms_p50,latency_ms_p95,gold_dataset_sha256,git_sha,eval_package_version,notes";
+  "latency_ms_p50,latency_ms_p95,gold_dataset_sha256,git_sha,eval_package_version,notes,run_meta";
 
 function floatField(row: SupabaseRow, key: string): number | null {
   const v = row[key];
@@ -29,6 +30,11 @@ function intField(row: SupabaseRow, key: string): number | null {
 function strField(row: SupabaseRow, key: string): string | null {
   const v = row[key];
   return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+function runMetaObject(row: SupabaseRow): Record<string, unknown> | null {
+  const meta = row.run_meta;
+  return meta && typeof meta === "object" && !Array.isArray(meta) ? (meta as Record<string, unknown>) : null;
 }
 
 /** Map a ``rag_eval_runs`` row to dashboard metrics. */
@@ -75,6 +81,14 @@ export const emptyRagEvalMetrics = (env: string): AdminRagEvalMetrics => ({
   gitSha: null,
   evalPackageVersion: null,
   notes: null,
+  goldDataset: {
+    source: "unavailable",
+    env,
+    repoUrl: goldDatasetRepoUrl(env),
+    files: [],
+    totalBytes: null,
+    totalRows: null,
+  },
 });
 
 /** Fetch the most recent eval run for ``env`` (dev / prod). */
@@ -82,7 +96,8 @@ export async function fetchLatestRagEvalRun(
   env: string = adminConfig.ragEvalEnv,
 ): Promise<AdminRagEvalMetrics> {
   if (!adminConfig.supabaseUrl || !adminConfig.supabaseServiceKey) {
-    return emptyRagEvalMetrics(env);
+    const goldDataset = await fetchGoldDatasetCatalog(env);
+    return { ...emptyRagEvalMetrics(env), goldDataset };
   }
 
   const envParam = encodeURIComponent(env.trim() || "dev");
@@ -90,7 +105,11 @@ export async function fetchLatestRagEvalRun(
     `rag_eval_runs?env=eq.${envParam}&order=created_at.desc&limit=1&select=${RAG_EVAL_SELECT}`,
   );
   if (!rows?.length) {
-    return emptyRagEvalMetrics(env);
+    const goldDataset = await fetchGoldDatasetCatalog(env);
+    return { ...emptyRagEvalMetrics(env), goldDataset };
   }
-  return mapRagEvalRunRow(rows[0]!);
+  const row = rows[0]!;
+  const metrics = mapRagEvalRunRow(row);
+  const goldDataset = await fetchGoldDatasetCatalog(metrics.env, runMetaObject(row));
+  return { ...metrics, goldDataset };
 }

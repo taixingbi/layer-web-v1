@@ -3,6 +3,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 
 import type {
+  AdminGoldDatasetFile,
   AdminGpuDevice,
   AdminInferenceSection,
   AdminOverviewPayload,
@@ -10,6 +11,7 @@ import type {
   AdminServiceHealth,
   ServiceStatus,
 } from "@/lib/admin/types";
+import { formatGoldFileBytes } from "@/lib/admin/rag-gold-dataset";
 
 type Props = {
   data: AdminOverviewPayload;
@@ -81,22 +83,78 @@ function Panel({ title, children, className = "" }: { title: string; children: R
   );
 }
 
-const GOLD_DATASET_REPO: Record<string, string> = {
-  dev: "https://github.com/taixingbi/layer-rag-evaluation-v1/tree/main/data_dev/gold_dataset",
-  prod: "https://github.com/taixingbi/layer-rag-evaluation-v1/tree/main/data_prod/gold_dataset",
-};
+function GitHubIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden fill="currentColor">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  );
+}
 
-function goldDatasetRepoUrl(env: string): string {
-  return GOLD_DATASET_REPO[env.trim().toLowerCase()] ?? GOLD_DATASET_REPO.dev!;
+function GoldDatasetCard({ file }: { file: AdminGoldDatasetFile }) {
+  return (
+    <a
+      className={`admin-gold-card admin-gold-card--${file.bucket}`}
+      href={file.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={file.name}
+    >
+      <div className="admin-gold-card-head">
+        <span className="admin-gold-card-label">{file.label}</span>
+        {file.usedInLastRun ? <span className="admin-gold-card-badge">last run</span> : null}
+      </div>
+      <p className="admin-gold-card-desc">{file.description}</p>
+      <div className="admin-gold-card-meta">
+        <span>{file.rows != null ? `${file.rows} rows` : "— rows"}</span>
+        <span>{formatGoldFileBytes(file.bytes)}</span>
+      </div>
+    </a>
+  );
+}
+
+function GoldDatasetSection({ ragEval }: { ragEval: AdminOverviewPayload["ragEval"] }) {
+  const { goldDataset } = ragEval;
+  const envKey = ragEval.env.trim().toLowerCase();
+  const repoUrl = goldDataset.repoUrl || `https://github.com/taixingbi/layer-rag-evaluation-v1/tree/main/data_${envKey === "prod" ? "prod" : "dev"}/gold_dataset`;
+
+  return (
+    <section className="admin-gold-section">
+      <div className="admin-gold-header">
+        <div className="admin-gold-header-main">
+          <span className={`admin-cicd-env-badge admin-cicd-env-badge--${envKey === "prod" ? "prod" : "dev"}`}>
+            {envKey}
+          </span>
+          <span className="admin-gold-header-title">Gold dataset</span>
+          {goldDataset.totalRows != null ? (
+            <span className="admin-muted admin-gold-header-stat">
+              {goldDataset.files.length} files · {goldDataset.totalRows} rows
+              {goldDataset.totalBytes != null ? ` · ${formatGoldFileBytes(goldDataset.totalBytes)}` : ""}
+            </span>
+          ) : null}
+        </div>
+        <a className="admin-gold-repo-btn" href={repoUrl} target="_blank" rel="noopener noreferrer">
+          <GitHubIcon />
+          GitHub
+        </a>
+      </div>
+      {goldDataset.files.length > 0 ? (
+        <div className="admin-gold-grid">
+          {goldDataset.files.map((file) => (
+            <GoldDatasetCard key={file.name} file={file} />
+          ))}
+        </div>
+      ) : (
+        <p className="admin-muted admin-gold-empty">Could not load gold files from GitHub.</p>
+      )}
+    </section>
+  );
 }
 
 function RagEvalPanel({ ragEval }: { ragEval: AdminOverviewPayload["ragEval"] }) {
   const hasRun = ragEval.source === "supabase" && ragEval.runId != null;
-  const envKey = ragEval.env.trim().toLowerCase();
-  const goldRepoUrl = goldDatasetRepoUrl(ragEval.env);
-  const goldRepoLabel = `layer-rag-evaluation-v1/${envKey === "prod" ? "data_prod" : "data_dev"}/gold_dataset`;
   return (
-    <Panel title="RAG — Gold eval">
+    <Panel title="RAG — Gold eval" className={`admin-panel--${ragEval.env.trim().toLowerCase() === "prod" ? "prod" : "dev"}`}>
       {hasRun ? (
         <p className="admin-muted admin-inline-note">
           Latest run ({ragEval.env}
@@ -107,15 +165,9 @@ function RagEvalPanel({ ragEval }: { ragEval: AdminOverviewPayload["ragEval"] })
           No eval runs in Supabase (run <code className="admin-code">run_eval --record-supabase</code>)
         </p>
       )}
-      <dl className="admin-dl">
-        <div>
-          <dt>Gold dataset</dt>
-          <dd>
-            <a className="admin-link" href={goldRepoUrl} target="_blank" rel="noopener noreferrer">
-              {goldRepoLabel}
-            </a>
-          </dd>
-        </div>
+      <GoldDatasetSection ragEval={ragEval} />
+      <h3 className="admin-section-label">Eval metrics</h3>
+      <dl className="admin-dl admin-dl--metrics">
         <div>
           <dt>MRR (rerank)</dt>
           <dd>{fmtPct(ragEval.mrrRerank)}</dd>
