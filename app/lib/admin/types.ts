@@ -53,6 +53,28 @@ export type AdminRagMetrics = {
   source: "prometheus" | "supabase" | "unavailable";
 };
 
+/** Latest gold eval row from ``rag_eval_runs`` (``run_eval --record-supabase``). */
+export type AdminRagEvalMetrics = {
+  source: "supabase" | "unavailable";
+  env: string;
+  collectionBase: string | null;
+  runId: string | null;
+  evaluatedAt: string | null;
+  rowsEvaluated: number | null;
+  rowsLoaded: number | null;
+  pass: boolean | null;
+  mrrRerank: number | null;
+  recallAt5Rerank: number | null;
+  ndcgAt5Rerank: number | null;
+  llmJudgeScoreMean: number | null;
+  latencyMsP50: number | null;
+  latencyMsP95: number | null;
+  goldDatasetSha256: string | null;
+  gitSha: string | null;
+  evalPackageVersion: string | null;
+  notes: string | null;
+};
+
 export type AdminInferenceWorkload = {
   id: "chat" | "embedding" | "reranker";
   label: string;
@@ -97,6 +119,7 @@ export type AdminOverviewPayload = {
   services: AdminServiceHealth[];
   router: AdminRouterSection;
   rag: AdminRagMetrics;
+  ragEval: AdminRagEvalMetrics;
   inference: AdminInferenceSection;
   gpu: AdminGpuDevice[];
   recentRequests: AdminRecentRequest[];

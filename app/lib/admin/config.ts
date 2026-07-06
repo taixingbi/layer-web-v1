@@ -74,7 +74,11 @@ export const adminConfig = {
   },
 
   get supabaseServiceKey(): string {
-    return fromEnv("SUPABASE_SERVICE_KEY") || fromEnv("SUPABASE_SERVICE_ROLE_KEY");
+    return (
+      fromEnv("SUPABASE_SECRET_KEY") ||
+      fromEnv("SUPABASE_SERVICE_KEY") ||
+      fromEnv("SUPABASE_SERVICE_ROLE_KEY")
+    );
   },
 
   /** Shared secret for non-interactive admin API access. */
@@ -110,6 +114,11 @@ export const adminConfig = {
 
   get inferenceRuntime(): string {
     return fromEnv("ADMIN_INFERENCE_RUNTIME", "vLLM");
+  },
+
+  /** Env label for ``rag_eval_runs`` (``dev`` / ``prod``). */
+  get ragEvalEnv(): string {
+    return fromEnv("ADMIN_RAG_EVAL_ENV", "prod");
   },
 
   healthTimeoutMs: 3_000,

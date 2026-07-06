@@ -5,6 +5,8 @@
 import { fetchPrometheusBundle } from "@/lib/admin/prometheus";
 import { fetchServiceHealth } from "@/lib/admin/service-health";
 import { fetchSupabaseBundle } from "@/lib/admin/supabase-analytics";
+import { fetchLatestRagEvalRun } from "@/lib/admin/supabase-rag-eval";
+import { adminConfig } from "@/lib/admin/config";
 import type { AdminOverviewPayload } from "@/lib/admin/types";
 import { versionPayload } from "@/lib/build-info";
 
@@ -15,10 +17,11 @@ function defaultVersionLabel(): string {
 
 /** Build the normalized dashboard payload for GET /api/admin/overview. */
 export async function buildAdminOverview(): Promise<AdminOverviewPayload> {
-  const [services, prom, supa] = await Promise.all([
+  const [services, prom, supa, ragEval] = await Promise.all([
     fetchServiceHealth(),
     fetchPrometheusBundle(),
     fetchSupabaseBundle(),
+    fetchLatestRagEvalRun(adminConfig.ragEvalEnv),
   ]);
 
   const routerDistribution =
@@ -51,10 +54,10 @@ export async function buildAdminOverview(): Promise<AdminOverviewPayload> {
       distributionSource: routerDistributionSource,
     },
     rag: {
-      retrievalP50Ms: prom.rag.retrievalP50Ms ?? null,
-      embedP50Ms: prom.rag.embedP50Ms ?? null,
-      rerankP50Ms: prom.rag.rerankP50Ms ?? null,
-      contextSize: prom.rag.contextSize ?? null,
+      retrievalP50Ms: prom.rag.retrievalP50Ms ?? supa.ragPatch.retrievalP50Ms ?? null,
+      embedP50Ms: prom.rag.embedP50Ms ?? supa.ragPatch.embedP50Ms ?? null,
+      rerankP50Ms: prom.rag.rerankP50Ms ?? supa.ragPatch.rerankP50Ms ?? null,
+      contextSize: prom.rag.contextSize ?? supa.ragPatch.contextSize ?? null,
       hitRate: supa.ragPatch.hitRate ?? prom.rag.hitRate ?? null,
       source:
         prom.rag.source === "prometheus"
@@ -63,6 +66,7 @@ export async function buildAdminOverview(): Promise<AdminOverviewPayload> {
             ? "supabase"
             : "unavailable",
     },
+    ragEval,
     inference: {
       runtime: prom.inference.runtime ?? "vLLM",
       workloads: prom.inference.workloads ?? [],

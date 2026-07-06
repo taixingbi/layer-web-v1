@@ -29,11 +29,13 @@ export async function probeSupabaseHealth(): Promise<AdminServiceHealth> {
     };
   }
 
-  const headers = {
+  const headers: Record<string, string> = {
     apikey: key,
-    Authorization: `Bearer ${key}`,
     Accept: "application/json",
   };
+  if (key.startsWith("eyJ")) {
+    headers.Authorization = `Bearer ${key}`;
+  }
 
   let authOk = false;
   let restOk = false;
