@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState, type ReactNode } from "react";
 
 import type {
@@ -11,7 +12,7 @@ import type {
   AdminServiceHealth,
   ServiceStatus,
 } from "@/lib/admin/types";
-import { formatGoldFileBytes } from "@/lib/admin/rag-gold-dataset";
+import { formatGoldFileBytes, goldDatasetViewerUrl } from "@/lib/admin/rag-gold-dataset";
 
 type Props = {
   data: AdminOverviewPayload;
@@ -91,13 +92,11 @@ function GitHubIcon() {
   );
 }
 
-function GoldDatasetCard({ file }: { file: AdminGoldDatasetFile }) {
+function GoldDatasetCard({ file, env }: { file: AdminGoldDatasetFile; env: string }) {
   return (
-    <a
+    <Link
       className={`admin-gold-card admin-gold-card--${file.bucket}`}
-      href={file.url}
-      target="_blank"
-      rel="noopener noreferrer"
+      href={goldDatasetViewerUrl(env, file.name)}
       title={file.name}
     >
       <div className="admin-gold-card-head">
@@ -109,7 +108,7 @@ function GoldDatasetCard({ file }: { file: AdminGoldDatasetFile }) {
         <span>{file.rows != null ? `${file.rows} rows` : "— rows"}</span>
         <span>{formatGoldFileBytes(file.bytes)}</span>
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -141,7 +140,7 @@ function GoldDatasetSection({ ragEval }: { ragEval: AdminOverviewPayload["ragEva
       {goldDataset.files.length > 0 ? (
         <div className="admin-gold-grid">
           {goldDataset.files.map((file) => (
-            <GoldDatasetCard key={file.name} file={file} />
+            <GoldDatasetCard key={file.name} file={file} env={envKey} />
           ))}
         </div>
       ) : (

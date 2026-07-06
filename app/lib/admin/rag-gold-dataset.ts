@@ -58,12 +58,20 @@ export function goldDatasetRepoUrl(env: string): string {
   return `https://github.com/${REPO}/tree/${BRANCH}/${envDataDir(env)}/gold_dataset`;
 }
 
-function goldFileBlobUrl(env: string, filename: string): string {
+/** GitHub blob URL for a gold JSONL file. */
+export function goldFileBlobUrl(env: string, filename: string): string {
   return `https://github.com/${REPO}/blob/${BRANCH}/${envDataDir(env)}/gold_dataset/${filename}`;
 }
 
-function goldFileRawUrl(env: string, filename: string): string {
+/** Raw.githubusercontent.com URL for a gold JSONL file. */
+export function goldFileRawUrl(env: string, filename: string): string {
   return `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${envDataDir(env)}/gold_dataset/${filename}`;
+}
+
+/** In-app admin viewer path for a gold JSONL file. */
+export function goldDatasetViewerUrl(env: string, filename: string): string {
+  const envKey = env.trim().toLowerCase() === "prod" ? "prod" : "dev";
+  return `/admin/rag-gold?env=${encodeURIComponent(envKey)}&file=${encodeURIComponent(filename)}`;
 }
 
 function basename(path: string): string {

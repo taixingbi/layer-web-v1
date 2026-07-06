@@ -2911,6 +2911,53 @@ body {
   margin: 0;
   font-size: 0.8125rem;
 }
+.admin-gold-viewer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+.admin-gold-search {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+.admin-gold-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+.admin-table--gold tbody tr {
+  cursor: pointer;
+}
+.admin-table--gold tbody tr:hover {
+  background: #f8fafc;
+}
+.admin-gold-row--expanded {
+  background: #eff6ff !important;
+}
+.admin-gold-cell-question {
+  max-width: 22rem;
+  white-space: normal;
+  line-height: 1.35;
+}
+.admin-gold-cell-answer {
+  max-width: 18rem;
+  white-space: pre-wrap;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+.admin-gold-cell-tags {
+  max-width: 14rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
 .admin-dl--metrics {
   display: grid;
   grid-template-columns: 1fr;
