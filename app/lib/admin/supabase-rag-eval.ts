@@ -37,8 +37,8 @@ function runMetaObject(row: SupabaseRow): Record<string, unknown> | null {
   return meta && typeof meta === "object" && !Array.isArray(meta) ? (meta as Record<string, unknown>) : null;
 }
 
-/** Map a ``rag_eval_runs`` row to dashboard metrics. */
-export function mapRagEvalRunRow(row: SupabaseRow): AdminRagEvalMetrics {
+/** Map a ``rag_eval_runs`` row to dashboard metrics (without gold catalog). */
+export function mapRagEvalRunRow(row: SupabaseRow): Omit<AdminRagEvalMetrics, "goldDataset"> {
   const pass = row.pass;
   return {
     source: "supabase",
