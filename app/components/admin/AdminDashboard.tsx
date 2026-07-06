@@ -81,44 +81,20 @@ function Panel({ title, children, className = "" }: { title: string; children: R
   );
 }
 
-function RagLivePanel({ rag }: { rag: AdminOverviewPayload["rag"] }) {
-  return (
-    <Panel title="RAG — Live">
-      {rag.source === "supabase" ? (
-        <p className="admin-muted admin-inline-note">Live traffic (Supabase, 24h)</p>
-      ) : rag.source === "prometheus" ? (
-        <p className="admin-muted admin-inline-note">Prometheus (5m rate)</p>
-      ) : (
-        <p className="admin-muted admin-inline-note">No live RAG telemetry</p>
-      )}
-      <dl className="admin-dl">
-        <div>
-          <dt>Retrieval P50</dt>
-          <dd>{fmtMs(rag.retrievalP50Ms)}</dd>
-        </div>
-        <div>
-          <dt>Embed P50</dt>
-          <dd>{fmtMs(rag.embedP50Ms)}</dd>
-        </div>
-        <div>
-          <dt>Rerank P50</dt>
-          <dd>{fmtMs(rag.rerankP50Ms)}</dd>
-        </div>
-        <div>
-          <dt>Context size</dt>
-          <dd>{fmtNum(rag.contextSize)}</dd>
-        </div>
-        <div>
-          <dt>Hit rate</dt>
-          <dd>{rag.hitRate != null ? `${rag.hitRate}%` : "—"}</dd>
-        </div>
-      </dl>
-    </Panel>
-  );
+const GOLD_DATASET_REPO: Record<string, string> = {
+  dev: "https://github.com/taixingbi/layer-rag-evaluation-v1/tree/main/data_dev/gold_dataset",
+  prod: "https://github.com/taixingbi/layer-rag-evaluation-v1/tree/main/data_prod/gold_dataset",
+};
+
+function goldDatasetRepoUrl(env: string): string {
+  return GOLD_DATASET_REPO[env.trim().toLowerCase()] ?? GOLD_DATASET_REPO.dev!;
 }
 
 function RagEvalPanel({ ragEval }: { ragEval: AdminOverviewPayload["ragEval"] }) {
   const hasRun = ragEval.source === "supabase" && ragEval.runId != null;
+  const envKey = ragEval.env.trim().toLowerCase();
+  const goldRepoUrl = goldDatasetRepoUrl(ragEval.env);
+  const goldRepoLabel = `layer-rag-evaluation-v1/${envKey === "prod" ? "data_prod" : "data_dev"}/gold_dataset`;
   return (
     <Panel title="RAG — Gold eval">
       {hasRun ? (
@@ -132,6 +108,14 @@ function RagEvalPanel({ ragEval }: { ragEval: AdminOverviewPayload["ragEval"] })
         </p>
       )}
       <dl className="admin-dl">
+        <div>
+          <dt>Gold dataset</dt>
+          <dd>
+            <a className="admin-link" href={goldRepoUrl} target="_blank" rel="noopener noreferrer">
+              {goldRepoLabel}
+            </a>
+          </dd>
+        </div>
         <div>
           <dt>MRR (rerank)</dt>
           <dd>{fmtPct(ragEval.mrrRerank)}</dd>
@@ -404,7 +388,7 @@ function RecentRequestsTable({ rows }: { rows: AdminRecentRequest[] }) {
 }
 
 export function AdminDashboard({ data }: Props) {
-  const { overview, services, router, rag, ragEval, inference, gpu, recentRequests, feedback } = data;
+  const { overview, services, router, ragEval, inference, gpu, recentRequests, feedback } = data;
 
   return (
     <div className="admin-dashboard">
@@ -461,10 +445,7 @@ export function AdminDashboard({ data }: Props) {
           <h3 className="admin-section-label">Route distribution</h3>
           <RouteDistribution distribution={router.distribution} />
         </Panel>
-        <div className="admin-rag-column">
-          <RagLivePanel rag={rag} />
-          <RagEvalPanel ragEval={ragEval} />
-        </div>
+        <RagEvalPanel ragEval={ragEval} />
       </div>
 
       <div className="admin-row admin-row--half">
