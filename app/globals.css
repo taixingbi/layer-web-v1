@@ -2220,6 +2220,26 @@ body {
   font-size: 0.875rem;
   padding-left: 0.25rem;
 }
+.admin-pipeline-branch {
+  list-style: none;
+  margin: 0.1rem 0 0.05rem 0.55rem;
+  padding: 0 0 0 0.7rem;
+  border-left: 1px solid #94a3b8;
+}
+.admin-pipeline-branch li {
+  position: relative;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.08rem 0;
+}
+.admin-pipeline-branch li::before {
+  content: "";
+  position: absolute;
+  left: -0.7rem;
+  top: 0.7em;
+  width: 0.55rem;
+  border-top: 1px solid #94a3b8;
+}
 .admin-health-list {
   list-style: none;
   padding: 0;

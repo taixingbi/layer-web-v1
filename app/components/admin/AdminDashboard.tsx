@@ -59,12 +59,17 @@ function statusClass(status: ServiceStatus): string {
 }
 
 const PIPELINE_STEPS = [
-  "Gateway API",
-  "Orchestrator",
-  "RAG / GitHub / Web",
+  "User",
+  "API Gateway",
+  "Orchestrator / Router",
   "Inference Gateway",
-  "vLLM Cluster",
-];
+  "vLLM",
+  "GPU Cluster",
+] as const;
+
+const PIPELINE_BRANCH_AFTER = "Orchestrator / Router";
+
+const PIPELINE_BRANCHES = ["RAG → Qdrant", "GitHub / Web", "Direct LLM"] as const;
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
@@ -461,11 +466,18 @@ export function AdminDashboard({ data }: Props) {
       </div>
 
       <div className="admin-row admin-row--2-1">
-        <Panel title="AI Pipeline" className="admin-panel--pipeline">
+        <Panel title="Request / AI Pipeline" className="admin-panel--pipeline">
           <ol className="admin-pipeline">
             {PIPELINE_STEPS.map((step, idx) => (
               <li key={step}>
                 <span>{step}</span>
+                {step === PIPELINE_BRANCH_AFTER ? (
+                  <ul className="admin-pipeline-branch">
+                    {PIPELINE_BRANCHES.map((branch) => (
+                      <li key={branch}>{branch}</li>
+                    ))}
+                  </ul>
+                ) : null}
                 {idx < PIPELINE_STEPS.length - 1 ? <span className="admin-pipeline-arrow">↓</span> : null}
               </li>
             ))}
