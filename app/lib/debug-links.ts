@@ -61,7 +61,7 @@ export function grafanaTraceUrl(traceId: string | undefined): string | null {
   return defaultGrafanaExploreUrl(id);
 }
 
-/** HuntAI platform GitHub org page (code overview). */
+/** HuntAI repos on GitHub (org repositories filtered by topic ``huntai``). */
 export function huntaiGitHubUrl(): string {
-  return `https://github.com/${GITHUB_ORG}`;
+  return `https://github.com/${GITHUB_ORG}?tab=repositories&q=huntai&type=&language=&sort=`;
 }
