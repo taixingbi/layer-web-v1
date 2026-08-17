@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { grafanaHomeUrl, grafanaTraceUrl } from "./debug-links";
+import { grafanaHomeUrl, grafanaTraceUrl, huntaiGitHubUrl } from "./debug-links";
 
 describe("grafanaTraceUrl", () => {
   it("defaults to taixingbi Grafana Cloud explore with trace in Loki query", () => {
@@ -18,5 +18,13 @@ describe("grafanaTraceUrl", () => {
 describe("grafanaHomeUrl", () => {
   it("points at the HuntAI Grafana Cloud stack", () => {
     expect(grafanaHomeUrl()).toBe("https://taixingbi.grafana.net/");
+  });
+});
+
+describe("huntaiGitHubUrl", () => {
+  it("lists taixingbi repositories matching huntai", () => {
+    expect(huntaiGitHubUrl()).toBe(
+      "https://github.com/taixingbi?tab=repositories&q=huntai&type=&language=&sort=",
+    );
   });
 });
